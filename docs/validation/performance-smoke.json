@@ -1,0 +1,25 @@
+{
+  "measuredAt": "2026-10-29T11:25:49.420183+00:00",
+  "scope": "Synthetic local read smoke: 60 requests, 5 concurrent workers; no hospital load/field UX claim.",
+  "apiBuildMode": "release",
+  "baseUrl": "http://127.0.0.1:3000",
+  "requests": 60,
+  "concurrency": 5,
+  "unexpectedFailures": 0,
+  "latencyMs": {
+    "median": 9.92,
+    "p95": 28.35,
+    "max": 90.43
+  },
+  "meanJsonResponseBytes": 9469,
+  "clientJavaScript": {
+    "allRoutesGzipBytes": 80691,
+    "note": "Sum of all lazy route chunks; initial-route payload differs."
+  },
+  "limitations": [
+    "Loopback only",
+    "12 seeded patients and 200 tasks plus browser demo additions",
+    "Read workload only",
+    "No sustained capacity or field Web Vitals measurement"
+  ]
+}

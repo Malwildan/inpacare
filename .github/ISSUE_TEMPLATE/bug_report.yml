@@ -1,0 +1,33 @@
+name: Bug report
+description: Report a reproducible problem using synthetic data.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: "For vulnerabilities, use the private security reporting link instead. Do not include credentials or patient information."
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Include the page, account role, actual behavior, and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Use synthetic records on a local instance. Screenshots are helpful for UI bugs.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "OS, browser, Node/Rust versions, and commit"
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Remove cookies, tokens, credentials, and personal information.

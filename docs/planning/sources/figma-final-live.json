@@ -1,0 +1,1879 @@
+{
+  "inspectedAtUtc": "2026-10-29 10:16:38 UTC",
+  "source": {
+    "url": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/RSI---KELOMPOK-2--Copy-?node-id=2002-1259&t=rOwVmMeSEyNqdZuC-1",
+    "fileName": "RSI - KELOMPOK 2 (Copy)",
+    "fileKey": "Vo3C9LOAj2uQ1sK9QtZsX8",
+    "pageName": "Final",
+    "pageId": "2002:1259",
+    "verification": {
+      "bridge": "Figma Desktop Bridge",
+      "mode": "local",
+      "probeSuccess": true,
+      "probeLatencyMs": 12,
+      "activeFileKeyMatches": true,
+      "activePageMatches": true,
+      "editorType": "figma",
+      "pluginVersion": "1.41.5"
+    }
+  },
+  "inventory": {
+    "topLevelSections": [
+      {
+        "id": "2004:19337",
+        "name": "06 · Sidebar bersama — Modul 2",
+        "type": "SECTION",
+        "childCount": 4
+      },
+      {
+        "id": "2005:20935",
+        "name": "RSI · Website Rawat Inap — Alur Terpadu",
+        "type": "SECTION",
+        "childCount": 107
+      },
+      {
+        "id": "2005:20936",
+        "name": "Komponen & state pendukung",
+        "type": "SECTION",
+        "childCount": 9
+      }
+    ],
+    "applicationSection": {
+      "id": "2005:20935",
+      "name": "RSI · Website Rawat Inap — Alur Terpadu",
+      "directScreenFrameCount": 107
+    },
+    "totalScreens": 107,
+    "modules": [
+      {
+        "name": "Dashboard Siklus",
+        "count": 19,
+        "category": "core",
+        "byRole": {
+          "Perawat": 7,
+          "Dokter": 5,
+          "Koordinator Perawat": 7
+        },
+        "screens": [
+          {
+            "id": "2004:5793",
+            "name": "Dashboard Siklus / 01 / Dashboard perawat",
+            "module": "Dashboard Siklus",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:5887",
+            "name": "Dashboard Siklus / 02 / Tambah rekap pasien",
+            "module": "Dashboard Siklus",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:7840",
+            "name": "Dashboard Siklus / 04 / Konfirmasi rekap berhasil",
+            "module": "Dashboard Siklus",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:6051",
+            "name": "Dashboard Siklus / 03 / Ubah status siklus",
+            "module": "Dashboard Siklus",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:6220",
+            "name": "Dashboard Siklus / 04 / Konfirmasi hapus rekap",
+            "module": "Dashboard Siklus",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:6802",
+            "name": "Dashboard Siklus / 08 / Ajukan Extend atau Pelepasan",
+            "module": "Dashboard Siklus",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:6356",
+            "name": "Dashboard Siklus / 05 / Dashboard dokter",
+            "module": "Dashboard Siklus",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:6449",
+            "name": "Dashboard Siklus / 06 / Persetujuan medis",
+            "module": "Dashboard Siklus",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:6637",
+            "name": "Dashboard Siklus / 07 / Persetujuan pelepasan",
+            "module": "Dashboard Siklus",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:21224",
+            "name": "Dashboard Siklus / 01 / Dashboard perawat · Koordinator",
+            "module": "Dashboard Siklus",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:21428",
+            "name": "Dashboard Siklus / 02 / Tambah rekap pasien · Koordinator",
+            "module": "Dashboard Siklus",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:21702",
+            "name": "Dashboard Siklus / 04 / Konfirmasi rekap berhasil · Koordinator",
+            "module": "Dashboard Siklus",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:21915",
+            "name": "Dashboard Siklus / 03 / Ubah status siklus · Koordinator",
+            "module": "Dashboard Siklus",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:22194",
+            "name": "Dashboard Siklus / 04 / Konfirmasi hapus rekap · Koordinator",
+            "module": "Dashboard Siklus",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:22440",
+            "name": "Dashboard Siklus / 08 / Ajukan Extend atau Pelepasan · Koordinator",
+            "module": "Dashboard Siklus",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2012:30710",
+            "name": "Siklus / Tolak Extend",
+            "module": "Dashboard Siklus",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2012:30868",
+            "name": "Siklus / Tolak Pelepasan",
+            "module": "Dashboard Siklus",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2012:31026",
+            "name": "Siklus / Ajukan Pelepasan · Perawat",
+            "module": "Dashboard Siklus",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2012:31177",
+            "name": "Siklus / Ajukan Pelepasan · Koordinator",
+            "module": "Dashboard Siklus",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          }
+        ]
+      },
+      {
+        "name": "Manajemen Ruangan",
+        "count": 12,
+        "category": "core",
+        "byRole": {
+          "Perawat": 6,
+          "Koordinator Perawat": 6
+        },
+        "screens": [
+          {
+            "id": "2004:10661",
+            "name": "Manajemen Ruangan / 01 / Daftar ruangan",
+            "module": "Manajemen Ruangan",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:10820",
+            "name": "Manajemen Ruangan / 02 / Tambah ruangan",
+            "module": "Manajemen Ruangan",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:11045",
+            "name": "Manajemen Ruangan / 03 / Detail ruangan",
+            "module": "Manajemen Ruangan",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:11261",
+            "name": "Manajemen Ruangan / 04 / Edit ruangan",
+            "module": "Manajemen Ruangan",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:11486",
+            "name": "Manajemen Ruangan / 05 / Hapus ruangan",
+            "module": "Manajemen Ruangan",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:11662",
+            "name": "Manajemen Ruangan / 06 / Ruangan dihapus",
+            "module": "Manajemen Ruangan",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:22702",
+            "name": "Manajemen Ruangan / 01 / Daftar ruangan · Koordinator",
+            "module": "Manajemen Ruangan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:22954",
+            "name": "Manajemen Ruangan / 02 / Tambah ruangan · Koordinator",
+            "module": "Manajemen Ruangan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:23421",
+            "name": "Manajemen Ruangan / 03 / Detail ruangan · Koordinator",
+            "module": "Manajemen Ruangan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:23741",
+            "name": "Manajemen Ruangan / 04 / Edit ruangan · Koordinator",
+            "module": "Manajemen Ruangan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:24208",
+            "name": "Manajemen Ruangan / 05 / Hapus ruangan · Koordinator",
+            "module": "Manajemen Ruangan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:24490",
+            "name": "Manajemen Ruangan / 06 / Ruangan dihapus · Koordinator",
+            "module": "Manajemen Ruangan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          }
+        ]
+      },
+      {
+        "name": "Kalender Ruangan",
+        "count": 12,
+        "category": "core",
+        "byRole": {
+          "Perawat": 6,
+          "Koordinator Perawat": 6
+        },
+        "screens": [
+          {
+            "id": "2004:12721",
+            "name": "Kalender Ruangan / 01 / Kalender mingguan",
+            "module": "Kalender Ruangan",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:12905",
+            "name": "Kalender Ruangan / 02 / Tempatkan pasien",
+            "module": "Kalender Ruangan",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:13113",
+            "name": "Kalender Ruangan / 03 / Detail penempatan",
+            "module": "Kalender Ruangan",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:13338",
+            "name": "Kalender Ruangan / 04 / Ubah jadwal",
+            "module": "Kalender Ruangan",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:13546",
+            "name": "Kalender Ruangan / 05 / Batalkan penempatan",
+            "module": "Kalender Ruangan",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2004:13747",
+            "name": "Kalender Ruangan / 06 / Penempatan dibatalkan",
+            "module": "Kalender Ruangan",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:24723",
+            "name": "Kalender Ruangan / 01 / Kalender mingguan · Koordinator",
+            "module": "Kalender Ruangan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:24970",
+            "name": "Kalender Ruangan / 02 / Tempatkan pasien · Koordinator",
+            "module": "Kalender Ruangan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:25298",
+            "name": "Kalender Ruangan / 03 / Detail penempatan · Koordinator",
+            "module": "Kalender Ruangan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:25598",
+            "name": "Kalender Ruangan / 04 / Ubah jadwal · Koordinator",
+            "module": "Kalender Ruangan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:25926",
+            "name": "Kalender Ruangan / 05 / Batalkan penempatan · Koordinator",
+            "module": "Kalender Ruangan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:26203",
+            "name": "Kalender Ruangan / 06 / Penempatan dibatalkan · Koordinator",
+            "module": "Kalender Ruangan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          }
+        ]
+      },
+      {
+        "name": "Tugas Perawatan",
+        "count": 21,
+        "category": "core",
+        "byRole": {
+          "Koordinator Perawat": 12,
+          "Perawat PIC": 9
+        },
+        "screens": [
+          {
+            "id": "2004:14530",
+            "name": "Tugas Perawatan / Papan tugas — Koordinator",
+            "module": "Tugas Perawatan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1160
+          },
+          {
+            "id": "2004:14670",
+            "name": "Tugas Perawatan / Papan — belum ada tugas",
+            "module": "Tugas Perawatan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1060
+          },
+          {
+            "id": "2004:14696",
+            "name": "Tugas Perawatan / Papan — tanpa hasil",
+            "module": "Tugas Perawatan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1060
+          },
+          {
+            "id": "2004:14725",
+            "name": "Tugas Perawatan / Buat tugas — Koordinator",
+            "module": "Tugas Perawatan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1240
+          },
+          {
+            "id": "2004:14771",
+            "name": "Tugas Perawatan / Edit dan delegasi ulang",
+            "module": "Tugas Perawatan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1240
+          },
+          {
+            "id": "2004:14816",
+            "name": "Tugas Perawatan / Detail tugas — Koordinator",
+            "module": "Tugas Perawatan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1120
+          },
+          {
+            "id": "2004:14958",
+            "name": "Tugas Perawatan / Konfirmasi hapus — berwenang",
+            "module": "Tugas Perawatan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1120
+          },
+          {
+            "id": "2004:14993",
+            "name": "Tugas Perawatan / Pembatalan tugas",
+            "module": "Tugas Perawatan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1060
+          },
+          {
+            "id": "2004:15025",
+            "name": "Tugas Perawatan / Delegasi ulang berhasil",
+            "module": "Tugas Perawatan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1240
+          },
+          {
+            "id": "2004:15102",
+            "name": "Tugas Perawatan / Konflik data",
+            "module": "Tugas Perawatan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1060
+          },
+          {
+            "id": "2004:15210",
+            "name": "Tugas Perawatan / Papan setelah delegasi ulang",
+            "module": "Tugas Perawatan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1160
+          },
+          {
+            "id": "2004:14601",
+            "name": "Tugas Perawatan / Papan tugas — Perawat PIC",
+            "module": "Tugas Perawatan",
+            "role": "Perawat PIC",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1060
+          },
+          {
+            "id": "2004:14888",
+            "name": "Tugas Perawatan / Detail tugas — Perawat PIC",
+            "module": "Tugas Perawatan",
+            "role": "Perawat PIC",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1120
+          },
+          {
+            "id": "2004:15281",
+            "name": "Tugas Perawatan / PIC lama setelah delegasi",
+            "module": "Tugas Perawatan",
+            "role": "Perawat PIC",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1060
+          },
+          {
+            "id": "2004:15350",
+            "name": "Tugas Perawatan / PIC baru menerima tugas",
+            "module": "Tugas Perawatan",
+            "role": "Perawat PIC",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1060
+          },
+          {
+            "id": "2005:29307",
+            "name": "Tugas Perawatan / Edit dengan data lama",
+            "module": "Tugas Perawatan",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1240
+          },
+          {
+            "id": "2005:30159",
+            "name": "Tugas Perawatan / Perbarui status · PIC",
+            "module": "Tugas Perawatan",
+            "role": "Perawat PIC",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1120
+          },
+          {
+            "id": "2005:30217",
+            "name": "Tugas Perawatan / Status tersimpan · PIC",
+            "module": "Tugas Perawatan",
+            "role": "Perawat PIC",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1240
+          },
+          {
+            "id": "2005:30362",
+            "name": "Tugas Perawatan / Detail · PIC baru Bima",
+            "module": "Tugas Perawatan",
+            "role": "Perawat PIC",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1240
+          },
+          {
+            "id": "2005:30419",
+            "name": "Tugas Perawatan / Perbarui status · Bima",
+            "module": "Tugas Perawatan",
+            "role": "Perawat PIC",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1240
+          },
+          {
+            "id": "2005:30489",
+            "name": "Tugas Perawatan / Status tersimpan · Bima",
+            "module": "Tugas Perawatan",
+            "role": "Perawat PIC",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1240
+          }
+        ]
+      },
+      {
+        "name": "Rekam Medis",
+        "count": 11,
+        "category": "core",
+        "byRole": {
+          "Dokter": 5,
+          "Perawat": 3,
+          "Koordinator Perawat": 3
+        },
+        "screens": [
+          {
+            "id": "2004:16291",
+            "name": "Rekam Medis / Daftar Rekam Medis (Dokter)",
+            "module": "Rekam Medis",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          },
+          {
+            "id": "2004:16498",
+            "name": "Rekam Medis / Detail Rekam Medis (Dokter)",
+            "module": "Rekam Medis",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          },
+          {
+            "id": "2004:16653",
+            "name": "Rekam Medis / Tambah Rekam Medis",
+            "module": "Rekam Medis",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          },
+          {
+            "id": "2004:16788",
+            "name": "Rekam Medis / Ubah Rekam Medis",
+            "module": "Rekam Medis",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          },
+          {
+            "id": "2004:17076",
+            "name": "Rekam Medis / Konfirmasi Hapus",
+            "module": "Rekam Medis",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          },
+          {
+            "id": "2004:17309",
+            "name": "Rekam Medis / Daftar Rekam Medis (Perawat)",
+            "module": "Rekam Medis",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          },
+          {
+            "id": "2004:17514",
+            "name": "Rekam Medis / Detail Rekam Medis (Perawat)",
+            "module": "Rekam Medis",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          },
+          {
+            "id": "2004:16923",
+            "name": "Rekam Medis / Form Kondisi Pasien",
+            "module": "Rekam Medis",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          },
+          {
+            "id": "2005:26452",
+            "name": "Rekam Medis / Daftar Rekam Medis (Perawat) · Koordinator",
+            "module": "Rekam Medis",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          },
+          {
+            "id": "2005:26613",
+            "name": "Rekam Medis / Detail Rekam Medis (Perawat) · Koordinator",
+            "module": "Rekam Medis",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          },
+          {
+            "id": "2005:26719",
+            "name": "Rekam Medis / Form Kondisi Pasien · Koordinator",
+            "module": "Rekam Medis",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          }
+        ]
+      },
+      {
+        "name": "Manajemen Tagihan",
+        "count": 6,
+        "category": "core",
+        "byRole": {
+          "Admisi": 6
+        },
+        "screens": [
+          {
+            "id": "2004:8224",
+            "name": "Manajemen Tagihan / 01 - Daftar Tagihan (Read)",
+            "module": "Manajemen Tagihan",
+            "role": "Admisi",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          },
+          {
+            "id": "2004:8592",
+            "name": "Manajemen Tagihan / 02 - Detail Tagihan (Read)",
+            "module": "Manajemen Tagihan",
+            "role": "Admisi",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1257
+          },
+          {
+            "id": "2004:8885",
+            "name": "Manajemen Tagihan / 03 - Buat Tagihan (Create)",
+            "module": "Manajemen Tagihan",
+            "role": "Admisi",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1373
+          },
+          {
+            "id": "2004:9308",
+            "name": "Manajemen Tagihan / 04 - Buat Tagihan - Validasi Error (Create)",
+            "module": "Manajemen Tagihan",
+            "role": "Admisi",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1533
+          },
+          {
+            "id": "2004:9745",
+            "name": "Manajemen Tagihan / 05 - Ubah Tagihan (Update)",
+            "module": "Manajemen Tagihan",
+            "role": "Admisi",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1425
+          },
+          {
+            "id": "2004:10231",
+            "name": "Manajemen Tagihan / 06 - Hapus Tagihan (Delete)",
+            "module": "Manajemen Tagihan",
+            "role": "Admisi",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1008
+          }
+        ]
+      },
+      {
+        "name": "Login",
+        "count": 14,
+        "category": "supporting",
+        "byRole": {
+          "Dokter": 3,
+          "Koordinator Perawat": 4,
+          "Admisi": 3,
+          "Perawat": 2,
+          "Perawat PIC (sample)": 2
+        },
+        "screens": [
+          {
+            "id": "2005:20747",
+            "name": "Login / Dokter",
+            "module": "Login",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:20798",
+            "name": "Login / Koordinator Perawat",
+            "module": "Login",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:20849",
+            "name": "Login / Admisi",
+            "module": "Login",
+            "role": "Admisi",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:29493",
+            "name": "Login / Perawat · Terisi",
+            "module": "Login",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:29551",
+            "name": "Login / Perawat · Akses ditolak",
+            "module": "Login",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:29608",
+            "name": "Login / Dokter · Terisi",
+            "module": "Login",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:29666",
+            "name": "Login / Dokter · Akses ditolak",
+            "module": "Login",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:29723",
+            "name": "Login / Koordinator Perawat · Terisi",
+            "module": "Login",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:29781",
+            "name": "Login / Koordinator Perawat · Akses ditolak",
+            "module": "Login",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:29838",
+            "name": "Login / Admisi · Terisi",
+            "module": "Login",
+            "role": "Admisi",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:29896",
+            "name": "Login / Admisi · Akses ditolak",
+            "module": "Login",
+            "role": "Admisi",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:29973",
+            "name": "Login / Dina Putri · Sesudah delegasi",
+            "module": "Login",
+            "role": "Perawat PIC (sample)",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:30031",
+            "name": "Login / Bima Pratama · Sesudah delegasi",
+            "module": "Login",
+            "role": "Perawat PIC (sample)",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          },
+          {
+            "id": "2005:30089",
+            "name": "Login / Koordinator · Sesudah delegasi",
+            "module": "Login",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 900
+          }
+        ]
+      },
+      {
+        "name": "Ringkasan Rawat Inap",
+        "count": 12,
+        "category": "supporting",
+        "byRole": {
+          "Perawat": 5,
+          "Koordinator Perawat": 5,
+          "Dokter": 2
+        },
+        "screens": [
+          {
+            "id": "2005:27570",
+            "name": "Ringkasan Rawat Inap / Siti Rahmawati · Perawat",
+            "module": "Ringkasan Rawat Inap",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:27697",
+            "name": "Ringkasan Rawat Inap / Budi Santoso · Perawat",
+            "module": "Ringkasan Rawat Inap",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:27824",
+            "name": "Ringkasan Rawat Inap / Nadia Sari · Perawat",
+            "module": "Ringkasan Rawat Inap",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:27951",
+            "name": "Ringkasan Rawat Inap / Arif Wijaya · Perawat",
+            "module": "Ringkasan Rawat Inap",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:28075",
+            "name": "Ringkasan Rawat Inap / Rudi Hartono · Perawat",
+            "module": "Ringkasan Rawat Inap",
+            "role": "Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:28199",
+            "name": "Ringkasan Rawat Inap / Siti Rahmawati · Koordinator Perawat",
+            "module": "Ringkasan Rawat Inap",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:28326",
+            "name": "Ringkasan Rawat Inap / Budi Santoso · Koordinator Perawat",
+            "module": "Ringkasan Rawat Inap",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:28453",
+            "name": "Ringkasan Rawat Inap / Nadia Sari · Koordinator Perawat",
+            "module": "Ringkasan Rawat Inap",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:28580",
+            "name": "Ringkasan Rawat Inap / Arif Wijaya · Koordinator Perawat",
+            "module": "Ringkasan Rawat Inap",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:28704",
+            "name": "Ringkasan Rawat Inap / Rudi Hartono · Koordinator Perawat",
+            "module": "Ringkasan Rawat Inap",
+            "role": "Koordinator Perawat",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:28828",
+            "name": "Ringkasan Rawat Inap / Siti Rahmawati · Dokter",
+            "module": "Ringkasan Rawat Inap",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          },
+          {
+            "id": "2005:28941",
+            "name": "Ringkasan Rawat Inap / Nadia Sari · Dokter",
+            "module": "Ringkasan Rawat Inap",
+            "role": "Dokter",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1050
+          }
+        ]
+      }
+    ]
+  },
+  "components": {
+    "localSearchResults": [
+      {
+        "name": "Button",
+        "nodeId": "14:900",
+        "type": "COMPONENT_SET",
+        "variants": 150
+      },
+      {
+        "name": "Input",
+        "nodeId": "14:1994",
+        "type": "COMPONENT_SET",
+        "variants": 36
+      },
+      {
+        "name": "Text Button",
+        "nodeId": "14:2442",
+        "type": "COMPONENT_SET",
+        "variants": 2
+      },
+      {
+        "name": "Alert",
+        "nodeId": "14:2447",
+        "type": "COMPONENT_SET",
+        "variants": 10
+      },
+      {
+        "name": "Sidebar / Final",
+        "nodeId": "2004:19534",
+        "type": "COMPONENT_SET",
+        "variants": 13
+      },
+      {
+        "name": "Status Badge",
+        "nodeId": "2004:8183",
+        "type": "COMPONENT_SET",
+        "variants": 4
+      }
+    ],
+    "measuredPageComponents": [
+      {
+        "id": "2004:19534",
+        "name": "Sidebar / Final",
+        "type": "COMPONENT_SET",
+        "width": 1388,
+        "height": 3430,
+        "variantCount": 13,
+        "variantDimensions": {
+          "width": 220,
+          "height": 1050
+        }
+      },
+      {
+        "id": "2005:20940",
+        "name": "Header / Website",
+        "type": "COMPONENT",
+        "width": 1220,
+        "height": 66
+      },
+      {
+        "id": "2004:8173",
+        "name": "Topbar",
+        "type": "COMPONENT",
+        "width": 1184,
+        "height": 72,
+        "note": "Separate support component."
+      },
+      {
+        "id": "2004:6614",
+        "name": "DBP / Components / Baris pasien",
+        "type": "COMPONENT",
+        "width": 1156,
+        "height": 72
+      },
+      {
+        "id": "2004:6634",
+        "name": "DBP / Components / Ringkasan status",
+        "type": "COMPONENT",
+        "width": 216,
+        "height": 100
+      },
+      {
+        "id": "2004:7836",
+        "name": "RSI / Components / Field input",
+        "type": "COMPONENT",
+        "width": 438,
+        "height": 80
+      },
+      {
+        "id": "2004:8196",
+        "name": "Row Tagihan",
+        "type": "COMPONENT",
+        "width": 1184,
+        "height": 72
+      },
+      {
+        "id": "2004:14486",
+        "name": "MR / Components / Status selector",
+        "type": "COMPONENT_SET",
+        "variantCount": 3
+      },
+      {
+        "id": "2004:14523",
+        "name": "MAW / Components / Task card",
+        "type": "COMPONENT",
+        "width": 259,
+        "height": 195
+      }
+    ]
+  },
+  "visualTokens": {
+    "method": "Observed directly from text nodes and solid fills/strokes on 107 app frames; instance occurrences count independently, not named Figma variables.",
+    "fontFamilyNodeCounts": {
+      "DM Sans": 6765,
+      "Inter": 482
+    },
+    "fontStyles": [
+      {
+        "family": "DM Sans",
+        "style": "Regular",
+        "sizePx": 14,
+        "count": 2164,
+        "examples": [
+          "Masuk menggunakan akun petugas yang terd",
+          "Masukkan email atau ID petugas"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 14,
+        "count": 1899,
+        "examples": [
+          "Email atau ID petugas",
+          "Kata sandi"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "Regular",
+        "sizePx": 12,
+        "count": 1422,
+        "examples": [
+          "Peran akun",
+          "Gunakan akun resmi yang telah terdaftar "
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 28,
+        "count": 241,
+        "examples": [
+          "1",
+          "1"
+        ]
+      },
+      {
+        "family": "Inter",
+        "style": "Medium",
+        "sizePx": 16,
+        "count": 241,
+        "examples": [
+          "Label",
+          "Label"
+        ]
+      },
+      {
+        "family": "Inter",
+        "style": "Regular",
+        "sizePx": 14,
+        "count": 241,
+        "examples": [
+          "Helper Text",
+          "Helper Text"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 32,
+        "count": 142,
+        "examples": [
+          "RSI",
+          "Dashboard Siklus Inpatient Care"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 16,
+        "count": 140,
+        "examples": [
+          "Cari dan filter pasien",
+          "Cari dan filter pasien"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 20,
+        "count": 116,
+        "examples": [
+          "Daftar rekap pasien",
+          "Daftar rekap pasien"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 13,
+        "count": 106,
+        "examples": [
+          "PORTAL RAWAT INAP",
+          "Lupa kata sandi?"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "Regular",
+        "sizePx": 13,
+        "count": 104,
+        "examples": [
+          "RSI  /  Sistem Rawat Inap",
+          "Ingat saya"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 12,
+        "count": 100,
+        "examples": [
+          "SISTEM RAWAT INAP",
+          "LAYANAN KLINIS & ADMINISTRASI"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 24,
+        "count": 74,
+        "examples": [
+          "Tambah rekap pasien",
+          "Ubah status siklus"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "Regular",
+        "sizePx": 16,
+        "count": 73,
+        "examples": [
+          "Contoh: pemeriksaan pagi",
+          "Semua ruangan"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 18,
+        "count": 41,
+        "examples": [
+          "Identitas Pasien",
+          "Diagnosis"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 22,
+        "count": 36,
+        "examples": [
+          "Pending",
+          "Belum ditempatkan"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 15,
+        "count": 16,
+        "examples": [
+          "Masuk",
+          "Masuk"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "Regular",
+        "sizePx": 24,
+        "count": 15,
+        "examples": [
+          "×",
+          "×"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 37,
+        "count": 14,
+        "examples": [
+          "RSI",
+          "RSI"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 43,
+        "count": 14,
+        "examples": [
+          "Perawatan lebih tertata,\nkeputusan lebih",
+          "Perawatan lebih tertata,\nkeputusan lebih"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "Regular",
+        "sizePx": 17,
+        "count": 14,
+        "examples": [
+          "Pantau siklus rawat inap, kelola rekap p",
+          "Pantau siklus rawat inap, kelola rekap p"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 31,
+        "count": 14,
+        "examples": [
+          "Selamat datang kembali",
+          "Selamat datang kembali"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 30,
+        "count": 12,
+        "examples": [
+          "Ringkasan Rawat Inap",
+          "Ringkasan Rawat Inap"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "sizePx": 25,
+        "count": 6,
+        "examples": [
+          "Rekap berhasil ditambahkan",
+          "→"
+        ]
+      },
+      {
+        "family": "DM Sans",
+        "style": "Bold",
+        "sizePx": 35,
+        "count": 2,
+        "examples": [
+          "✓",
+          "✓"
+        ]
+      }
+    ],
+    "solidColorsUnique": 70,
+    "mostObservedColors": [
+      {
+        "hex": "#4D5461",
+        "opacity": 1,
+        "count": 1738
+      },
+      {
+        "hex": "#131927",
+        "opacity": 1,
+        "count": 1531
+      },
+      {
+        "hex": "#FFFFFF",
+        "opacity": 1,
+        "count": 1446
+      },
+      {
+        "hex": "#6D717F",
+        "opacity": 1,
+        "count": 1388
+      },
+      {
+        "hex": "#E5E7EA",
+        "opacity": 1,
+        "count": 1162
+      },
+      {
+        "hex": "#4E61F6",
+        "opacity": 1,
+        "count": 1121
+      },
+      {
+        "hex": "#9EA2AE",
+        "opacity": 1,
+        "count": 710
+      },
+      {
+        "hex": "#F3F4F6",
+        "opacity": 1,
+        "count": 678
+      },
+      {
+        "hex": "#212936",
+        "opacity": 1,
+        "count": 447
+      },
+      {
+        "hex": "#394050",
+        "opacity": 1,
+        "count": 425
+      },
+      {
+        "hex": "#EDEFFE",
+        "opacity": 1,
+        "count": 309
+      },
+      {
+        "hex": "#F9FAFB",
+        "opacity": 1,
+        "count": 274
+      },
+      {
+        "hex": "#3745AF",
+        "opacity": 1,
+        "count": 215
+      },
+      {
+        "hex": "#DC2626",
+        "opacity": 1,
+        "count": 148
+      },
+      {
+        "hex": "#4758E0",
+        "opacity": 1,
+        "count": 106
+      },
+      {
+        "hex": "#308242",
+        "opacity": 1,
+        "count": 92
+      },
+      {
+        "hex": "#256533",
+        "opacity": 1,
+        "count": 91
+      },
+      {
+        "hex": "#ECF8EF",
+        "opacity": 1,
+        "count": 87
+      },
+      {
+        "hex": "#FFF7E6",
+        "opacity": 1,
+        "count": 66
+      },
+      {
+        "hex": "#8C5E00",
+        "opacity": 1,
+        "count": 61
+      },
+      {
+        "hex": "#000000",
+        "opacity": 1,
+        "count": 60
+      },
+      {
+        "hex": "#4F61F6",
+        "opacity": 1,
+        "count": 58
+      },
+      {
+        "hex": "#D93E39",
+        "opacity": 1,
+        "count": 45
+      },
+      {
+        "hex": "#8B93A4",
+        "opacity": 1,
+        "count": 42
+      }
+    ]
+  },
+  "formsAndActions": [
+    {
+      "module": "Login",
+      "screenId": "2005:20747",
+      "fields": [
+        "Email atau ID petugas",
+        "Kata sandi"
+      ],
+      "actions": [
+        "Ingat saya",
+        "Masuk"
+      ],
+      "note": "Four account-role options are visibly listed."
+    },
+    {
+      "module": "Manajemen Ruangan",
+      "screenId": "2004:10820",
+      "fields": [
+        "ID ruangan",
+        "Tipe ruangan",
+        "Status awal",
+        "Perlengkapan pasien",
+        "Fasilitas ruangan"
+      ],
+      "actions": [
+        "Tambah item",
+        "Batal",
+        "Simpan ruangan"
+      ]
+    },
+    {
+      "module": "Kalender Ruangan",
+      "screenId": "2004:12905",
+      "fields": [
+        "Pasien",
+        "Ruangan",
+        "Tanggal masuk",
+        "Tanggal selesai"
+      ],
+      "actions": [
+        "Batal",
+        "Simpan penempatan"
+      ],
+      "visibleCopy": [
+        "Rentang tanggal bersifat inklusif",
+        "Tanggal selesai tidak boleh sebelum tanggal masuk"
+      ]
+    },
+    {
+      "module": "Tugas Perawatan",
+      "screenId": "2004:14725",
+      "fields": [
+        "Judul tugas",
+        "Prioritas",
+        "Deskripsi",
+        "Pasien",
+        "Ruangan",
+        "Perawat PIC",
+        "Status awal",
+        "Waktu mulai",
+        "Waktu selesai",
+        "Catatan"
+      ],
+      "actions": [
+        "Kembali ke Papan",
+        "Batal",
+        "Simpan Tugas"
+      ]
+    },
+    {
+      "module": "Rekam Medis",
+      "screenId": "2004:16653",
+      "fields": [
+        "Pasien (Nomor Rekam Medis)",
+        "Tanggal Pemeriksaan",
+        "Diagnosis",
+        "Catatan Medis"
+      ],
+      "actions": [
+        "Batal",
+        "Simpan Rekam Medis"
+      ]
+    },
+    {
+      "module": "Manajemen Tagihan",
+      "screenId": "2004:8885",
+      "fields": [
+        "Pasien (Rekam Medis)",
+        "Rincian Layanan",
+        "Qty",
+        "Harga Satuan",
+        "Status Pembayaran",
+        "Jaminan"
+      ],
+      "actions": [
+        "Tambah Layanan",
+        "Batal",
+        "Simpan Tagihan"
+      ],
+      "visibleCopy": [
+        "Identitas terisi otomatis dari Rekam Medis",
+        "Sumber data perlengkapan: hanya baca"
+      ]
+    }
+  ],
+  "specialStates": [
+    {
+      "screenId": "2005:29551",
+      "name": "Login / Perawat · Akses ditolak",
+      "visibleMessage": "Permintaan login ditolak. Periksa ID petugas dan kata sandi."
+    },
+    {
+      "screenId": "2004:6449",
+      "name": "Dashboard Siklus / 06 / Persetujuan medis",
+      "visibleBehavior": "Dialog Setujui / Tolak untuk Extend atau Pelepasan; copy menyatakan keputusan dan catatan dokter masuk riwayat."
+    },
+    {
+      "screenId": "2012:30710",
+      "name": "Siklus / Tolak Extend",
+      "visibleBehavior": "Catatan penolakan contoh; status mockup tetap In Care."
+    },
+    {
+      "screenId": "2012:30868",
+      "name": "Siklus / Tolak Pelepasan",
+      "visibleBehavior": "Catatan penolakan contoh; status mockup tetap In Care."
+    },
+    {
+      "screenId": "2004:9308",
+      "name": "Manajemen Tagihan / 04 - Buat Tagihan - Validasi Error (Create)",
+      "visibleBehavior": "Alert dua isian invalid; inline errors Wajib diisi dan Layanan wajib dipilih."
+    },
+    {
+      "screenId": "2004:15102",
+      "name": "Tugas Perawatan / Konflik data",
+      "visibleMessage": "Tugas ini telah diperbarui oleh pengguna lain. Muat ulang tugas untuk melihat perubahan terbaru sebelum mengedit lagi.",
+      "action": "Muat Ulang Tugas"
+    },
+    {
+      "screenId": "2004:15025",
+      "name": "Tugas Perawatan / Delegasi ulang berhasil",
+      "visibleBehavior": "Riwayat contoh PIC Dina Putri → Bima Pratama dan alasan penyesuaian pembagian tugas."
+    },
+    {
+      "screenId": "2004:15281",
+      "name": "Tugas Perawatan / PIC lama setelah delegasi",
+      "sampleRole": "Perawat PIC, Dina Putri"
+    },
+    {
+      "screenId": "2004:15350",
+      "name": "Tugas Perawatan / PIC baru menerima tugas",
+      "sampleRole": "Perawat PIC, Bima Pratama"
+    },
+    {
+      "screenId": "2005:30362",
+      "name": "Tugas Perawatan / Detail · PIC baru Bima",
+      "visibleBehavior": "Riwayat menunjukkan PIC Dina Putri → Bima Pratama."
+    },
+    {
+      "screenId": "2005:29973",
+      "name": "Login / Dina Putri · Sesudah delegasi",
+      "reaction": "ON_KEY_DOWN to 2005:30031"
+    },
+    {
+      "screenId": "2005:30031",
+      "name": "Login / Bima Pratama · Sesudah delegasi",
+      "reaction": "ON_KEY_DOWN to 2005:29973"
+    }
+  ],
+  "prototype": {
+    "sourceScope": "107 screen frames and descendants.",
+    "nodeReactionCount": 1156,
+    "triggers": {
+      "ON_CLICK": 1154,
+      "ON_KEY_DOWN": 2
+    },
+    "actionTypes": {
+      "NODE": 1156
+    },
+    "screenDestinations": 1148,
+    "sameScreenReactions": 13,
+    "crossScreenReactions": 1135,
+    "distinctCrossScreenPairs": 699,
+    "screensWithIncoming": 106,
+    "screensWithOutgoing": 107,
+    "frameWithoutIncomingWithinInventory": [
+      {
+        "id": "2005:29551",
+        "name": "Login / Perawat · Akses ditolak"
+      }
+    ],
+    "nonScreenDestinations": [
+      {
+        "id": "2004:14496",
+        "name": "Status=Occupied",
+        "setId": "2004:14486"
+      },
+      {
+        "id": "2004:14505",
+        "name": "Status=Pending",
+        "setId": "2004:14486"
+      }
+    ],
+    "pagePrototypeStartNode": null,
+    "historicalEntryId": "2004:7785",
+    "historicalEntryExistsInLivePage": false,
+    "reachability": "Not asserted; no live page start node was reported and the historical entry ID was absent."
+  },
+  "evidenceFiles": [
+    {
+      "path": "figma-evidence/login.png",
+      "nodeId": "2005:20747",
+      "format": "PNG",
+      "source": "Desktop Bridge exportAsync",
+      "scale": 0.5
+    },
+    {
+      "path": "figma-evidence/dashboard-siklus.png",
+      "nodeId": "2004:5793",
+      "format": "PNG",
+      "source": "Desktop Bridge exportAsync",
+      "scale": 0.5
+    },
+    {
+      "path": "figma-evidence/manajemen-ruangan.png",
+      "nodeId": "2004:10661",
+      "format": "PNG",
+      "source": "Desktop Bridge exportAsync",
+      "scale": 0.5
+    },
+    {
+      "path": "figma-evidence/kalender-ruangan.png",
+      "nodeId": "2004:12721",
+      "format": "PNG",
+      "source": "Desktop Bridge exportAsync",
+      "scale": 0.5
+    },
+    {
+      "path": "figma-evidence/tugas-perawatan.png",
+      "nodeId": "2004:14530",
+      "format": "PNG",
+      "source": "Desktop Bridge exportAsync",
+      "scale": 0.5
+    },
+    {
+      "path": "figma-evidence/rekam-medis.png",
+      "nodeId": "2004:16291",
+      "format": "PNG",
+      "source": "Desktop Bridge exportAsync",
+      "scale": 0.5
+    },
+    {
+      "path": "figma-evidence/tagihan-validasi.png",
+      "nodeId": "2004:9308",
+      "format": "PNG",
+      "source": "Desktop Bridge exportAsync",
+      "scale": 0.5
+    }
+  ],
+  "historicalComparison": {
+    "filesInspected": [
+      "output/final-merge/result.md",
+      "output/final-merge/final-verified-website.json"
+    ],
+    "priorReportClaims": {
+      "screens": 108,
+      "visibleReachable": 108,
+      "entryPoints": 1,
+      "entryId": "2004:7785",
+      "sourceScreenCount": 51,
+      "sidebarPx": 220,
+      "headerPx": 66,
+      "DM_Sans": "claimed"
+    },
+    "liveComparison": "220 px sidebar and Header / Website 1220×66 are confirmed. Live inventory has 107 top-level app frames, lacks historical entry 2004:7785, and reports no page prototype start node. DM Sans is predominant; 482 text nodes use Inter styles. Historical reachability not reconfirmed."
+  },
+  "evidenceLimits": {
+    "sampleContent": "Patient/staff names, dates, rooms, login values and task/billing values are visual samples, not real identity or policy.",
+    "runtime": "Figma layer styles and reactions only; no live authentication, database, persistence, authorization or backend validation exercised.",
+    "variables": "Named variable collections were not queried.",
+    "visual": "Screenshots are direct native exports; no synthetic art and no Figma mutation."
+  }
+}

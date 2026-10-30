@@ -1,0 +1,90 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: inpacare
+      POSTGRES_USER: inpacare
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run scripts/host.sh to create .env.local first}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: ops/api.Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://inpacare:${POSTGRES_PASSWORD:?Run scripts/host.sh to create .env.local first}@db:5432/inpacare
+      API_BIND: 0.0.0.0:8080
+      SEED_DEMO: "1"
+      RUST_LOG: inpacare_api=info,tower_http=info
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8080/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+  web:
+    build:
+      context: .
+      dockerfile: ops/web.Dockerfile
+    restart: unless-stopped
+    environment:
+      API_ORIGIN: http://api:8080
+      HOST: 0.0.0.0
+      PORT: "3000"
+      HOST_HEADER: x-forwarded-host
+      PROTOCOL_HEADER: x-forwarded-proto
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - app
+      - ingress
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - target: 8088
+        published: "8088"
+        host_ip: 0.0.0.0
+        protocol: tcp
+    volumes:
+      - ./ops/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - ingress
+
+networks:
+  app:
+    internal: true
+  ingress:
+    driver: bridge
+
+volumes:
+  postgres_data:

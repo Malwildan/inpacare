@@ -1,0 +1,18 @@
+**
+!package.json
+!package-lock.json
+!apps/
+!apps/api/
+!apps/api/**
+!apps/web/
+!apps/web/**
+
+# Keep host-generated and local build artifacts out of either image.
+apps/api/target/
+apps/web/node_modules/
+apps/web/.svelte-kit/
+apps/web/build/
+**/.env
+**/.env.*
+**/test-results/
+**/playwright-report/

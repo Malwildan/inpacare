@@ -1,0 +1,23 @@
+node_modules/
+apps/web/.svelte-kit/
+apps/web/build/
+apps/api/target/
+.local/
+.runtime/
+.data/
+bin/inpacare-api
+.env
+.env.local
+.env.*.local
+test-results/
+playwright-report/
+*.log
+__pycache__/
+
+# Private source captures and deployment records retained locally.
+/docs/planning/sources/modul-2-live.txt
+/docs/IMPLEMENTATION_STATUS.md
+/docs/validation/host-package.json
+/docs/validation/implementation-checks.json
+/docs/validation/mac-host.json
+/docs/validation/public-access.json

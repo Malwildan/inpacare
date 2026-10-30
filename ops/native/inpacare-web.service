@@ -1,0 +1,17 @@
+[Unit]
+Description=InpaCare SvelteKit web host
+Requires=inpacare-api.service
+After=inpacare-api.service
+
+[Service]
+Type=simple
+ExecStart=/bin/bash "@ROOT@/scripts/native-host.sh" run-web
+Restart=on-failure
+RestartSec=3
+WorkingDirectory=@ROOT@
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

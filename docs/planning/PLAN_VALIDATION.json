@@ -1,0 +1,65 @@
+{
+  "checkedAtUtc": "2026-10-29T10:36:37.683841+00:00",
+  "scope": "Planning artifact/source consistency only; no application tests or benchmarks run.",
+  "result": "passed",
+  "sourceDocument": {
+    "sha256": "9A1023BBE4C391D5BAF20AA865DA0923FE5FB2462C9C7D01EBD8656A963716AD",
+    "lines": 15041,
+    "tab": "t.35pzydmpv5ma"
+  },
+  "sourceFigma": {
+    "fileKey": "Vo3C9LOAj2uQ1sK9QtZsX8",
+    "pageId": "2002:1259",
+    "mappedFrames": 107,
+    "uniqueScenarioIds": 107,
+    "prototypeReachability": "not established by this plan"
+  },
+  "planningChecks": {
+    "localMarkdownLinks": 31,
+    "routeFamilies": 8,
+    "decisionEntries": 13,
+    "workstreams": 9,
+    "contiguousScheduleMinutes": 480,
+    "scheduleTimeboxes": 7
+  },
+  "nativePngExports": [
+    {
+      "file": "dashboard-siklus.png",
+      "width": 720,
+      "height": 525
+    },
+    {
+      "file": "kalender-ruangan.png",
+      "width": 720,
+      "height": 525
+    },
+    {
+      "file": "login.png",
+      "width": 720,
+      "height": 450
+    },
+    {
+      "file": "manajemen-ruangan.png",
+      "width": 720,
+      "height": 525
+    },
+    {
+      "file": "rekam-medis.png",
+      "width": 720,
+      "height": 504
+    },
+    {
+      "file": "tagihan-validasi.png",
+      "width": 720,
+      "height": 767
+    },
+    {
+      "file": "tugas-perawatan.png",
+      "width": 720,
+      "height": 580
+    }
+  ],
+  "applicationImplemented": false,
+  "applicationTested": false,
+  "productionReadinessEstablished": false
+}

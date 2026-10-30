@@ -1,0 +1,2395 @@
+{
+  "title": "InpaCare Final frame-to-implementation planning map",
+  "createdDate": "2026-10-29",
+  "sourceFile": "sources/figma-final-live.json",
+  "sourceSha256": "2f05baa82415dcf6796298a010d791792257522766690789a7c30f967b582977",
+  "sourceIdentity": {
+    "url": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/RSI---KELOMPOK-2--Copy-?node-id=2002-1259&t=rOwVmMeSEyNqdZuC-1",
+    "fileName": "RSI - KELOMPOK 2 (Copy)",
+    "fileKey": "Vo3C9LOAj2uQ1sK9QtZsX8",
+    "pageName": "Final",
+    "pageId": "2002:1259",
+    "verification": {
+      "bridge": "Figma Desktop Bridge",
+      "mode": "local",
+      "probeSuccess": true,
+      "probeLatencyMs": 12,
+      "activeFileKeyMatches": true,
+      "activePageMatches": true,
+      "editorType": "figma",
+      "pluginVersion": "1.41.5"
+    }
+  },
+  "provenance": {
+    "observedFields": [
+      "sourceFrameId",
+      "sourceFrameName",
+      "sourceDisplayedRole",
+      "sourceDimensions",
+      "module"
+    ],
+    "proposedFields": [
+      "scenarioId",
+      "proposedRouteFamily",
+      "proposedApiGroup",
+      "planningRequirements",
+      "milestone",
+      "plannedAcceptance"
+    ],
+    "notes": [
+      "Route families contain nested views and UI states; 107 frames do not imply 107 application routes.",
+      "Each VIS scenario is a planned coverage target, not a passing application test.",
+      "Displayed Figma roles and sample login identities do not establish server permissions.",
+      "Missing blank Perawat login and missing prototype entry are tracked separately in D-13."
+    ]
+  },
+  "totalFrames": 107,
+  "routeFamilies": [
+    {
+      "module": "Dashboard Siklus",
+      "frames": 19,
+      "proposedRouteFamily": "/dashboard",
+      "milestone": "M5"
+    },
+    {
+      "module": "Manajemen Ruangan",
+      "frames": 12,
+      "proposedRouteFamily": "/rooms",
+      "milestone": "M2"
+    },
+    {
+      "module": "Kalender Ruangan",
+      "frames": 12,
+      "proposedRouteFamily": "/calendar",
+      "milestone": "M2"
+    },
+    {
+      "module": "Tugas Perawatan",
+      "frames": 21,
+      "proposedRouteFamily": "/tasks",
+      "milestone": "M3"
+    },
+    {
+      "module": "Rekam Medis",
+      "frames": 11,
+      "proposedRouteFamily": "/medical-records",
+      "milestone": "M4"
+    },
+    {
+      "module": "Manajemen Tagihan",
+      "frames": 6,
+      "proposedRouteFamily": "/invoices",
+      "milestone": "M6"
+    },
+    {
+      "module": "Login",
+      "frames": 14,
+      "proposedRouteFamily": "/login",
+      "milestone": "M1"
+    },
+    {
+      "module": "Ringkasan Rawat Inap",
+      "frames": 12,
+      "proposedRouteFamily": "/patients/{id}",
+      "milestone": "M5"
+    }
+  ],
+  "screens": [
+    {
+      "scenarioId": "VIS-001",
+      "sourceFrameId": "2004:5793",
+      "sourceFrameName": "Dashboard Siklus / 01 / Dashboard perawat",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-5793",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-002",
+      "sourceFrameId": "2004:5887",
+      "sourceFrameName": "Dashboard Siklus / 02 / Tambah rekap pasien",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-5887",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-003",
+      "sourceFrameId": "2004:7840",
+      "sourceFrameName": "Dashboard Siklus / 04 / Konfirmasi rekap berhasil",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-7840",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-004",
+      "sourceFrameId": "2004:6051",
+      "sourceFrameName": "Dashboard Siklus / 03 / Ubah status siklus",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-6051",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-005",
+      "sourceFrameId": "2004:6220",
+      "sourceFrameName": "Dashboard Siklus / 04 / Konfirmasi hapus rekap",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-6220",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-006",
+      "sourceFrameId": "2004:6802",
+      "sourceFrameName": "Dashboard Siklus / 08 / Ajukan Extend atau Pelepasan",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-6802",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-007",
+      "sourceFrameId": "2004:6356",
+      "sourceFrameName": "Dashboard Siklus / 05 / Dashboard dokter",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-6356",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-008",
+      "sourceFrameId": "2004:6449",
+      "sourceFrameName": "Dashboard Siklus / 06 / Persetujuan medis",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-6449",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-009",
+      "sourceFrameId": "2004:6637",
+      "sourceFrameName": "Dashboard Siklus / 07 / Persetujuan pelepasan",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-6637",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-010",
+      "sourceFrameId": "2005:21224",
+      "sourceFrameName": "Dashboard Siklus / 01 / Dashboard perawat · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-21224",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-011",
+      "sourceFrameId": "2005:21428",
+      "sourceFrameName": "Dashboard Siklus / 02 / Tambah rekap pasien · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-21428",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-012",
+      "sourceFrameId": "2005:21702",
+      "sourceFrameName": "Dashboard Siklus / 04 / Konfirmasi rekap berhasil · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-21702",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-013",
+      "sourceFrameId": "2005:21915",
+      "sourceFrameName": "Dashboard Siklus / 03 / Ubah status siklus · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-21915",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-014",
+      "sourceFrameId": "2005:22194",
+      "sourceFrameName": "Dashboard Siklus / 04 / Konfirmasi hapus rekap · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-22194",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-015",
+      "sourceFrameId": "2005:22440",
+      "sourceFrameName": "Dashboard Siklus / 08 / Ajukan Extend atau Pelepasan · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-22440",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-016",
+      "sourceFrameId": "2012:30710",
+      "sourceFrameName": "Siklus / Tolak Extend",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2012-30710",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-017",
+      "sourceFrameId": "2012:30868",
+      "sourceFrameName": "Siklus / Tolak Pelepasan",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2012-30868",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-018",
+      "sourceFrameId": "2012:31026",
+      "sourceFrameName": "Siklus / Ajukan Pelepasan · Perawat",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2012-31026",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-019",
+      "sourceFrameId": "2012:31177",
+      "sourceFrameName": "Siklus / Ajukan Pelepasan · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2012-31177",
+      "module": "Dashboard Siklus",
+      "proposedRouteFamily": "/dashboard",
+      "proposedApiGroup": "/api/v1/cycles",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-020",
+      "sourceFrameId": "2004:10661",
+      "sourceFrameName": "Manajemen Ruangan / 01 / Daftar ruangan",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-10661",
+      "module": "Manajemen Ruangan",
+      "proposedRouteFamily": "/rooms",
+      "proposedApiGroup": "/api/v1/rooms",
+      "planningRequirements": [
+        "PLAN-ROOMS",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-021",
+      "sourceFrameId": "2004:10820",
+      "sourceFrameName": "Manajemen Ruangan / 02 / Tambah ruangan",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-10820",
+      "module": "Manajemen Ruangan",
+      "proposedRouteFamily": "/rooms",
+      "proposedApiGroup": "/api/v1/rooms",
+      "planningRequirements": [
+        "PLAN-ROOMS",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-022",
+      "sourceFrameId": "2004:11045",
+      "sourceFrameName": "Manajemen Ruangan / 03 / Detail ruangan",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-11045",
+      "module": "Manajemen Ruangan",
+      "proposedRouteFamily": "/rooms",
+      "proposedApiGroup": "/api/v1/rooms",
+      "planningRequirements": [
+        "PLAN-ROOMS",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-023",
+      "sourceFrameId": "2004:11261",
+      "sourceFrameName": "Manajemen Ruangan / 04 / Edit ruangan",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-11261",
+      "module": "Manajemen Ruangan",
+      "proposedRouteFamily": "/rooms",
+      "proposedApiGroup": "/api/v1/rooms",
+      "planningRequirements": [
+        "PLAN-ROOMS",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-024",
+      "sourceFrameId": "2004:11486",
+      "sourceFrameName": "Manajemen Ruangan / 05 / Hapus ruangan",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-11486",
+      "module": "Manajemen Ruangan",
+      "proposedRouteFamily": "/rooms",
+      "proposedApiGroup": "/api/v1/rooms",
+      "planningRequirements": [
+        "PLAN-ROOMS",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-025",
+      "sourceFrameId": "2004:11662",
+      "sourceFrameName": "Manajemen Ruangan / 06 / Ruangan dihapus",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-11662",
+      "module": "Manajemen Ruangan",
+      "proposedRouteFamily": "/rooms",
+      "proposedApiGroup": "/api/v1/rooms",
+      "planningRequirements": [
+        "PLAN-ROOMS",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-026",
+      "sourceFrameId": "2005:22702",
+      "sourceFrameName": "Manajemen Ruangan / 01 / Daftar ruangan · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-22702",
+      "module": "Manajemen Ruangan",
+      "proposedRouteFamily": "/rooms",
+      "proposedApiGroup": "/api/v1/rooms",
+      "planningRequirements": [
+        "PLAN-ROOMS",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-027",
+      "sourceFrameId": "2005:22954",
+      "sourceFrameName": "Manajemen Ruangan / 02 / Tambah ruangan · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-22954",
+      "module": "Manajemen Ruangan",
+      "proposedRouteFamily": "/rooms",
+      "proposedApiGroup": "/api/v1/rooms",
+      "planningRequirements": [
+        "PLAN-ROOMS",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-028",
+      "sourceFrameId": "2005:23421",
+      "sourceFrameName": "Manajemen Ruangan / 03 / Detail ruangan · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-23421",
+      "module": "Manajemen Ruangan",
+      "proposedRouteFamily": "/rooms",
+      "proposedApiGroup": "/api/v1/rooms",
+      "planningRequirements": [
+        "PLAN-ROOMS",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-029",
+      "sourceFrameId": "2005:23741",
+      "sourceFrameName": "Manajemen Ruangan / 04 / Edit ruangan · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-23741",
+      "module": "Manajemen Ruangan",
+      "proposedRouteFamily": "/rooms",
+      "proposedApiGroup": "/api/v1/rooms",
+      "planningRequirements": [
+        "PLAN-ROOMS",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-030",
+      "sourceFrameId": "2005:24208",
+      "sourceFrameName": "Manajemen Ruangan / 05 / Hapus ruangan · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-24208",
+      "module": "Manajemen Ruangan",
+      "proposedRouteFamily": "/rooms",
+      "proposedApiGroup": "/api/v1/rooms",
+      "planningRequirements": [
+        "PLAN-ROOMS",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-031",
+      "sourceFrameId": "2005:24490",
+      "sourceFrameName": "Manajemen Ruangan / 06 / Ruangan dihapus · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-24490",
+      "module": "Manajemen Ruangan",
+      "proposedRouteFamily": "/rooms",
+      "proposedApiGroup": "/api/v1/rooms",
+      "planningRequirements": [
+        "PLAN-ROOMS",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-032",
+      "sourceFrameId": "2004:12721",
+      "sourceFrameName": "Kalender Ruangan / 01 / Kalender mingguan",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-12721",
+      "module": "Kalender Ruangan",
+      "proposedRouteFamily": "/calendar",
+      "proposedApiGroup": "/api/v1/occupancy; /api/v1/placements",
+      "planningRequirements": [
+        "PLAN-OCCUPANCY",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-033",
+      "sourceFrameId": "2004:12905",
+      "sourceFrameName": "Kalender Ruangan / 02 / Tempatkan pasien",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-12905",
+      "module": "Kalender Ruangan",
+      "proposedRouteFamily": "/calendar",
+      "proposedApiGroup": "/api/v1/occupancy; /api/v1/placements",
+      "planningRequirements": [
+        "PLAN-OCCUPANCY",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-034",
+      "sourceFrameId": "2004:13113",
+      "sourceFrameName": "Kalender Ruangan / 03 / Detail penempatan",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-13113",
+      "module": "Kalender Ruangan",
+      "proposedRouteFamily": "/calendar",
+      "proposedApiGroup": "/api/v1/occupancy; /api/v1/placements",
+      "planningRequirements": [
+        "PLAN-OCCUPANCY",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-035",
+      "sourceFrameId": "2004:13338",
+      "sourceFrameName": "Kalender Ruangan / 04 / Ubah jadwal",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-13338",
+      "module": "Kalender Ruangan",
+      "proposedRouteFamily": "/calendar",
+      "proposedApiGroup": "/api/v1/occupancy; /api/v1/placements",
+      "planningRequirements": [
+        "PLAN-OCCUPANCY",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-036",
+      "sourceFrameId": "2004:13546",
+      "sourceFrameName": "Kalender Ruangan / 05 / Batalkan penempatan",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-13546",
+      "module": "Kalender Ruangan",
+      "proposedRouteFamily": "/calendar",
+      "proposedApiGroup": "/api/v1/occupancy; /api/v1/placements",
+      "planningRequirements": [
+        "PLAN-OCCUPANCY",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-037",
+      "sourceFrameId": "2004:13747",
+      "sourceFrameName": "Kalender Ruangan / 06 / Penempatan dibatalkan",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-13747",
+      "module": "Kalender Ruangan",
+      "proposedRouteFamily": "/calendar",
+      "proposedApiGroup": "/api/v1/occupancy; /api/v1/placements",
+      "planningRequirements": [
+        "PLAN-OCCUPANCY",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-038",
+      "sourceFrameId": "2005:24723",
+      "sourceFrameName": "Kalender Ruangan / 01 / Kalender mingguan · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-24723",
+      "module": "Kalender Ruangan",
+      "proposedRouteFamily": "/calendar",
+      "proposedApiGroup": "/api/v1/occupancy; /api/v1/placements",
+      "planningRequirements": [
+        "PLAN-OCCUPANCY",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-039",
+      "sourceFrameId": "2005:24970",
+      "sourceFrameName": "Kalender Ruangan / 02 / Tempatkan pasien · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-24970",
+      "module": "Kalender Ruangan",
+      "proposedRouteFamily": "/calendar",
+      "proposedApiGroup": "/api/v1/occupancy; /api/v1/placements",
+      "planningRequirements": [
+        "PLAN-OCCUPANCY",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-040",
+      "sourceFrameId": "2005:25298",
+      "sourceFrameName": "Kalender Ruangan / 03 / Detail penempatan · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-25298",
+      "module": "Kalender Ruangan",
+      "proposedRouteFamily": "/calendar",
+      "proposedApiGroup": "/api/v1/occupancy; /api/v1/placements",
+      "planningRequirements": [
+        "PLAN-OCCUPANCY",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-041",
+      "sourceFrameId": "2005:25598",
+      "sourceFrameName": "Kalender Ruangan / 04 / Ubah jadwal · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-25598",
+      "module": "Kalender Ruangan",
+      "proposedRouteFamily": "/calendar",
+      "proposedApiGroup": "/api/v1/occupancy; /api/v1/placements",
+      "planningRequirements": [
+        "PLAN-OCCUPANCY",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-042",
+      "sourceFrameId": "2005:25926",
+      "sourceFrameName": "Kalender Ruangan / 05 / Batalkan penempatan · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-25926",
+      "module": "Kalender Ruangan",
+      "proposedRouteFamily": "/calendar",
+      "proposedApiGroup": "/api/v1/occupancy; /api/v1/placements",
+      "planningRequirements": [
+        "PLAN-OCCUPANCY",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-043",
+      "sourceFrameId": "2005:26203",
+      "sourceFrameName": "Kalender Ruangan / 06 / Penempatan dibatalkan · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-26203",
+      "module": "Kalender Ruangan",
+      "proposedRouteFamily": "/calendar",
+      "proposedApiGroup": "/api/v1/occupancy; /api/v1/placements",
+      "planningRequirements": [
+        "PLAN-OCCUPANCY",
+        "PLAN-UI"
+      ],
+      "milestone": "M2",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-044",
+      "sourceFrameId": "2004:14530",
+      "sourceFrameName": "Tugas Perawatan / Papan tugas — Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1160
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-14530",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-045",
+      "sourceFrameId": "2004:14670",
+      "sourceFrameName": "Tugas Perawatan / Papan — belum ada tugas",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1060
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-14670",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-046",
+      "sourceFrameId": "2004:14696",
+      "sourceFrameName": "Tugas Perawatan / Papan — tanpa hasil",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1060
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-14696",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-047",
+      "sourceFrameId": "2004:14725",
+      "sourceFrameName": "Tugas Perawatan / Buat tugas — Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1240
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-14725",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-048",
+      "sourceFrameId": "2004:14771",
+      "sourceFrameName": "Tugas Perawatan / Edit dan delegasi ulang",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1240
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-14771",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-049",
+      "sourceFrameId": "2004:14816",
+      "sourceFrameName": "Tugas Perawatan / Detail tugas — Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1120
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-14816",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-050",
+      "sourceFrameId": "2004:14958",
+      "sourceFrameName": "Tugas Perawatan / Konfirmasi hapus — berwenang",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1120
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-14958",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-051",
+      "sourceFrameId": "2004:14993",
+      "sourceFrameName": "Tugas Perawatan / Pembatalan tugas",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1060
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-14993",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-052",
+      "sourceFrameId": "2004:15025",
+      "sourceFrameName": "Tugas Perawatan / Delegasi ulang berhasil",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1240
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-15025",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-053",
+      "sourceFrameId": "2004:15102",
+      "sourceFrameName": "Tugas Perawatan / Konflik data",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1060
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-15102",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-054",
+      "sourceFrameId": "2004:15210",
+      "sourceFrameName": "Tugas Perawatan / Papan setelah delegasi ulang",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1160
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-15210",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-055",
+      "sourceFrameId": "2004:14601",
+      "sourceFrameName": "Tugas Perawatan / Papan tugas — Perawat PIC",
+      "sourceDisplayedRole": "Perawat PIC",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1060
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-14601",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-056",
+      "sourceFrameId": "2004:14888",
+      "sourceFrameName": "Tugas Perawatan / Detail tugas — Perawat PIC",
+      "sourceDisplayedRole": "Perawat PIC",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1120
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-14888",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-057",
+      "sourceFrameId": "2004:15281",
+      "sourceFrameName": "Tugas Perawatan / PIC lama setelah delegasi",
+      "sourceDisplayedRole": "Perawat PIC",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1060
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-15281",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-058",
+      "sourceFrameId": "2004:15350",
+      "sourceFrameName": "Tugas Perawatan / PIC baru menerima tugas",
+      "sourceDisplayedRole": "Perawat PIC",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1060
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-15350",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-059",
+      "sourceFrameId": "2005:29307",
+      "sourceFrameName": "Tugas Perawatan / Edit dengan data lama",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1240
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-29307",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-060",
+      "sourceFrameId": "2005:30159",
+      "sourceFrameName": "Tugas Perawatan / Perbarui status · PIC",
+      "sourceDisplayedRole": "Perawat PIC",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1120
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-30159",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-061",
+      "sourceFrameId": "2005:30217",
+      "sourceFrameName": "Tugas Perawatan / Status tersimpan · PIC",
+      "sourceDisplayedRole": "Perawat PIC",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1240
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-30217",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-062",
+      "sourceFrameId": "2005:30362",
+      "sourceFrameName": "Tugas Perawatan / Detail · PIC baru Bima",
+      "sourceDisplayedRole": "Perawat PIC",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1240
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-30362",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-063",
+      "sourceFrameId": "2005:30419",
+      "sourceFrameName": "Tugas Perawatan / Perbarui status · Bima",
+      "sourceDisplayedRole": "Perawat PIC",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1240
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-30419",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-064",
+      "sourceFrameId": "2005:30489",
+      "sourceFrameName": "Tugas Perawatan / Status tersimpan · Bima",
+      "sourceDisplayedRole": "Perawat PIC",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1240
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-30489",
+      "module": "Tugas Perawatan",
+      "proposedRouteFamily": "/tasks",
+      "proposedApiGroup": "/api/v1/tasks",
+      "planningRequirements": [
+        "PLAN-TASK-CREATE",
+        "PLAN-TASK-READ",
+        "PLAN-TASK-CHANGE",
+        "PLAN-UI"
+      ],
+      "milestone": "M3",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-065",
+      "sourceFrameId": "2004:16291",
+      "sourceFrameName": "Rekam Medis / Daftar Rekam Medis (Dokter)",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-16291",
+      "module": "Rekam Medis",
+      "proposedRouteFamily": "/medical-records",
+      "proposedApiGroup": "/api/v1/medical-records",
+      "planningRequirements": [
+        "PLAN-RECORDS",
+        "PLAN-UI"
+      ],
+      "milestone": "M4",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-066",
+      "sourceFrameId": "2004:16498",
+      "sourceFrameName": "Rekam Medis / Detail Rekam Medis (Dokter)",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-16498",
+      "module": "Rekam Medis",
+      "proposedRouteFamily": "/medical-records",
+      "proposedApiGroup": "/api/v1/medical-records",
+      "planningRequirements": [
+        "PLAN-RECORDS",
+        "PLAN-UI"
+      ],
+      "milestone": "M4",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-067",
+      "sourceFrameId": "2004:16653",
+      "sourceFrameName": "Rekam Medis / Tambah Rekam Medis",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-16653",
+      "module": "Rekam Medis",
+      "proposedRouteFamily": "/medical-records",
+      "proposedApiGroup": "/api/v1/medical-records",
+      "planningRequirements": [
+        "PLAN-RECORDS",
+        "PLAN-UI"
+      ],
+      "milestone": "M4",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-068",
+      "sourceFrameId": "2004:16788",
+      "sourceFrameName": "Rekam Medis / Ubah Rekam Medis",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-16788",
+      "module": "Rekam Medis",
+      "proposedRouteFamily": "/medical-records",
+      "proposedApiGroup": "/api/v1/medical-records",
+      "planningRequirements": [
+        "PLAN-RECORDS",
+        "PLAN-UI"
+      ],
+      "milestone": "M4",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-069",
+      "sourceFrameId": "2004:17076",
+      "sourceFrameName": "Rekam Medis / Konfirmasi Hapus",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-17076",
+      "module": "Rekam Medis",
+      "proposedRouteFamily": "/medical-records",
+      "proposedApiGroup": "/api/v1/medical-records",
+      "planningRequirements": [
+        "PLAN-RECORDS",
+        "PLAN-UI"
+      ],
+      "milestone": "M4",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-070",
+      "sourceFrameId": "2004:17309",
+      "sourceFrameName": "Rekam Medis / Daftar Rekam Medis (Perawat)",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-17309",
+      "module": "Rekam Medis",
+      "proposedRouteFamily": "/medical-records",
+      "proposedApiGroup": "/api/v1/medical-records",
+      "planningRequirements": [
+        "PLAN-RECORDS",
+        "PLAN-UI"
+      ],
+      "milestone": "M4",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-071",
+      "sourceFrameId": "2004:17514",
+      "sourceFrameName": "Rekam Medis / Detail Rekam Medis (Perawat)",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-17514",
+      "module": "Rekam Medis",
+      "proposedRouteFamily": "/medical-records",
+      "proposedApiGroup": "/api/v1/medical-records",
+      "planningRequirements": [
+        "PLAN-RECORDS",
+        "PLAN-UI"
+      ],
+      "milestone": "M4",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-072",
+      "sourceFrameId": "2004:16923",
+      "sourceFrameName": "Rekam Medis / Form Kondisi Pasien",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-16923",
+      "module": "Rekam Medis",
+      "proposedRouteFamily": "/medical-records",
+      "proposedApiGroup": "/api/v1/medical-records",
+      "planningRequirements": [
+        "PLAN-RECORDS",
+        "PLAN-UI"
+      ],
+      "milestone": "M4",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-073",
+      "sourceFrameId": "2005:26452",
+      "sourceFrameName": "Rekam Medis / Daftar Rekam Medis (Perawat) · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-26452",
+      "module": "Rekam Medis",
+      "proposedRouteFamily": "/medical-records",
+      "proposedApiGroup": "/api/v1/medical-records",
+      "planningRequirements": [
+        "PLAN-RECORDS",
+        "PLAN-UI"
+      ],
+      "milestone": "M4",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-074",
+      "sourceFrameId": "2005:26613",
+      "sourceFrameName": "Rekam Medis / Detail Rekam Medis (Perawat) · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-26613",
+      "module": "Rekam Medis",
+      "proposedRouteFamily": "/medical-records",
+      "proposedApiGroup": "/api/v1/medical-records",
+      "planningRequirements": [
+        "PLAN-RECORDS",
+        "PLAN-UI"
+      ],
+      "milestone": "M4",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-075",
+      "sourceFrameId": "2005:26719",
+      "sourceFrameName": "Rekam Medis / Form Kondisi Pasien · Koordinator",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-26719",
+      "module": "Rekam Medis",
+      "proposedRouteFamily": "/medical-records",
+      "proposedApiGroup": "/api/v1/medical-records",
+      "planningRequirements": [
+        "PLAN-RECORDS",
+        "PLAN-UI"
+      ],
+      "milestone": "M4",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-076",
+      "sourceFrameId": "2004:8224",
+      "sourceFrameName": "Manajemen Tagihan / 01 - Daftar Tagihan (Read)",
+      "sourceDisplayedRole": "Admisi",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-8224",
+      "module": "Manajemen Tagihan",
+      "proposedRouteFamily": "/invoices",
+      "proposedApiGroup": "/api/v1/invoices",
+      "planningRequirements": [
+        "PLAN-BILLING",
+        "PLAN-UI"
+      ],
+      "milestone": "M6",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-077",
+      "sourceFrameId": "2004:8592",
+      "sourceFrameName": "Manajemen Tagihan / 02 - Detail Tagihan (Read)",
+      "sourceDisplayedRole": "Admisi",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1257
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-8592",
+      "module": "Manajemen Tagihan",
+      "proposedRouteFamily": "/invoices",
+      "proposedApiGroup": "/api/v1/invoices",
+      "planningRequirements": [
+        "PLAN-BILLING",
+        "PLAN-UI"
+      ],
+      "milestone": "M6",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-078",
+      "sourceFrameId": "2004:8885",
+      "sourceFrameName": "Manajemen Tagihan / 03 - Buat Tagihan (Create)",
+      "sourceDisplayedRole": "Admisi",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1373
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-8885",
+      "module": "Manajemen Tagihan",
+      "proposedRouteFamily": "/invoices",
+      "proposedApiGroup": "/api/v1/invoices",
+      "planningRequirements": [
+        "PLAN-BILLING",
+        "PLAN-UI"
+      ],
+      "milestone": "M6",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-079",
+      "sourceFrameId": "2004:9308",
+      "sourceFrameName": "Manajemen Tagihan / 04 - Buat Tagihan - Validasi Error (Create)",
+      "sourceDisplayedRole": "Admisi",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1533
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-9308",
+      "module": "Manajemen Tagihan",
+      "proposedRouteFamily": "/invoices",
+      "proposedApiGroup": "/api/v1/invoices",
+      "planningRequirements": [
+        "PLAN-BILLING",
+        "PLAN-UI"
+      ],
+      "milestone": "M6",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-080",
+      "sourceFrameId": "2004:9745",
+      "sourceFrameName": "Manajemen Tagihan / 05 - Ubah Tagihan (Update)",
+      "sourceDisplayedRole": "Admisi",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1425
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-9745",
+      "module": "Manajemen Tagihan",
+      "proposedRouteFamily": "/invoices",
+      "proposedApiGroup": "/api/v1/invoices",
+      "planningRequirements": [
+        "PLAN-BILLING",
+        "PLAN-UI"
+      ],
+      "milestone": "M6",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-081",
+      "sourceFrameId": "2004:10231",
+      "sourceFrameName": "Manajemen Tagihan / 06 - Hapus Tagihan (Delete)",
+      "sourceDisplayedRole": "Admisi",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1008
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2004-10231",
+      "module": "Manajemen Tagihan",
+      "proposedRouteFamily": "/invoices",
+      "proposedApiGroup": "/api/v1/invoices",
+      "planningRequirements": [
+        "PLAN-BILLING",
+        "PLAN-UI"
+      ],
+      "milestone": "M6",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-082",
+      "sourceFrameId": "2005:20747",
+      "sourceFrameName": "Login / Dokter",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-20747",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-083",
+      "sourceFrameId": "2005:20798",
+      "sourceFrameName": "Login / Koordinator Perawat",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-20798",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-084",
+      "sourceFrameId": "2005:20849",
+      "sourceFrameName": "Login / Admisi",
+      "sourceDisplayedRole": "Admisi",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-20849",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-085",
+      "sourceFrameId": "2005:29493",
+      "sourceFrameName": "Login / Perawat · Terisi",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-29493",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-086",
+      "sourceFrameId": "2005:29551",
+      "sourceFrameName": "Login / Perawat · Akses ditolak",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-29551",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-087",
+      "sourceFrameId": "2005:29608",
+      "sourceFrameName": "Login / Dokter · Terisi",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-29608",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-088",
+      "sourceFrameId": "2005:29666",
+      "sourceFrameName": "Login / Dokter · Akses ditolak",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-29666",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-089",
+      "sourceFrameId": "2005:29723",
+      "sourceFrameName": "Login / Koordinator Perawat · Terisi",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-29723",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-090",
+      "sourceFrameId": "2005:29781",
+      "sourceFrameName": "Login / Koordinator Perawat · Akses ditolak",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-29781",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-091",
+      "sourceFrameId": "2005:29838",
+      "sourceFrameName": "Login / Admisi · Terisi",
+      "sourceDisplayedRole": "Admisi",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-29838",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-092",
+      "sourceFrameId": "2005:29896",
+      "sourceFrameName": "Login / Admisi · Akses ditolak",
+      "sourceDisplayedRole": "Admisi",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-29896",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-093",
+      "sourceFrameId": "2005:29973",
+      "sourceFrameName": "Login / Dina Putri · Sesudah delegasi",
+      "sourceDisplayedRole": "Perawat PIC (sample)",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-29973",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-094",
+      "sourceFrameId": "2005:30031",
+      "sourceFrameName": "Login / Bima Pratama · Sesudah delegasi",
+      "sourceDisplayedRole": "Perawat PIC (sample)",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-30031",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-095",
+      "sourceFrameId": "2005:30089",
+      "sourceFrameName": "Login / Koordinator · Sesudah delegasi",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 900
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-30089",
+      "module": "Login",
+      "proposedRouteFamily": "/login",
+      "proposedApiGroup": "/api/v1/session",
+      "planningRequirements": [
+        "PLAN-AUTH",
+        "PLAN-UI"
+      ],
+      "milestone": "M1",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-096",
+      "sourceFrameId": "2005:27570",
+      "sourceFrameName": "Ringkasan Rawat Inap / Siti Rahmawati · Perawat",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-27570",
+      "module": "Ringkasan Rawat Inap",
+      "proposedRouteFamily": "/patients/{id}",
+      "proposedApiGroup": "/api/v1/patients/{id}/context",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-097",
+      "sourceFrameId": "2005:27697",
+      "sourceFrameName": "Ringkasan Rawat Inap / Budi Santoso · Perawat",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-27697",
+      "module": "Ringkasan Rawat Inap",
+      "proposedRouteFamily": "/patients/{id}",
+      "proposedApiGroup": "/api/v1/patients/{id}/context",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-098",
+      "sourceFrameId": "2005:27824",
+      "sourceFrameName": "Ringkasan Rawat Inap / Nadia Sari · Perawat",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-27824",
+      "module": "Ringkasan Rawat Inap",
+      "proposedRouteFamily": "/patients/{id}",
+      "proposedApiGroup": "/api/v1/patients/{id}/context",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-099",
+      "sourceFrameId": "2005:27951",
+      "sourceFrameName": "Ringkasan Rawat Inap / Arif Wijaya · Perawat",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-27951",
+      "module": "Ringkasan Rawat Inap",
+      "proposedRouteFamily": "/patients/{id}",
+      "proposedApiGroup": "/api/v1/patients/{id}/context",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-100",
+      "sourceFrameId": "2005:28075",
+      "sourceFrameName": "Ringkasan Rawat Inap / Rudi Hartono · Perawat",
+      "sourceDisplayedRole": "Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-28075",
+      "module": "Ringkasan Rawat Inap",
+      "proposedRouteFamily": "/patients/{id}",
+      "proposedApiGroup": "/api/v1/patients/{id}/context",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-101",
+      "sourceFrameId": "2005:28199",
+      "sourceFrameName": "Ringkasan Rawat Inap / Siti Rahmawati · Koordinator Perawat",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-28199",
+      "module": "Ringkasan Rawat Inap",
+      "proposedRouteFamily": "/patients/{id}",
+      "proposedApiGroup": "/api/v1/patients/{id}/context",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-102",
+      "sourceFrameId": "2005:28326",
+      "sourceFrameName": "Ringkasan Rawat Inap / Budi Santoso · Koordinator Perawat",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-28326",
+      "module": "Ringkasan Rawat Inap",
+      "proposedRouteFamily": "/patients/{id}",
+      "proposedApiGroup": "/api/v1/patients/{id}/context",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-103",
+      "sourceFrameId": "2005:28453",
+      "sourceFrameName": "Ringkasan Rawat Inap / Nadia Sari · Koordinator Perawat",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-28453",
+      "module": "Ringkasan Rawat Inap",
+      "proposedRouteFamily": "/patients/{id}",
+      "proposedApiGroup": "/api/v1/patients/{id}/context",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-104",
+      "sourceFrameId": "2005:28580",
+      "sourceFrameName": "Ringkasan Rawat Inap / Arif Wijaya · Koordinator Perawat",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-28580",
+      "module": "Ringkasan Rawat Inap",
+      "proposedRouteFamily": "/patients/{id}",
+      "proposedApiGroup": "/api/v1/patients/{id}/context",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-105",
+      "sourceFrameId": "2005:28704",
+      "sourceFrameName": "Ringkasan Rawat Inap / Rudi Hartono · Koordinator Perawat",
+      "sourceDisplayedRole": "Koordinator Perawat",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-28704",
+      "module": "Ringkasan Rawat Inap",
+      "proposedRouteFamily": "/patients/{id}",
+      "proposedApiGroup": "/api/v1/patients/{id}/context",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-106",
+      "sourceFrameId": "2005:28828",
+      "sourceFrameName": "Ringkasan Rawat Inap / Siti Rahmawati · Dokter",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-28828",
+      "module": "Ringkasan Rawat Inap",
+      "proposedRouteFamily": "/patients/{id}",
+      "proposedApiGroup": "/api/v1/patients/{id}/context",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    },
+    {
+      "scenarioId": "VIS-107",
+      "sourceFrameId": "2005:28941",
+      "sourceFrameName": "Ringkasan Rawat Inap / Nadia Sari · Dokter",
+      "sourceDisplayedRole": "Dokter",
+      "sourceDimensions": {
+        "width": 1440,
+        "height": 1050
+      },
+      "sourceUrl": "https://www.figma.com/design/Vo3C9LOAj2uQ1sK9QtZsX8/?node-id=2005-28941",
+      "module": "Ringkasan Rawat Inap",
+      "proposedRouteFamily": "/patients/{id}",
+      "proposedApiGroup": "/api/v1/patients/{id}/context",
+      "planningRequirements": [
+        "PLAN-CYCLE",
+        "PLAN-UI"
+      ],
+      "milestone": "M5",
+      "plannedAcceptance": "Render this named state for its authorized actor/context, compare the referenced frame, and verify the associated success or failure behavior against the real API when applicable.",
+      "status": "planned; not implemented or application-tested"
+    }
+  ],
+  "mappingScope": "Full-source visual backlog; the one-day P0 subset is controlled by docs/planning/IMPLEMENTATION_PLAN.md.",
+  "implementationTimebox": {
+    "requestedDays": 1,
+    "assumedFocusedHours": 8,
+    "developerCount": 1,
+    "proposedParallelModuleAgents": 3
+  }
+}

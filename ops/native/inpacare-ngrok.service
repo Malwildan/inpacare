@@ -1,0 +1,17 @@
+[Unit]
+Description=InpaCare stable ngrok HTTPS tunnel
+Requires=inpacare-web.service
+After=inpacare-web.service
+
+[Service]
+Type=simple
+ExecStart="@ROOT@/.runtime/ngrok/ngrok" http http://127.0.0.1:8089 --config "@ROOT@/.data/ngrok.yml" --inspect=false
+Restart=on-failure
+RestartSec=10
+WorkingDirectory=@ROOT@
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target inpacare-web.service

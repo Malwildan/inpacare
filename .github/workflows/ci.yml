@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Frontend and API types
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+      - name: Check generated API types
+        run: |
+          npm run types:api
+          git diff --exit-code -- apps/web/src/lib/generated/api.d.ts
+
+  api:
+    name: Rust and PostgreSQL workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: inpacare
+          POSTGRES_PASSWORD: inpacare
+          POSTGRES_DB: inpacare_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U inpacare -d inpacare_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://inpacare:inpacare@127.0.0.1:5432/inpacare_test
+      SEED_DEMO: '1'
+      API_BIND: 127.0.0.1:8081
+      INPACARE_TEST_URL: http://127.0.0.1:8081/api/v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run Rust unit tests
+        run: cargo test --locked --manifest-path apps/api/Cargo.toml
+      - name: Build API
+        run: cargo build --locked --manifest-path apps/api/Cargo.toml
+      - name: Run API workflows against the disposable database
+        shell: bash
+        run: |
+          set -euo pipefail
+          apps/api/target/debug/inpacare-api > "$RUNNER_TEMP/inpacare-api.log" 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8081/health > /dev/null; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$api_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then tail -c 6000 "$RUNNER_TEMP/inpacare-api.log"; exit 1; fi
+          python3 -m unittest discover -s tests/api -v

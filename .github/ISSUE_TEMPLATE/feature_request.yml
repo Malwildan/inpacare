@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose an improvement to an InpaCare workflow.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and affected users
+      description: Which role or workflow needs improvement, and why?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the user-visible result and any permission, data, or migration implications.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and tradeoffs
+      description: Include a smaller option if one could solve the same problem.

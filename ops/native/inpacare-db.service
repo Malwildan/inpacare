@@ -1,0 +1,18 @@
+[Unit]
+Description=InpaCare PostgreSQL (private demo database)
+
+[Service]
+Type=simple
+ExecStart=/bin/bash "@ROOT@/scripts/native-host.sh" run-db
+ExecStartPost=/bin/bash "@ROOT@/scripts/native-host.sh" wait-db
+Restart=on-failure
+RestartSec=3
+KillSignal=SIGINT
+TimeoutStopSec=30
+WorkingDirectory=@ROOT@
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

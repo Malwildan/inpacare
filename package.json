@@ -1,0 +1,16 @@
+{
+  "name": "inpacare",
+  "private": true,
+  "workspaces": ["apps/web"],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/web",
+    "check": "npm run check --workspace apps/web",
+    "build": "npm run build --workspace apps/web",
+    "test:e2e": "playwright test",
+    "types:api": "openapi-typescript contracts/openapi.json -o apps/web/src/lib/generated/api.d.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "openapi-typescript": "^7.10.0"
+  }
+}
