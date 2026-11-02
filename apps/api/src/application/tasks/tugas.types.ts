@@ -22,7 +22,7 @@ export interface CreateTaskInput {
   startsAt: string;
   endsAt: string;
 }
-export interface UpdateTaskInput extends TaskChanges {}
+export type UpdateTaskInput = TaskChanges;
 export interface ReasonInput {
   expectedVersion: number;
   reason: string;

@@ -13,15 +13,17 @@ test -f apps/web/build/index.js
 test -f apps/web/build/handler.js
 test -f apps/api/dist/main.js
 test -f apps/api/dist/database/cli.js
-mkdir -p "$stage/apps/api" "$stage/apps/web" "$stage/scripts"
+mkdir -p "$stage/apps/api" "$stage/apps/web" "$stage/scripts" "$stage/ops/native"
 cp apps/api/package.json "$stage/apps/api/"
 cp -R apps/api/dist "$stage/apps/api/"
 cp -R apps/web/build "$stage/apps/web/"
 cp package.json package-lock.json "$stage/"
 cp apps/web/package.json "$stage/apps/web/"
 cp scripts/native-host.sh scripts/native-web.mjs "$stage/scripts/"
+cp scripts/deploy-native.py scripts/install-native-cd.sh "$stage/scripts/"
+cp ops/native/inpacare-update.service ops/native/inpacare-update.timer "$stage/ops/native/"
 printf '%s\n' "$revision" > "$stage/REVISION"
 tar -czf "$output/inpacare-linux-x86_64.tar.gz" -C "$stage" \
-  REVISION apps package.json package-lock.json scripts
+  REVISION apps package.json package-lock.json scripts ops
 cd "$output"
 sha256sum inpacare-linux-x86_64.tar.gz > SHA256SUMS

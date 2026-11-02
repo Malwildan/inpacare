@@ -2,23 +2,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-test('installed dependency caches include root and every npm workspace', () => {
-  const root = new URL('../../', import.meta.url);
-  const { workspaces } = JSON.parse(readFileSync(new URL('package.json', root), 'utf8'));
-  const workflow = readFileSync(new URL('.github/workflows/ci.yml', root), 'utf8');
-  const caches = workflow.split(/(?=^      - )/m)
-    .filter(step => step.startsWith('      - uses: actions/cache@') && /^          key: npm-/m.test(step));
-  assert.ok(caches.length > 0, 'expected installed dependency cache steps');
-  const keys = [];
-  for (const step of caches) {
-    const paths = step.match(/^          path: \|\r?\n((?:            [^\r\n]+\r?\n)+)/m)?.[1]
-      .trim().split(/\r?\n/).map(path => path.trim());
-    for (const path of ['node_modules', ...workspaces.map(workspace => `${workspace}/node_modules`)]) {
-      assert.ok(paths?.includes(path), `installed dependency cache omits ${path}; a cache hit skips npm ci`);
-    }
-    const key = step.match(/^          key: (.+)/m)?.[1];
-    assert.ok(Number(key?.match(/^npm-v(\d+)-/)?.[1]) >= 2, 'invalidate the incomplete v1 dependency caches');
-    keys.push(key);
+test('dependency caching never skips a clean lockfile install', () => {
+  const workflow = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const jobs = workflow.split(/(?=^  [a-z][a-z-]+:\r?$)/m)
+    .filter(job => /^      - run: npm ci\r?$/m.test(job));
+  assert.ok(jobs.length > 0, 'expected npm installation jobs');
+  for (const job of jobs) {
+    assert.match(job, /node-version-file: \.nvmrc\r?\n          cache: npm/);
+    assert.doesNotMatch(job, /cache-hit|actions\/cache@|node_modules/,
+      'cache package downloads, never reuse installed or partially installed workspaces');
   }
-  assert.equal(new Set(keys).size, 1, 'shared dependency caches must use the same layout and key');
 });

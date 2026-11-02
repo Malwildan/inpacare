@@ -156,7 +156,7 @@ class DeployNativeTests(unittest.TestCase):
                    patch.object(deploy_native, "download", side_effect=download),
                    patch.object(deploy_native, "run", side_effect=fake_run),
                    patch.object(deploy_native, "wait_api_healthy", side_effect=lambda: events.append("api-healthy") or succeed),
-                   patch.object(deploy_native, "wait_healthy", side_effect=lambda _values: events.append("web-healthy") or succeed)]
+                   patch.object(deploy_native, "wait_healthy", side_effect=lambda _values, _sha: events.append("web-healthy") or succeed)]
         for item in patches:
             item.start()
         try:
@@ -194,6 +194,20 @@ class DeployNativeTests(unittest.TestCase):
             self.assertEqual((root / ".data/postgres/PG_VERSION").read_text(), "16\n")
         finally:
             temp.cleanup()
+
+    def test_activation_rejects_a_healthy_listener_serving_the_wrong_commit(self):
+        with patch.object(deploy_native, "health", return_value=True), \
+             patch.object(deploy_native, "http_json", return_value={"revision": "b" * 40, "backend": "nestjs"}), \
+             patch.object(deploy_native.time, "monotonic", side_effect=[0, 0, 61]), \
+             patch.object(deploy_native.time, "sleep"):
+            self.assertFalse(deploy_native.wait_healthy({}, SHA))
+
+    def test_activation_checks_the_revision_on_both_web_listeners(self):
+        with patch.object(deploy_native, "health", return_value=True), \
+             patch.object(deploy_native, "http_json", return_value={"revision": SHA, "backend": "nestjs"}) as get_version:
+            self.assertTrue(deploy_native.wait_healthy({"HTTPS_PROXY_PORT": "8089"}, SHA))
+            self.assertEqual([call.args[0] for call in get_version.call_args_list],
+                             ["http://127.0.0.1:8088/__version", "http://127.0.0.1:8089/__version"])
 
     def test_backup_failure_keeps_the_running_app_untouched(self):
         temp, root, events = self.run_deployment(False, backup_fails=True)

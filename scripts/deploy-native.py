@@ -188,7 +188,7 @@ def wait_api_healthy() -> bool:
     return False
 
 
-def wait_healthy(values: dict[str, str]) -> bool:
+def wait_healthy(values: dict[str, str], sha: str) -> bool:
     urls = ["http://127.0.0.1:8080/health", "http://127.0.0.1:8088/login"]
     if values.get("HTTPS_PROXY_PORT"):
         # native-web serves HTTP locally while marking proxied requests as HTTPS.
@@ -196,7 +196,12 @@ def wait_healthy(values: dict[str, str]) -> bool:
     deadline = time.monotonic() + 60
     while time.monotonic() < deadline:
         if all(health(url) for url in urls):
-            return True
+            try:
+                if all(http_json(url.replace('/login', '/__version')) ==
+                       {"revision": sha, "backend": "nestjs"} for url in urls[1:]):
+                    return True
+            except (OSError, HTTPError, URLError, ValueError):
+                pass
         time.sleep(1)
     return False
 
@@ -316,7 +321,7 @@ def deploy(root: Path, sha: str, release: dict, values: dict[str, str]) -> None:
         if not wait_api_healthy():
             raise DeployError("Updated API failed health checks; web traffic was not opened")
         run(["systemctl", "--user", "start", "inpacare-web"], timeout=60)
-        if not wait_healthy(values):
+        if not wait_healthy(values, sha):
             raise DeployError("Updated API/web failed health checks")
     except Exception:
         if switched:

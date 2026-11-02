@@ -5,10 +5,7 @@ import { hasCompleteBloodPressure } from "../../domain/medical-records/vital-sig
 import { id } from "../shared/runtime";
 import { UnitOfWork } from "../shared/unit-of-work.port";
 import { PatientAccess, canReadPatient } from "../patients/patient-access";
-import {
-  MedicalRecordListFilters,
-  MedicalRecordStore,
-} from "./medical-record-store.port";
+import { MedicalRecordStore } from "./medical-record-store.port";
 export interface CreateMedicalRecordInput {
   patientId: string;
   complaint: string;

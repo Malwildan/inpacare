@@ -78,7 +78,7 @@ export class CyclesUseCases {
     await this.uow.run(async (tx) => {
       if (!(await tx.cycles.lockPatient(input.patientId)))
         throw DomainError.notFound();
-      let placementId = input.placementId || null;
+      const placementId = input.placementId || null;
       if (placementId) {
         const roomId = await tx.cycles.placementRoom(
           placementId,

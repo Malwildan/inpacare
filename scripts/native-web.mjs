@@ -1,4 +1,8 @@
 import { createServer } from 'node:http';
+import { existsSync, readFileSync } from 'node:fs';
+
+const revisionFile = new URL('../REVISION', import.meta.url);
+const revision = existsSync(revisionFile) ? readFileSync(revisionFile, 'utf8').trim() : null;
 
 // Each listener has a fixed external protocol; client headers cannot change it.
 delete process.env.ORIGIN;
@@ -14,6 +18,11 @@ if (process.env.HTTPS_PROXY_PORT) {
 }
 const servers = listeners.map(({ port, host, protocol }) => {
   const server = createServer((request, response) => {
+    if (request.url?.split('?')[0] === '/__version' && ['GET', 'HEAD'].includes(request.method)) {
+      response.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      response.end(request.method === 'HEAD' ? undefined : JSON.stringify({ revision, backend: 'nestjs' }));
+      return;
+    }
     request.headers['x-inpacare-protocol'] = protocol;
     handler(request, response);
   });

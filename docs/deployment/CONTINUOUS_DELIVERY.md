@@ -2,7 +2,9 @@
 
 Every pull request runs applicable frontend, contract, and API checks. Pushes to
 `main`, including merged PRs, run all checks. Manual CI runs also run the full
-suite; the daily scheduled run checks for regressions.
+suite; the daily scheduled run checks for regressions. The API gate includes
+ESLint, TypeScript checks, unit/contract tests, and PostgreSQL integration tests.
+A dependency audit blocks high and critical advisories before release packaging.
 
 After the frontend, NestJS, and disposable PostgreSQL checks pass, CI packages
 the compiled Node API and adapter-node frontend. It installs production
@@ -54,6 +56,17 @@ systemctl --user start inpacare-update.service
 The installed updater is a separate copy; rerun the installer to upgrade it.
 Use the timer to update application files after CD is enabled.
 
+Branch renaming does not upgrade the updater already installed on the host.
+When switching from Rust, run the installer from the verified NestJS release
+(it includes `scripts/install-native-cd.sh`, `scripts/deploy-native.py`, and the
+timer units), then complete database adoption below before activating the release.
+Do not reuse a Rust updater to install a NestJS archive.
+
+After activation, check `https://YOUR_DOMAIN/__version`: its `revision` must match
+the full `main` commit SHA and `backend` must be `nestjs`. This uncached endpoint
+reports the packaged frontend revision; also verify the API service runs
+`node apps/api/dist/main.js` from that same release and `/health` succeeds locally.
+
 ## Existing Rust database adoption
 
 On the first update of a non-empty Rust database, the updater prepares the verified release package and checks for the NestJS baseline marker before it stops any service. If the marker is missing, it refuses the update and reports the prepared path under `.deploy/releases/`. Disable the timer, take a fresh database backup, and perform the one-time fingerprint-checked adoption in a maintenance window:
@@ -88,10 +101,10 @@ directory. A file lock prevents concurrent updates; preparation leaves the
 running app available.
 
 Before activation, it writes an owner-only PostgreSQL backup under
-`.data/backups/pre-update-*.dump`, then runs the release migration explicitly
-while the current API/web remain online. A migration or dependency-install
-failure leaves the running version active. After migration succeeds, it stops
-API/web, atomically switches the current-release symlink, starts API/web, and
+`.data/backups/pre-update-*.dump`, stops API/web writes, then runs the release
+migration explicitly. A dependency-install failure leaves the running version
+active; a migration failure restarts the previous version. After migration succeeds,
+it atomically switches the current-release symlink, starts API/web, and
 checks the API and HTTP/HTTPS-origin web listeners. The database and tunnel
 services keep running; expect only the brief API/web restart interruption.
 
