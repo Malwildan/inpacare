@@ -1,5 +1,7 @@
 # Native Linux hosting
 
+For automatic updates after successful `main` builds, enable [continuous delivery](CONTINUOUS_DELIVERY.md) on an existing installation.
+
 Run the production frontend, Rust API, and PostgreSQL as user services on an **x86_64 Linux host with systemd**. The provided runtime installer targets Ubuntu 24.04-compatible distributions, including Linux Mint 22. This path is not a macOS launchd installer; for other hosts, adapt the runtime or use the [Docker package](HOSTING.md).
 
 ## Prepare a release

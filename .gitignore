@@ -5,6 +5,7 @@ apps/api/target/
 .local/
 .runtime/
 .data/
+.deploy/
 bin/inpacare-api
 .env
 .env.local

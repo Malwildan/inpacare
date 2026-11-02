@@ -104,7 +104,7 @@ npm run types:api
 cargo test --locked --manifest-path apps/api/Cargo.toml
 ```
 
-The [CI workflow](.github/workflows/ci.yml) checks the frontend, generated API types, Rust unit tests, and API workflows against a disposable PostgreSQL service. Browser checks run separately against a local synthetic instance; see [API testing](docs/development/API_TESTS.md) and [browser testing](docs/development/BROWSER_TESTS.md).
+The [CI workflow](.github/workflows/ci.yml) checks the frontend, generated API types, Rust unit tests, and API workflows against a disposable PostgreSQL service. Successful main builds publish a verified Linux release for [automatic native demo updates](docs/deployment/CONTINUOUS_DELIVERY.md). Browser checks run separately against a local synthetic instance; see [API testing](docs/development/API_TESTS.md) and [browser testing](docs/development/BROWSER_TESTS.md).
 
 ## Contributing
 

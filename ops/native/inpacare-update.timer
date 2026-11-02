@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic InpaCare native release update check
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=5min
+Persistent=true
+Unit=inpacare-update.service
+
+[Install]
+WantedBy=timers.target
