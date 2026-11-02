@@ -5,6 +5,18 @@ const { Client } = require("pg");
 
 const adminUrl = process.env.INPACARE_TEST_DATABASE_ADMIN_URL;
 const enabled = Boolean(adminUrl);
+
+test("unit of work shares uncommitted writes across module stores and rolls them back", { skip: !enabled }, async () => {
+  const { TypeOrmUnitOfWork } = require("../../dist/infrastructure/database/transactions/typeorm-unit-of-work");
+  const roomId = newId();
+  const failure = new Error("Synthetic cross-store rollback");
+  await assert.rejects(new TypeOrmUnitOfWork(ds).run(async tx => {
+    await tx.rooms.create({ id: roomId, name: roomId, roomClass: "Synthetic", capacity: 1, status: "available", picId: null, dailyRate: "0" });
+    assert.deepEqual(await tx.placements.roomForCreate(roomId), { id: roomId, capacity: 1, status: "available" });
+    throw failure;
+  }), error => error === failure);
+  assert.deepEqual(await ds.query("SELECT id FROM rooms WHERE id=$1", [roomId]), []);
+});
 let databaseName;
 let previousDatabaseUrl;
 let ds;
@@ -437,7 +449,7 @@ test("adoption upgrades an existing Nest schema without inventing negative claim
     }
     const { spawnSync } = require("node:child_process");
     const path = require("node:path");
-    const result = spawnSync(process.execPath, [path.resolve(__dirname,"../../dist/infrastructure/database/cli.js"), "adopt"], { env: { ...process.env, DATABASE_URL: url.toString() }, encoding: "utf8", timeout: 30000 });
+    const result = spawnSync(process.execPath, [path.resolve(__dirname,"../../dist/database/cli.js"), "adopt"], { env: { ...process.env, DATABASE_URL: url.toString() }, encoding: "utf8", timeout: 30000 });
     assert.equal(result.status, 0, result.stderr);
     const rows = await legacy.query("SELECT id,claim_result,total_amount::text FROM invoices ORDER BY id");
     assert.deepEqual(rows, [
