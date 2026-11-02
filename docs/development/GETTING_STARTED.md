@@ -1,28 +1,25 @@
 # Development setup
 
-Run commands from the repository root. Use your own local instance and synthetic records; the shared demo is for review, not automated mutation tests.
+Run commands from the repository root. Use your own local PostgreSQL database and synthetic records; never run mutation tests against the shared demo or real patient data.
 
 ## Prerequisites
 
-- Node.js 24 LTS and npm. `.nvmrc` records the recommended major version.
-- Rust stable and Cargo for manual development.
+- Node.js 24.18+ and npm. `.nvmrc` records the recommended major version.
 - PostgreSQL 16 or newer, either installed locally or running in Docker.
 - Python 3 for API workflows; Playwright's Chromium for browser workflows.
 
-On Windows, `./scripts/start.ps1` handles the isolated runtime, build, migration, seed, and production frontend. See [Windows runtime details](RUNTIME_SETUP.md).
+On Windows, `scripts/start.ps1` starts only the application and local PostgreSQL processes it owns. See [Windows runtime details](RUNTIME_SETUP.md).
 
 ## Manual API and frontend setup
 
-Install frontend dependencies:
+Install dependencies and copy the ignored local environment template:
 
 ```sh
 npm ci
 cp .env.example .env
 ```
 
-The `.env` file is ignored. Its values are examples for a synthetic local environment; change the connection URL to match your database. Cargo does not load `.env` automatically.
-
-If you want a disposable development PostgreSQL container and port 55432 is available:
+The root `.env` is not automatically loaded. Set its values in your shell and use a disposable development database. The example below creates a synthetic PostgreSQL container if port 55432 is available:
 
 ```sh
 docker run --name inpacare-dev-db \
@@ -33,18 +30,31 @@ docker run --name inpacare-dev-db \
   -d postgres:17-alpine
 ```
 
-This example creates a container with synthetic development credentials. If the container already exists, start it with `docker start inpacare-dev-db` instead. Use a separate database if you already have PostgreSQL; do not replace an existing cluster.
-
-In terminal one, load your environment and start the API (POSIX shell):
+Load the environment, build the API, and run the migration as a separate explicit step before starting the app:
 
 ```sh
 set -a
 . ./.env
 set +a
-cargo run --locked --manifest-path apps/api/Cargo.toml
+npm run build:api
+npm run migration:run --workspace @inpacare/api
 ```
 
-The API listens on **http://127.0.0.1:8080**, applies versioned migrations, and seeds an empty database when `SEED_DEMO=1`. `/health` checks the database connection. In PowerShell, set the variables directly (`$env:DATABASE_URL`, `$env:API_BIND`, `$env:SEED_DEMO`) or use the Windows helper.
+To create synthetic demo accounts in an empty database, explicitly set a demo-only password and run the seed command. The seed refuses a database with any users:
+
+```sh
+export SEED_DEMO_PASSWORD='choose-a-demo-only-password'
+SEED_DEMO_PASSWORD="$SEED_DEMO_PASSWORD" npm run seed --workspace @inpacare/api
+unset SEED_DEMO_PASSWORD
+```
+
+Start the API in terminal one:
+
+```sh
+npm run dev:api
+```
+
+The API listens on **http://127.0.0.1:8080**. It never runs migrations or seeds while starting. `/health` checks the database connection. Set `TRUSTED_ORIGINS` to the exact browser origin used for mutating requests, including login.
 
 In terminal two:
 
@@ -52,15 +62,16 @@ In terminal two:
 npm run dev
 ```
 
-Open the URL Vite prints, normally **http://127.0.0.1:5173**. The server-side proxy defaults to the local API on port 8080. The root `.env` is not automatically a frontend workspace environment file; if the API runs elsewhere, set `API_ORIGIN` when launching the frontend.
+Open the URL Vite prints, normally **http://127.0.0.1:5173**. The server-side proxy defaults to the local API on port 8080. Set `API_ORIGIN` if the API runs elsewhere.
 
 ## Environment variables
 
 | Variable | Consumer | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | API | PostgreSQL connection URL; required. |
+| `DATABASE_URL` | API and migration CLI | PostgreSQL connection URL; required. |
 | `API_BIND` | API | Listener, default `127.0.0.1:8080`. |
-| `SEED_DEMO` | API | Set to `1` to seed synthetic accounts/data into an empty database. |
+| `TRUSTED_ORIGINS` | API | Comma-separated exact HTTP(S) origins allowed for mutating requests. |
+| `SEED_DEMO_PASSWORD` | Explicit seed CLI | Password used only by the explicit seed command; seed refuses a non-empty users table. |
 | `API_ORIGIN` | Web server | API upstream, default `http://127.0.0.1:8080`. |
 | `HOST`, `PORT` | Production web server | Listener address and port. Vite prints its own development URL. |
 | `HTTPS_PROXY_PORT` | Native web server | Optional loopback listener for a trusted HTTPS tunnel. |
@@ -74,13 +85,13 @@ The demo accounts are listed in [README](../../README.md#demo-accounts). Role ch
 npm run check
 npm run build
 npm run types:api
-cargo test --locked --manifest-path apps/api/Cargo.toml
+npm run test:api:unit
 ```
 
-`contracts/openapi.json` is the API contract. Regenerate TypeScript with `npm run types:api` after changing it. Database migrations live in `apps/api/migrations/`; add a new migration for schema changes.
+`contracts/openapi.json` is the API contract. Regenerate TypeScript with `npm run types:api` after changing it. SQL migrations and the explicit CLI are under `apps/api/src/database/`.
 
 For real API behavior, use the [API workflows](API_TESTS.md) with a fresh disposable database. For frontend changes, use the [browser workflows](BROWSER_TESTS.md), setting `INPACARE_TEST_URL=http://127.0.0.1:5173` if testing the Vite server. Test suites create data and should not target the shared demo.
 
 ## Production-style local hosting
 
-`npm run build` produces `apps/web/build`. The native Linux scripts run this output with `scripts/native-web.mjs`, which sets HTTP/HTTPS origin handling for its separate listeners. For a complete host setup, use the [native guide](../deployment/NATIVE_HOSTING.md). The [Docker guide](../deployment/HOSTING.md) documents the alternative Compose package.
+`npm run build` builds both the API into `apps/api/dist` and the frontend into `apps/web/build`. Native Linux services run those Node outputs. For a complete host setup, use the [native guide](../deployment/NATIVE_HOSTING.md). The [Docker guide](../deployment/HOSTING.md) documents the Compose package.

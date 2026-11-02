@@ -1,0 +1,8 @@
+[Unit]
+Description=Check for and install the latest InpaCare native release
+
+[Service]
+Type=oneshot
+UMask=0077
+TimeoutStartSec=30min
+ExecStart=/usr/bin/python3 "@ROOT@/.deploy/deploy-native.py" --root "@ROOT@"

@@ -1,7 +1,8 @@
 """API-level InpaCare checks against a fresh, isolated PostgreSQL demo database.
 
-Start the API with DATABASE_URL pointing at inpacare_test and SEED_DEMO=1,
-then run: python -m unittest discover -s tests/api -v
+Explicitly run the NestJS migration and seed on a disposable database, then
+start the API with DATABASE_URL pointing at that database and run:
+python -m unittest discover -s tests/api -v
 """
 from __future__ import annotations
 
@@ -9,6 +10,8 @@ import concurrent.futures
 import http.cookiejar
 import json
 import os
+import tempfile
+import time
 import unittest
 import urllib.error
 import urllib.parse
@@ -20,7 +23,7 @@ from decimal import Decimal
 
 API = os.environ.get("INPACARE_TEST_URL", "http://127.0.0.1:8081/api/v1").rstrip("/")
 ORIGIN = urllib.parse.urlsplit(API).scheme + "://" + urllib.parse.urlsplit(API).netloc
-PASSWORD = "InpaCareDemo!2026"
+PASSWORD = os.environ.get("SEED_DEMO_PASSWORD", "InpaCareDemo!2026")
 
 
 class Api:
@@ -120,9 +123,51 @@ class Workflows(unittest.TestCase):
             "title": "Spoofed role", "priority": "normal", "startsAt": self.later(), "endsAt": self.later(1),
             "role": "PERAWAT", "coordinator": True,
         })
-        self.assert_error(denied, 422, "VALIDATION_FAILED")
+        self.assert_error(denied, 403, "FORBIDDEN")
+        spoofed = self.rina.request("POST", "/tasks", {
+            "patientId": "PT-001", "placementId": "PL-001", "picId": "USR-NURSE-1",
+            "title": "Unknown authority field", "priority": "normal", "startsAt": self.later(), "endsAt": self.later(1),
+            "role": "PERAWAT", "coordinator": True,
+        })
+        self.assert_error(spoofed, 422, "VALIDATION_FAILED")
         self.assert_error(anonymous.request("POST", "/session", {"username":"rina","password":PASSWORD}, same_origin=False), 403, "FORBIDDEN")
         self.assert_error(self.admisi.request("GET", "/cycles"), 403, "FORBIDDEN")
+
+    def test_persistent_session_restoration_and_logout_revocation(self) -> None:
+        client = Api()
+        started = time.time()
+        self.assertEqual(client.sign_in("rina")[0], 200)
+        cookies = {cookie.name: cookie for cookie in client.jar}
+        self.assertEqual(set(cookies), {"session", "csrf_token"})
+        for cookie in cookies.values():
+            self.assertFalse(cookie.discard)
+            self.assertGreaterEqual(cookie.expires, started + 30 * 24 * 60 * 60 - 5)
+            self.assertLessEqual(cookie.expires, time.time() + 30 * 24 * 60 * 60)
+            self.assertEqual(cookie.path, "/")
+            self.assertEqual(cookie.get_nonstandard_attr("SameSite"), "Lax")
+        self.assertTrue(cookies["session"].has_nonstandard_attr("HttpOnly"))
+        self.assertFalse(cookies["csrf_token"].has_nonstandard_attr("HttpOnly"))
+
+        with tempfile.TemporaryDirectory() as folder:
+            saved = http.cookiejar.LWPCookieJar(os.path.join(folder, "cookies.txt"))
+            for cookie in client.jar:
+                saved.set_cookie(cookie)
+            saved.save()
+            restored = Api()
+            restored.jar = http.cookiejar.LWPCookieJar(saved.filename)
+            restored.jar.load()
+            restored.http = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(restored.jar))
+            status, result = restored.request("GET", "/session")
+            self.assertEqual(status, 200, result)
+            self.assertEqual(result["user"]["id"], client.user["id"])
+            restored.csrf = "invalid-csrf"
+            self.assert_error(restored.request("DELETE", "/session"), 403, "FORBIDDEN")
+            restored.csrf = result["user"]["csrfToken"]
+            self.assertEqual(restored.request("DELETE", "/session")[0], 204)
+            self.assertEqual(list(restored.jar), [])
+
+        # Replaying the saved cookies must fail after server-side revocation.
+        self.assert_error(client.request("GET", "/session"), 401, "UNAUTHENTICATED")
 
     def test_coordinator_task_pic_scope_audit_and_version_conflict(self) -> None:
         task = self.create_task(f"Tes reassignment {self.tag}")
@@ -192,7 +237,10 @@ class Workflows(unittest.TestCase):
         self.assertTrue(any(row["action"] == "deleted" and row["reason"] == "Data demo ditutup" for row in history[1]["items"]))
 
     def test_medical_record_author_scope_nurse_observation_and_admisi_privacy(self) -> None:
-        self.assert_error(self.admisi.request("GET", "/medical-records"), 403, "FORBIDDEN")
+        status, projection_page = self.admisi.request("GET", "/medical-records")
+        self.assertEqual(status, 200, projection_page)
+        for projection in projection_page["items"]:
+            self.assertEqual(set(projection), {"id", "patientId", "doctorId", "recordDate"})
         self.assert_error(self.hendra.request("GET", "/patients/PT-002/context"), 404, "NOT_FOUND")
         create = {
             "patientId": "PT-001", "complaint": f"Keluhan tes {self.tag}", "diagnosis": "Catatan sintetik",
@@ -202,7 +250,7 @@ class Workflows(unittest.TestCase):
         self.assertIn(status, (200, 201), record)
         self.assertTrue(record.get("id"), record)
         update = {
-            "expectedVersion": 1, "complaint": create["complaint"], "diagnosis": create["diagnosis"],
+            "expectedVersion": 1, "reason": "Koreksi pengujian", "complaint": create["complaint"], "diagnosis": create["diagnosis"],
             "treatment": create["treatment"], "notes": create["notes"], "recordDate": create["recordDate"],
         }
         self.assert_error(self.users["maya"].request("PATCH", f"/medical-records/{record['id']}", update), 403, "FORBIDDEN")
@@ -220,7 +268,10 @@ class Workflows(unittest.TestCase):
         status, edited = self.hendra.request("PATCH", f"/medical-records/{record['id']}", updated)
         self.assertEqual(status, 200, edited)
         self.assert_error(self.hendra.request("PATCH", f"/medical-records/{record['id']}", updated), 409, "CONFLICT")
-        self.assert_error(self.admisi.request("GET", f"/medical-records/{record['id']}"), 403, "FORBIDDEN")
+        status, projection = self.admisi.request("GET", f"/medical-records/{record['id']}")
+        self.assertEqual(status, 200, projection)
+        self.assertEqual(set(projection), {"id", "patientId", "doctorId", "recordDate"})
+        self.assertEqual(projection["id"], record["id"])
 
     def test_room_item_cost_is_computed_from_server_prices(self) -> None:
         name = f"QA-{self.tag}"

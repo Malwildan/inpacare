@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { api } from '$lib/api';
+	import { Plus } from 'lucide-svelte';
 
 	let { data } = $props();
 	let query = $state('');
@@ -10,6 +11,7 @@
 	let editing = $state<string | null>(null);
 	let viewing = $state<string | null>(null);
 	let addingTo = $state<string | null>(null);
+	let editingItem = $state<{ roomId: string; item: any } | null>(null);
 	let busy = $state(false);
 	let error = $state('');
 	let success = $state('');
@@ -34,12 +36,20 @@
 		} catch (e) { error = e instanceof Error ? e.message : 'Perubahan gagal disimpan.'; }
 		finally { busy = false; }
 	}
+	async function removeRoom(room: any) {
+		if (!confirm(`Hapus ruangan ${room.name}?`)) return;
+		await submit(`/rooms/${room.id}`, 'DELETE', { expectedVersion: room.version });
+	}
+	async function removeItem(room: any, item: any) {
+		if (!confirm(`Hapus item ${item.name} dari ruangan?`)) return;
+		await submit(`/rooms/${room.id}/items/${item.id}`, 'DELETE', { expectedVersion: room.version });
+	}
 </script>
 
 <svelte:head><title>Manajemen Ruangan | InpaCare</title></svelte:head>
 <section class="page-heading">
 	<div><h1 class="page-title">Manajemen Ruangan</h1><p class="page-subtitle">Kelola data, inventaris, dan ketersediaan ruangan rawat inap.</p></div>
-	{#if data.user.role === 'PERAWAT'}<button class="button primary" onclick={() => { creating = !creating; editing = null; error = ''; }}>＋ Tambah ruangan</button>{/if}
+	{#if data.user.role === 'PERAWAT'}<button class="button primary" aria-expanded={creating} onclick={() => { creating = !creating; editing = null; error = ''; }}><Plus size={16} aria-hidden="true"/> Tambah ruangan</button>{/if}
 </section>
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 {#if success}<p class="success" role="status">{success}</p>{/if}
@@ -64,7 +74,7 @@
 <section class="panel">
 	<div class="panel-header"><div><h2>Daftar ruangan</h2><span class="muted">{rooms.length} dari {data.rooms.length} ruangan</span></div></div>
 	<div class="filters">
-		<label class="field search-field">Cari ID atau nama ruangan<input bind:value={query} placeholder="Cari ruangan..." /></label>
+		<label class="field search-field">Cari ID atau nama ruangan<input type="search" bind:value={query} placeholder="Cari ruangan..." /></label>
 		<label class="field">Tipe<select bind:value={classFilter}><option value="">Semua tipe</option>{#each classes as type}<option value={type}>{type}</option>{/each}</select></label>
 		<label class="field">Status<select bind:value={statusFilter}><option value="">Semua status</option><option value="available">Available</option><option value="occupied">Occupied</option><option value="maintenance">Maintenance</option></select></label>
 	</div>
@@ -73,13 +83,14 @@
 			<tr>
 				<td><strong>{room.name}</strong><span class="cell-meta">{room.id} · {room.occupants}/{room.capacity} tempat terisi</span></td>
 				<td>{room.roomClass}</td><td>{room.picName ?? 'Belum ditentukan'}</td><td>Rp {Number(room.totalCost).toLocaleString('id-ID')}</td>
-				<td><span class="badge {room.status === 'maintenance' ? 'warning' : room.occupants > 0 ? 'info' : 'good'}">{room.status === 'maintenance' ? 'Maintenance' : room.occupants > 0 ? 'Occupied' : 'Available'}</span></td>
-				<td class="actions"><button class="button secondary small" aria-expanded={viewing===room.id} onclick={() => { viewing=viewing===room.id?null:room.id; editing=null; addingTo=null; creating=false; }}>Lihat</button>
-				{#if data.user.role === 'PERAWAT'}<button class="button secondary small" aria-expanded={editing === room.id} onclick={() => { editing=editing===room.id?null:room.id; viewing=null; creating=false; addingTo=null; error=''; }}>Ubah</button><button class="button secondary small" aria-expanded={addingTo === room.id} onclick={() => { addingTo=addingTo===room.id?null:room.id; viewing=null; editing=null; creating=false; error=''; }}>＋ Item</button>{/if}</td>
+				<td><span class="badge {room.status === 'maintenance' ? 'maintenance' : room.occupants > 0 ? 'occupied' : 'available'}">{room.status === 'maintenance' ? 'Maintenance' : room.occupants > 0 ? 'Occupied' : 'Available'}</span></td>
+				<td><div class="actions"><button class="button secondary small" aria-expanded={viewing===room.id} onclick={() => { viewing=viewing===room.id?null:room.id; editing=null; addingTo=null; creating=false; }}>Lihat</button>
+				{#if data.user.role === 'PERAWAT'}<button class="button secondary small" aria-expanded={editing === room.id} onclick={() => { editing=editing===room.id?null:room.id; viewing=null; creating=false; addingTo=null; error=''; }}>Ubah</button><button class="button secondary small" aria-expanded={addingTo === room.id} onclick={() => { addingTo=addingTo===room.id?null:room.id; viewing=null; editing=null; creating=false; error=''; }}><Plus size={14} aria-hidden="true"/> Item</button><button class="button danger small" disabled={busy || room.occupants>0} title={room.occupants>0?'Kosongkan penempatan aktif sebelum menghapus':''} onclick={() => void removeRoom(room)}>Hapus</button>{/if}</div></td>
 			</tr>
 			{#if viewing===room.id}<tr><td colspan="6"><div class="room-detail">
 				<div class="detail-grid"><div class="detail-item"><span>Tipe</span><strong>{room.roomClass}</strong></div><div class="detail-item"><span>Kapasitas</span><strong>{room.capacity} pasien</strong></div><div class="detail-item"><span>Tarif harian</span><strong>Rp {Number(room.dailyRate).toLocaleString('id-ID')}</strong></div><div class="detail-item"><span>Total biaya inventaris</span><strong>Rp {Number(room.totalCost).toLocaleString('id-ID')}</strong></div></div>
-				<h3>Perlengkapan dan fasilitas</h3>{#if room.items.length}<div class="item-list">{#each room.items as item}<span>{item.name} · {item.category} · {item.quantity} × Rp {Number(item.unitPrice).toLocaleString('id-ID')}</span>{/each}</div>{:else}<p class="muted">Belum ada item yang dicatat.</p>{/if}
+				<h3>Perlengkapan dan fasilitas</h3>{#if room.items.length}<div class="item-list">{#each room.items as item}<div class="room-item"><span>{item.name} · {item.category} · {item.quantity} × Rp {Number(item.unitPrice).toLocaleString('id-ID')}</span>{#if data.user.role==='PERAWAT'}<button class="text-link" onclick={()=>editingItem={roomId:room.id,item}}>Ubah</button><button class="text-link danger-link" onclick={()=>void removeItem(room,item)}>Hapus</button>{/if}</div>{/each}</div>{:else}<p class="muted">Belum ada item yang dicatat.</p>{/if}
+				{#if editingItem?.roomId===room.id}<form class="inline-edit" onsubmit={(event)=>{event.preventDefault();const f=new FormData(event.currentTarget);void submit(`/rooms/${room.id}/items/${editingItem!.item.id}`,'PATCH',{name:f.get('name'),category:f.get('category'),quantity:Number(f.get('quantity')),unitPrice:String(f.get('unitPrice')),expectedVersion:room.version});}}><label class="field">Nama<input name="name" required value={editingItem.item.name}/></label><label class="field">Kategori<input name="category" required value={editingItem.item.category}/></label><label class="field">Jumlah<input name="quantity" type="number" min="1" required value={editingItem.item.quantity}/></label><label class="field">Harga satuan<input name="unitPrice" type="number" min="0" step="0.01" required value={editingItem.item.unitPrice}/></label><div class="form-actions"><button class="button primary" disabled={busy}>Simpan item</button><button type="button" class="button secondary" onclick={()=>editingItem=null}>Batal</button></div></form>{/if}
 			</div></td></tr>{/if}
 			{#if editing === room.id}<tr><td colspan="6"><form class="inline-edit" onsubmit={(event) => { event.preventDefault(); const f=new FormData(event.currentTarget); void submit('/rooms/'+room.id,'PATCH',{name:f.get('name'),roomClass:f.get('roomClass'),capacity:Number(f.get('capacity')),status:f.get('status'),picId:f.get('picId') || null,dailyRate:f.get('dailyRate'),expectedVersion:room.version}); }}>
 				<label class="field">Nama<input name="name" required value={room.name} /></label><label class="field">Tipe<input name="roomClass" required value={room.roomClass} /></label>
@@ -99,6 +110,6 @@
 	</tbody></table></div>
 </section>
 <style>
-	.form-panel,.panel{margin-bottom:18px}.form-panel{padding:20px}.form-panel h2{margin:0 0 14px;font-size:16px}.form-grid,.inline-edit{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:14px}.inline-edit{padding:14px;background:#f7f8fc}.cell-meta{display:block;font-size:11px;color:#858b9b;margin-top:4px}.actions{display:flex;gap:6px;flex-wrap:wrap}.item-list{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;color:#626879;font-size:12px}.room-detail{padding:12px;background:#f7f8fc}.room-detail h3{font-size:13px;margin:14px 0 8px}.form-actions{display:flex;gap:8px;align-items:end}.search-field{min-width:200px;flex:1}
+	.form-panel h2{margin-bottom:20px}.form-grid,.inline-edit{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:18px}.inline-edit{padding:16px 0}.cell-meta{display:block;font-size:12px;color:var(--muted);margin-top:4px}.actions{display:flex;gap:8px;flex-wrap:wrap}.item-list{grid-column:1/-1;display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:13px}.room-detail{padding:16px 0}.room-detail h3{font-size:15px;margin:24px 0 12px}.form-actions{grid-column:1/-1}.search-field{min-width:200px;flex:2}
 	@media(max-width:900px){.form-grid,.inline-edit{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.form-grid,.inline-edit{grid-template-columns:1fr}.page-heading{align-items:flex-start}.actions{flex-direction:column}}
 </style>

@@ -6,7 +6,7 @@ export const load: LayoutServerLoad = async ({ fetch, depends, url }) => {
  depends('app:session');
  try {
   const { user } = await loadApi<{user:User}>(fetch, '/session');
-  const restricted = (url.pathname.startsWith('/tasks') && user.role !== 'PERAWAT') || (url.pathname.startsWith('/medical-records') && user.role === 'ADMISI') || (url.pathname.startsWith('/invoices') && user.role !== 'ADMISI');
+  const restricted = (url.pathname.startsWith('/tasks') && user.role !== 'PERAWAT') || (url.pathname.startsWith('/invoices') && user.role !== 'ADMISI');
   if (restricted) error(403, 'Halaman ini tidak tersedia untuk peran akun Anda.');
   const reference = await loadApi<Reference>(fetch, '/reference');
   return { user, reference };

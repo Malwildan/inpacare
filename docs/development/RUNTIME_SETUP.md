@@ -1,6 +1,6 @@
 # Local runtime setup
 
-This Windows development setup keeps Rust, PostgreSQL, database files and connection details in the ignored `.local/` directory. It does not install system services or bind PostgreSQL outside loopback.
+The Windows setup keeps PostgreSQL binaries, database files, connection details, logs, and credentials in the ignored `.local/` directory. It does not install a Windows service or bind PostgreSQL outside loopback. Node.js 24.18+ is installed separately and is the only application runtime.
 
 ## Install and start
 
@@ -9,17 +9,30 @@ Run PowerShell from the project root:
 ```powershell
 ./scripts/setup-runtime.ps1
 ./scripts/database.ps1 -Action Start
+npm ci
+npm run build:api
+npm run build
+$env:DATABASE_URL = (Get-Content .local/database-url.txt -Raw).Trim()
+npm run migration:run --workspace @inpacare/api
 ```
 
-The installer uses rustup's minimal stable `x86_64-pc-windows-gnu` toolchain, [EDB's PostgreSQL 17.11 Windows binary archive](https://www.enterprisedb.com/download-postgresql-binaries), and hash-verified [MSYS2 MinGW-w64 binutils packages](https://packages.msys2.org/packages/mingw-w64-x86_64-binutils). It downloads each archive once into `.local/downloads/`, then installs/unpacks it under `.local/`. Rust and Cargo are available through `.local/cargo/bin`; `dlltool.exe` and its runtime libraries live in `.local/mingw/mingw64/bin`. The app's runner should set `RUSTUP_HOME` and `CARGO_HOME` to the project-local folders and prepend both `.local/cargo/bin` and `.local/mingw/mingw64/bin` to `PATH` before invoking Cargo.
-
-The first database start creates the cluster and an `inpacare` database and role. The API connection URL is written to `.local/database-url.txt`:
+The setup downloads [EDB's PostgreSQL 17 Windows binary archive](https://www.enterprisedb.com/download-postgresql-binaries) into `.local/downloads/` and extracts the required database tools under `.local/postgresql/`. `database.ps1` creates its own cluster, database, and role on first use; the API URL is `.local/database-url.txt`:
 
 ```text
 postgres://inpacare:inpacare@127.0.0.1:55432/inpacare
 ```
 
-This fixed password is for the synthetic local demo only. PostgreSQL listens on `127.0.0.1:55432`; the generated local superuser password is held in `.local/postgres-superuser-password.txt` and is not used by the app.
+This fixed password is for synthetic local development only. PostgreSQL listens on `127.0.0.1:55432`; the generated local superuser password is held in `.local/postgres-superuser-password.txt` and is not used by the app.
+
+To create demo accounts and fixtures, seed explicitly after the migration. The seed only accepts an empty users table:
+
+```powershell
+$env:SEED_DEMO_PASSWORD = 'choose-a-demo-only-password'
+npm run seed --workspace @inpacare/api
+Remove-Item Env:SEED_DEMO_PASSWORD
+```
+
+Then run `./scripts/start.ps1 -SkipBuild`. Application start never migrates or seeds the database.
 
 ## Manage the local database
 
@@ -29,8 +42,8 @@ This fixed password is for the synthetic local demo only. PostgreSQL listens on 
 ./scripts/database.ps1 -Action Start
 ```
 
-`Stop` targets the cluster in `.local/postgres-data` and will not stop any other PostgreSQL instance. To reset a demo dataset, stop the server and remove only `.local/postgres-data`; the next start creates a fresh cluster. Never put real patient or production credentials in this local demo.
+`Stop` targets only the cluster in `.local/postgres-data`; it will not stop another PostgreSQL instance. Use `./scripts/test-api.ps1` to run API workflows against a separate disposable database that the helper removes afterward.
 
 ## Limits
 
-The helper uses the isolated GNU target so the app can build without a machine-wide Visual Studio C++ toolchain. If a future dependency requires an external C compiler or native system library, install a project-local MinGW toolchain or use the documented MSVC setup before adding it. This runtime is for local development and coursework review, not hospital deployment.
+The PostgreSQL runtime and synthetic data are for local development and coursework review, not hospital deployment. Never put real patient or production credentials in this local demo.

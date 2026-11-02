@@ -26,15 +26,15 @@ services:
     environment:
       DATABASE_URL: postgresql://inpacare:${POSTGRES_PASSWORD:?Run scripts/host.sh to create .env.local first}@db:5432/inpacare
       API_BIND: 0.0.0.0:8080
-      SEED_DEMO: "1"
-      RUST_LOG: inpacare_api=info,tower_http=info
+      TRUST_PROXY: uniquelocal
+      TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-http://127.0.0.1:8088,http://localhost:8088}
     depends_on:
       db:
         condition: service_healthy
     networks:
       - app
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8080/health"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
       timeout: 3s
       retries: 10
@@ -51,6 +51,8 @@ services:
       PORT: "3000"
       HOST_HEADER: x-forwarded-host
       PROTOCOL_HEADER: x-forwarded-proto
+      ADDRESS_HEADER: x-forwarded-for
+      XFF_DEPTH: "1"
     depends_on:
       api:
         condition: service_healthy

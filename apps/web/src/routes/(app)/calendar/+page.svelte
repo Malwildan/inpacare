@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { invalidateAll, goto } from '$app/navigation';
 	import { api } from '$lib/api';
+	import { Plus, ChevronLeft, ChevronRight } from 'lucide-svelte';
 
 	let { data } = $props();
 	let roomFilter = $state('');
 	let placing = $state(false);
+	let editingPlacement = $state<any>(null);
 	let busy = $state(false);
 	let error = $state('');
 	let success = $state('');
@@ -38,12 +40,15 @@
 		} catch(e) { error=e instanceof Error?e.message:'Penempatan gagal disimpan.'; }
 		finally { busy=false; }
 	}
+	async function mutatePlacement(path:string,method:string,payload:object){busy=true;error='';success='';try{await api(path,{method,body:JSON.stringify(payload)});await invalidateAll();editingPlacement=null;success='Perubahan penempatan berhasil disimpan.';}catch(e){error=e instanceof Error?e.message:'Perubahan penempatan gagal.';}finally{busy=false;}}
+	async function cancelPlacement(p:any){if(!confirm(`Batalkan penempatan ${p.patientName} di ${p.roomName}?`))return;await mutatePlacement(`/placements/${p.id}`,'DELETE',{expectedVersion:p.version});}
+	async function reschedule(event:SubmitEvent,p:any){event.preventDefault();const f=new FormData(event.currentTarget as HTMLFormElement);await mutatePlacement(`/placements/${p.id}`,'PATCH',{patientId:p.patientId,roomId:p.roomId,startsOn:f.get('startsOn'),endsOn:f.get('endsOn'),expectedVersion:p.version});}
 </script>
 
 <svelte:head><title>Kalender Ruangan | InpaCare</title></svelte:head>
 <section class="page-heading">
 	<div><h1 class="page-title">Kalender Ruangan</h1><p class="page-subtitle">Pantau ketersediaan dan durasi rawat inap setiap pasien.</p></div>
-	{#if data.user.role === 'PERAWAT'}<button class="button primary" onclick={() => { placing=!placing; error=''; }}>＋ Tempatkan pasien</button>{/if}
+	{#if data.user.role === 'PERAWAT'}<button class="button primary" aria-expanded={placing} onclick={() => { placing=!placing; error=''; }}><Plus size={16} aria-hidden="true"/> Tempatkan pasien</button>{/if}
 </section>
 {#if error}<p class="error" role="alert">{error}</p>{/if}{#if success}<p class="success" role="status">{success}</p>{/if}
 {#if placing && data.user.role === 'PERAWAT'}<section class="panel form-panel"><h2>Penempatan pasien</h2><p class="muted">Tanggal masuk dan keluar dihitung inklusif. Konflik kapasitas diperiksa saat disimpan.</p>
@@ -59,11 +64,10 @@
 	<div class="filters">
 		<label class="field room-filter">Filter jadwal ruangan<select bind:value={roomFilter}><option value="">Semua ruangan</option>{#each data.rooms as room}<option value={room.id}>{room.name}</option>{/each}</select></label>
 		<div class="week-navigation" aria-label="Navigasi kalender">
-			<button class="button secondary small" aria-label="Minggu sebelumnya" onclick={() => void moveWeek(-1)}>‹</button>
+			<button class="icon-button" aria-label="Minggu sebelumnya" onclick={() => void moveWeek(-1)}><ChevronLeft size={18} aria-hidden="true"/></button>
 			<strong>{titleDate(dates[0])} – {titleDate(dates[6])} {dates[6].getUTCFullYear()}</strong>
 			<button class="button secondary small" onclick={() => void goto('/calendar')}>Hari ini</button>
-			<button class="button secondary small" aria-label="Minggu berikutnya" onclick={() => void moveWeek(1)}>›</button>
-			<span class="view-pill">Minggu</span><span class="view-link" title="Tampilan bulan tersedia pada iterasi berikutnya">Bulan</span>
+			<button class="icon-button" aria-label="Minggu berikutnya" onclick={() => void moveWeek(1)}><ChevronRight size={18} aria-hidden="true"/></button>
 		</div>
 	</div>
 	<div class="table-wrap calendar-wrap"><table class="calendar">
@@ -76,7 +80,7 @@
 					{:else if dayPlacements(room.id,day).length===0}<span class="free">Tersedia</span>
 					{:else}<div class="day-bookings">{#each dayPlacements(room.id,day) as p (p.id)}
 						<div class="booking" class:start={p.startsOn===iso(day)} class:end={p.endsOn===iso(day)} title={p.patientName+' · '+p.startsOn+' – '+p.endsOn}>
-							{#if p.startsOn===iso(day) || day.getUTCDay()===1}<strong>{p.patientName}</strong>{/if}
+							<strong>{p.patientName}</strong>
 							{#if p.startsOn===iso(day) || p.endsOn===iso(day)}<small>{titleDate(new Date(p.startsOn+'T00:00:00Z'))} – {titleDate(new Date(p.endsOn+'T00:00:00Z'))}</small>{/if}
 						</div>
 					{/each}</div>{/if}
@@ -87,8 +91,39 @@
 	<div class="legend"><span><i class="dot available-dot"></i>Tersedia</span><span><i class="dot occupied-dot"></i>Occupied</span><span><i class="dot maintenance-dot"></i>Maintenance</span></div>
 	<p class="footnote">Rentang tanggal bersifat inklusif. Penempatan baru divalidasi kembali terhadap kapasitas dan jadwal pasien ketika disimpan.</p>
 </section>
+{#if data.user?.role==='PERAWAT'}<section class="panel placement-list"><div class="panel-header"><div><h2>Kelola penempatan</h2><p class="muted">Jadwal aktif dapat diubah atau dibatalkan. Pembatalan ditolak bila masih memiliki dependensi.</p></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Pasien</th><th>Ruangan</th><th>Periode</th><th>Aksi</th></tr></thead><tbody>{#each data.placements as placement (placement.id)}<tr><td><strong>{placement.patientName}</strong><span class="cell-meta">{placement.medicalRecordNo}</span></td><td>{placement.roomName}</td><td>{placement.startsOn} – {placement.endsOn}</td><td><div class="actions"><button class="button secondary small" aria-expanded={editingPlacement?.id===placement.id} onclick={()=>editingPlacement=editingPlacement?.id===placement.id?null:placement}>Ubah tanggal</button><button class="button danger small" disabled={busy||placement.status!=='active'} onclick={()=>void cancelPlacement(placement)}>Batalkan</button></div></td></tr>{#if editingPlacement?.id===placement.id}<tr><td colspan="4"><form class="form-grid" onsubmit={(event)=>reschedule(event,placement)}><label class="field">Pasien<input value={placement.patientName} disabled/></label><label class="field">Ruangan<input value={placement.roomName} disabled/></label><label class="field">Tanggal masuk<input name="startsOn" type="date" value={placement.startsOn} required/></label><label class="field">Tanggal keluar<input name="endsOn" type="date" value={placement.endsOn} required/></label><div class="form-actions"><button class="button primary" disabled={busy}>Simpan jadwal</button><button class="button secondary" type="button" onclick={()=>editingPlacement=null}>Batal</button></div></form></td></tr>{/if}{:else}<tr><td colspan="4" class="empty">Tidak ada penempatan di rentang minggu ini.</td></tr>{/each}</tbody></table></div></section>{/if}
 <style>
-	.panel{margin-bottom:18px}.form-panel{padding:20px}.form-panel h2{font-size:16px;margin:0 0 4px}.form-panel p{margin:0 0 14px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:14px}.form-actions{display:flex;align-items:end;gap:8px}.filters{display:flex;align-items:end;justify-content:space-between;gap:14px}.room-filter{min-width:200px}.week-navigation{display:flex;align-items:center;gap:9px}.week-navigation strong{font-size:14px;white-space:nowrap}.view-pill{border-radius:5px;background:#4e61f6;color:white;padding:6px 12px;font-size:12px}.view-link{color:#4e61f6;font-size:12px}
-	.calendar{width:100%;border-collapse:separate;border-spacing:0;min-width:1000px;table-layout:fixed}.calendar th,.calendar td{border-bottom:1px solid #edf0f5;border-right:1px solid #edf0f5;text-align:left;vertical-align:top;padding:6px}.calendar thead th{height:54px;background:#fbfcfe;font-size:11px;color:#6f7584}.calendar thead th span,.calendar thead th strong{display:block}.calendar thead th strong{font-size:12px;color:#252a37;margin-top:3px}.calendar .room-head,.calendar .room-name{width:156px}.calendar .room-name{background:#fff}.room-name strong,.room-name span{display:block}.room-name strong{font-size:11px}.room-name span{margin-top:4px;color:#8a90a0;font-size:10px;font-weight:400}.calendar td{height:74px;background:#fff}.calendar .today{background:#f0f2ff}.free{color:#2b8650;font-size:10px}.room-unavailable{color:#898d99;font-size:10px}.day-bookings{display:flex;flex-direction:column;gap:3px}.booking{padding:4px 5px;border-radius:5px;background:#eceeff;color:#3344ad;min-height:24px;overflow:hidden;font-size:10px}.booking.start{border-left:2px solid #4e61f6}.booking.end{border-right:2px solid #4e61f6}.booking strong,.booking small{display:block;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.booking small{font-size:9px;opacity:.8}.legend{display:flex;gap:15px;margin:14px 5px 8px;font-size:11px;color:#676d7c}.legend span{display:flex;align-items:center;gap:6px}.dot{width:9px;height:9px;border-radius:50%;background:#eee}.available-dot{background:#5eae79}.occupied-dot{background:#6b78ef}.maintenance-dot{background:#a4a7b0}.footnote{margin:8px 5px 2px;color:#838999;font-size:10px}.calendar-wrap{overflow-x:auto}
-	@media(max-width:740px){.filters{align-items:stretch;flex-direction:column}.week-navigation{justify-content:space-between}.form-grid{grid-template-columns:1fr}.page-heading{align-items:flex-start}}
+	.form-panel h2{margin-bottom:8px}
+	.form-panel p{margin-bottom:20px;font-size:13px}
+	.filters{justify-content:space-between;gap:20px}
+	.room-filter{min-width:180px;max-width:300px}
+	.actions{display:flex;gap:8px;flex-wrap:wrap}.cell-meta{display:block;color:var(--muted);font-size:12px;margin-top:4px}.placement-list{margin-top:24px}
+	.week-navigation{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+	.week-navigation strong{font-size:14px;white-space:nowrap}
+	.calendar{width:100%;border-collapse:separate;border-spacing:0;min-width:1120px;table-layout:fixed}
+	.calendar th,.calendar td{border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-align:left;vertical-align:top;padding:12px 10px}
+	.calendar thead th{background:var(--background);font-size:12px;font-weight:500;color:var(--muted)}
+	.calendar thead th span,.calendar thead th strong{display:block}
+	.calendar thead th strong{font-size:14px;color:var(--text);margin-top:4px}
+	.calendar .room-head,.calendar .room-name{width:176px;position:sticky;left:0;z-index:1}
+	.calendar .room-name{background:var(--surface)}
+	.room-name strong,.room-name span{display:block}
+	.room-name strong{font-size:13px;font-weight:600}
+	.room-name span{margin-top:6px;color:var(--muted);font-size:12px;font-weight:400}
+	.calendar td{height:96px;background:var(--surface)}
+	.calendar .today{background:var(--primary-soft)}
+	.free{color:#28643f;font-size:12px}
+	.room-unavailable{color:var(--muted);font-size:12px}
+	.day-bookings{display:flex;flex-direction:column;gap:6px}
+	.booking{padding:8px;border:1px solid transparent;border-radius:6px;background:var(--primary-soft);color:var(--primary);min-height:34px;overflow:hidden;font-size:12px}
+	.booking.start,.booking.end{border-color:var(--border)}
+	.booking strong,.booking small{display:block;overflow-wrap:anywhere}
+	.booking small{font-size:12px;margin-top:4px}
+	.legend{display:flex;flex-wrap:wrap;gap:20px;margin:20px 0 12px;font-size:12px;color:var(--muted)}
+	.legend span{display:flex;align-items:center;gap:8px}
+	.dot{width:8px;height:8px;border-radius:50%}
+	.available-dot{background:#3c8154}.occupied-dot{background:var(--primary)}.maintenance-dot{background:var(--muted)}
+	.footnote{font-size:12px;max-width:80ch}
+	@media(max-width:1000px){.filters{align-items:stretch;flex-direction:column}.room-filter{max-width:none}}
+	@media(max-width:600px){.week-navigation{gap:4px}.week-navigation strong{font-size:13px}.room-filter{min-width:0}}
 </style>

@@ -1,8 +1,9 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
-const proxy: RequestHandler = async ({ request, url, params }) => {
+const proxy: RequestHandler = async ({ request, url, params, getClientAddress }) => {
  const headers = new Headers(request.headers);
  headers.delete('host'); headers.delete('connection'); headers.delete('content-length');
+ headers.set('x-forwarded-for', getClientAddress());
  headers.set('x-forwarded-host', url.host); headers.set('x-forwarded-proto', url.protocol.slice(0,-1));
  try {
   const upstream = await fetch(`${env.API_ORIGIN ?? 'http://127.0.0.1:8080'}/api/v1/${params.path}${url.search}`, {

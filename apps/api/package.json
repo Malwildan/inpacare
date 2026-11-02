@@ -1,0 +1,42 @@
+{
+  "name": "@inpacare/api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node --watch -r ts-node/register src/main.ts",
+    "check": "tsc --noEmit",
+    "build": "tsc && node scripts/copy-assets.cjs",
+    "start": "node dist/main.js",
+    "test": "node --test test/*.test.cjs",
+    "migration:run": "node dist/database/cli.js migrate",
+    "migration:adopt": "node dist/database/cli.js adopt",
+    "seed": "node dist/database/cli.js seed",
+    "test:integration": "node --test test/*.integration.cjs"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.3.2",
+    "@nestjs/core": "12.3.2",
+    "@nestjs/platform-express": "12.3.2",
+    "@nestjs/typeorm": "12.0.2",
+    "argon2": "^0.44.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "decimal.js": "^10.6.0",
+    "pg": "^8.16.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "typeorm": "1.1.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.10.0",
+    "@types/pg": "^8.15.5",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.9.3"
+  },
+  "engines": {
+    "node": ">=24.11.0"
+  }
+}

@@ -123,7 +123,8 @@ export interface paths {
         get: operations["GET_rooms_id"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Soft-delete an unused room */
+        delete: operations["DELETE_rooms_id"];
         options?: never;
         head?: never;
         /** Update room */
@@ -296,7 +297,8 @@ export interface paths {
         get: operations["GET_medical_records_id"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Soft-delete a medical record */
+        delete: operations["DELETE_medical_records_id"];
         options?: never;
         head?: never;
         /** Update authored record */
@@ -352,7 +354,8 @@ export interface paths {
         get: operations["GET_cycles_id"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Soft-delete a cycle */
+        delete: operations["DELETE_cycles_id"];
         options?: never;
         head?: never;
         /** Progress cycle */
@@ -373,23 +376,6 @@ export interface paths {
          * @description Assigned nurse, status in_care or extend; one pending request.
          */
         post: operations["POST_cycles_id_requests"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/cycles/{id}/requests/{request_id}/decision": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Doctor decision */
-        post: operations["POST_cycles_id_requests_request_id_decision"];
         delete?: never;
         options?: never;
         head?: never;
@@ -462,11 +448,185 @@ export interface paths {
         get: operations["GET_invoices_id"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Soft-delete an unpaid invoice */
+        delete: operations["DELETE_invoices_id"];
         options?: never;
         head?: never;
         /** Update payment status */
         patch: operations["PATCH_invoices_id"];
+        trace?: never;
+    };
+    "/api/v1/rooms/{id}/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Soft-delete a room item */
+        delete: operations["DELETE_rooms_id_items_itemId"];
+        options?: never;
+        head?: never;
+        /** Update a room item */
+        patch: operations["PATCH_rooms_id_items_itemId"];
+        trace?: never;
+    };
+    "/api/v1/placements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancel a placement without active tasks or cycles */
+        delete: operations["DELETE_placements_id"];
+        options?: never;
+        head?: never;
+        /** Reschedule or move a placement */
+        patch: operations["PATCH_placements_id"];
+        trace?: never;
+    };
+    "/api/v1/medical-records/{id}/observations/{observationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Correct an observation and its vital signs */
+        patch: operations["PATCH_medical_records_id_observations_observationId"];
+        trace?: never;
+    };
+    "/api/v1/cycles/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List cycles for the dashboard */
+        get: operations["GET_cycles_dashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cycles/{id}/requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a cycle request */
+        get: operations["GET_cycles_id_requests_requestId"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invoices/patients/{patientId}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read patient and invoice context */
+        get: operations["GET_invoices_patients_patientId_context"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invoices/{id}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an invoice line */
+        delete: operations["DELETE_invoices_id_lines_lineId"];
+        options?: never;
+        head?: never;
+        /** Edit an invoice line */
+        patch: operations["PATCH_invoices_id_lines_lineId"];
+        trace?: never;
+    };
+    "/api/v1/invoices/{id}/claim-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record claim verification */
+        post: operations["POST_invoices_id_claim_verification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check API and database availability */
+        get: operations["GET_health"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cycles/{id}/requests/{requestId}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Doctor decision */
+        post: operations["POST_cycles_id_requests_request_id_decision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -525,7 +685,8 @@ export interface components {
             name: string;
             roomClass: string;
             capacity: number;
-            status: string;
+            /** @enum {string} */
+            status: "available" | "maintenance";
             picId: string | null;
             picName: string | null;
             /** @description Decimal string */
@@ -542,6 +703,8 @@ export interface components {
             patientName: string;
             roomId: string;
             roomName: string;
+            roomClass?: string;
+            medicalRecordNo?: string;
             /** Format: date */
             startsOn: string;
             /** Format: date */
@@ -609,6 +772,8 @@ export interface components {
             /** Format: date-time */
             endsAt: string;
             version: number;
+            createdById: string;
+            createdByName: string;
         };
         TaskHistory: {
             id: string;
@@ -659,7 +824,10 @@ export interface components {
             nursingNote: string;
             /** Format: date-time */
             observedAt: string;
+            version: number;
             temperature: number | null;
+            systolic: number | null;
+            diastolic: number | null;
             bloodPressure: string | null;
             pulse: number | null;
             respiratoryRate: number | null;
@@ -687,7 +855,9 @@ export interface components {
         };
         CycleRequest: {
             id: string;
-            kind: string;
+            cycleId: string;
+            /** @enum {string} */
+            kind: "extend" | "release";
             /** Format: date */
             requestedEnd: string | null;
             reason: string;
@@ -697,6 +867,7 @@ export interface components {
             note: string | null;
             /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
             decidedAt: string | null;
         };
         Cycle: {
@@ -714,7 +885,9 @@ export interface components {
             version: number;
             /** Format: date-time */
             createdAt: string;
-            requests: components["schemas"]["CycleRequest"][];
+            requests: components["schemas"]["NestedCycleRequest"][];
+            roomId?: string | null;
+            pendingApproval?: boolean;
         };
         InvoiceLine: {
             id: string;
@@ -724,6 +897,9 @@ export interface components {
             unitPrice: string;
             /** @description Decimal string */
             lineTotal: string;
+            roomItemId: string | null;
+            /** @description Legacy invoice lines may have no recorded kind. */
+            kind: string | null;
         };
         Invoice: {
             id: string;
@@ -743,6 +919,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             lineCount: number;
+            claimVerified: boolean;
+            claimResult: string | null;
         };
         InvoiceDetail: {
             id: string;
@@ -776,6 +954,8 @@ export interface components {
                 /** Format: date-time */
                 createdAt: string;
             }[];
+            claimVerified: boolean;
+            claimResult: string | null;
         };
         Notification: {
             id: string;
@@ -800,18 +980,20 @@ export interface components {
             name: string;
             roomClass: string;
             capacity: number;
-            status?: string;
+            /** @enum {string} */
+            status?: "available" | "maintenance";
             picId?: string | null;
-            /** @description Decimal string */
+            /** @description Nonnegative decimal with at most two fractional digits. */
             dailyRate?: string;
         };
         EditRoom: {
             name: string;
             roomClass: string;
             capacity: number;
-            status: string;
-            picId: string | null;
-            /** @description Decimal string */
+            /** @enum {string} */
+            status: "available" | "maintenance";
+            picId?: string | null;
+            /** @description Nonnegative decimal with at most two fractional digits. */
             dailyRate: string;
             expectedVersion: number;
         };
@@ -819,7 +1001,7 @@ export interface components {
             name: string;
             category: string;
             quantity: number;
-            /** @description Decimal string */
+            /** @description Nonnegative decimal with at most two fractional digits. */
             unitPrice: string;
         };
         NewPlacement: {
@@ -837,7 +1019,8 @@ export interface components {
             title: string;
             description?: string;
             notes?: string;
-            priority: string;
+            /** @enum {string} */
+            priority: "low" | "normal" | "high";
             /** Format: date-time */
             startsAt: string;
             /** Format: date-time */
@@ -845,8 +1028,17 @@ export interface components {
         };
         UpdateTask: {
             expectedVersion: number;
-            status?: string;
+            title?: string;
+            description?: string;
             notes?: string;
+            /** @enum {string} */
+            priority?: "low" | "normal" | "high";
+            /** Format: date-time */
+            startsAt?: string;
+            /** Format: date-time */
+            endsAt?: string;
+            /** @enum {string} */
+            status?: "todo" | "in_progress" | "done" | "cancelled";
             reason?: string;
         };
         ReasonBody: {
@@ -875,18 +1067,19 @@ export interface components {
             notes?: string;
             /** Format: date */
             recordDate: string;
+            reason: string;
         };
         NewObservation: {
             symptoms: string;
             nursingNote?: string;
             /** Format: date-time */
             observedAt: string;
-            temperature?: number | null;
+            temperature?: number;
             systolic?: number;
             diastolic?: number;
             pulse?: number;
             respiratoryRate?: number;
-            spo2?: number | null;
+            spo2?: number;
         };
         NewCycle: {
             patientId: string;
@@ -894,7 +1087,9 @@ export interface components {
             placementId?: string | null;
         };
         ChangeCycleStatus: {
-            status: string;
+            /** @enum {string} */
+            status?: "pending" | "assigned" | "in_care" | "extend" | "released";
+            placementId?: string | null;
             expectedVersion: number;
         };
         NewCycleRequest: {
@@ -909,6 +1104,8 @@ export interface components {
             expectedVersion: number;
         };
         NewInvoiceLine: {
+            roomItemId?: string | null;
+            kind?: string;
             description: string;
             quantity: number;
             /** @description Decimal string */
@@ -938,7 +1135,7 @@ export interface components {
             total: number;
         };
         PlacementPage: {
-            items: components["schemas"]["Placement"][];
+            items: components["schemas"]["OccupancyPlacement"][];
             /** Format: date */
             from: string;
             /** Format: date */
@@ -986,6 +1183,7 @@ export interface components {
             ok: boolean;
             status: string;
             version: number;
+            placementId: string | null;
         };
         InvoiceCreated: {
             id: string;
@@ -1046,6 +1244,229 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             requests: components["schemas"]["CycleRequestSummary"][];
+            roomId?: string | null;
+            pendingApproval?: boolean;
+            doctorId?: string;
+            nurseId?: string;
+        };
+        UpdateRoomItem: {
+            name: string;
+            category: string;
+            quantity: number;
+            /** @description Nonnegative decimal with at most two fractional digits. */
+            unitPrice: string;
+            expectedVersion: number;
+        };
+        ExpectedVersion: {
+            expectedVersion: number;
+        };
+        UpdatePlacement: {
+            patientId: string;
+            roomId: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            expectedVersion: number;
+        };
+        PlacementMutationResult: {
+            id: string;
+            patientId: string;
+            roomId: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            /** @enum {string} */
+            status: "active";
+            version: number;
+        };
+        PlacementCancelledResult: {
+            id: string;
+            /** @enum {string} */
+            status: "cancelled";
+            version: number;
+        };
+        OccupancyPlacement: {
+            id: string;
+            patientId: string;
+            patientName: string;
+            medicalRecordNo: string;
+            roomId: string;
+            roomName: string;
+            roomClass: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            /** @enum {string} */
+            status: "active";
+            version: number;
+        };
+        UpdateObservation: {
+            symptoms: string;
+            nursingNote?: string;
+            /** Format: date-time */
+            observedAt: string;
+            temperature?: number;
+            systolic?: number;
+            diastolic?: number;
+            pulse?: number;
+            respiratoryRate?: number;
+            spo2?: number;
+            expectedVersion: number;
+            reason: string;
+        };
+        MedicalRecordDeleted: {
+            id: string;
+            /** @constant */
+            deleted: true;
+            version: number;
+        };
+        MedicalRecordAdmisiProjection: {
+            id: string;
+            patientId: string;
+            doctorId: string;
+            /** Format: date */
+            recordDate: string;
+        };
+        MedicalRecordDetail: components["schemas"]["MedicalRecord"] | components["schemas"]["MedicalRecordAdmisiProjection"];
+        DeleteCycleResult: {
+            id: string;
+            /** @constant */
+            deleted: true;
+            version: number;
+        };
+        EditInvoiceLine: {
+            roomItemId?: string | null;
+            kind?: string;
+            description: string;
+            quantity: number;
+            /** @description Decimal string */
+            unitPrice: string;
+            expectedVersion: number;
+            reason: string;
+        };
+        DeleteInvoiceLine: components["schemas"]["ReasonBody"];
+        ClaimVerification: {
+            expectedVersion: number;
+            reason: string;
+            verified: boolean;
+            result: string;
+        };
+        PaymentResult: {
+            /** @enum {string} */
+            status: "paid" | "unpaid";
+            version: number;
+            /** @description Decimal string */
+            totalAmount: string;
+            /** @description Decimal string */
+            coveredAmount: string;
+            /** @description Decimal string */
+            payableAmount: string;
+        };
+        InvoiceLineMutation: {
+            ok: boolean;
+            version: number;
+            line: {
+                id: string;
+                roomItemId: string | null;
+                kind: string;
+                description: string;
+                quantity: number;
+                /** @description Decimal string */
+                unitPrice: string;
+                /** @description Decimal string */
+                lineTotal: string;
+            };
+            /** @description Decimal string */
+            totalAmount: string;
+            /** @description Decimal string */
+            coveredAmount: string;
+            /** @description Decimal string */
+            payableAmount: string;
+        };
+        InvoiceLineDeleted: {
+            ok: boolean;
+            version: number;
+            deletedLineId: string;
+            /** @description Decimal string */
+            totalAmount: string;
+            /** @description Decimal string */
+            coveredAmount: string;
+            /** @description Decimal string */
+            payableAmount: string;
+        };
+        ClaimVerificationResult: {
+            claimVerified: boolean;
+            version: number;
+            claimResult: string;
+        };
+        InvoiceDeleted: {
+            id: string;
+            /** @constant */
+            deleted: true;
+            version: number;
+        };
+        InvoicePatientContext: {
+            patient: {
+                id: string;
+                name: string;
+                medicalRecordNo: string;
+                bpjs: boolean;
+                bpjsNumber: string | null;
+            };
+            placements: {
+                id: string;
+                roomId: string;
+                room: string;
+                /** Format: date */
+                startsOn: string;
+                /** Format: date */
+                endsOn: string;
+                status: string;
+            }[];
+            invoices: {
+                id: string;
+                status: string;
+                /** @description Decimal string */
+                totalAmount: string;
+                /** @description Decimal string */
+                payableAmount: string;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+        };
+        DeleteCycle: {
+            expectedVersion: number;
+            reason: string;
+        };
+        NestedCycleRequest: {
+            id: string;
+            /** @enum {string} */
+            kind: "extend" | "release";
+            /** Format: date */
+            requestedEnd: string | null;
+            reason: string;
+            requestedBy: string;
+            status: string;
+            decidedBy: string | null;
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+        };
+        AdmissionMedicalRecord: {
+            id: string;
+            patientId: string;
+            doctorId: string;
+            /** Format: date */
+            recordDate: string;
+        };
+        AdmissionMedicalPage: {
+            items: components["schemas"]["AdmissionMedicalRecord"][];
+            total: number;
         };
     };
     responses: never;
@@ -1152,6 +1573,8 @@ export interface operations {
             /** @description Success. */
             200: {
                 headers: {
+                    /** @description HttpOnly session cookie; Secure in production; SameSite=Lax. */
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1206,7 +1629,10 @@ export interface operations {
     DELETE_session: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -1215,6 +1641,8 @@ export interface operations {
             /** @description Success. */
             204: {
                 headers: {
+                    /** @description Clears the session cookie. */
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content?: never;
@@ -1807,6 +2235,89 @@ export interface operations {
             };
         };
     };
+    DELETE_rooms_id: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpectedVersion"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deleted"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     PATCH_rooms_id: {
         parameters: {
             query?: never;
@@ -2139,7 +2650,13 @@ export interface operations {
                 status?: "todo" | "in_progress" | "done" | "cancelled";
                 priority?: "low" | "normal" | "high";
                 roomId?: string;
+                patientId?: string;
+                picId?: string;
+                from?: string;
+                to?: string;
+                /** @description Clamped to 100. */
                 limit?: number;
+                /** @description Clamped to 100000. */
                 offset?: number;
             };
             header?: never;
@@ -2700,6 +3217,7 @@ export interface operations {
             query?: {
                 search?: string;
                 limit?: number;
+                patientId?: string;
             };
             header?: never;
             path?: never;
@@ -2713,7 +3231,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MedicalSummaryPage"];
+                    "application/json": components["schemas"]["MedicalSummaryPage"] | components["schemas"]["AdmissionMedicalPage"];
                 };
             };
             /** @description Unauthenticated. */
@@ -2870,7 +3388,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MedicalRecord"];
+                    "application/json": components["schemas"]["MedicalRecordDetail"];
                 };
             };
             /** @description Unauthenticated. */
@@ -2883,6 +3401,89 @@ export interface operations {
                 };
             };
             /** @description Forbidden. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    DELETE_medical_records_id: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonBody"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicalRecordDeleted"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3097,7 +3698,12 @@ export interface operations {
     };
     GET_cycles: {
         parameters: {
-            query?: never;
+            query?: {
+                patientId?: string;
+                roomId?: string;
+                status?: "pending" | "assigned" | "in_care" | "extend" | "released" | "pending_approval";
+                search?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3326,6 +3932,89 @@ export interface operations {
             };
         };
     };
+    DELETE_cycles_id: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteCycle"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteCycleResult"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     PATCH_cycles_id: {
         parameters: {
             query?: never;
@@ -3434,90 +4123,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CycleRequestCreated"];
-                };
-            };
-            /** @description Unauthenticated. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Forbidden. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not found. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Conflict. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation error. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Unexpected error. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    POST_cycles_id_requests_request_id_decision: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Must match the application origin. */
-                Origin: components["parameters"]["Origin"];
-            };
-            path: {
-                id: string;
-                request_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DecideCycleRequest"];
-            };
-        };
-        responses: {
-            /** @description Success. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["VersionedResult"];
                 };
             };
             /** @description Unauthenticated. */
@@ -3733,7 +4338,8 @@ export interface operations {
         parameters: {
             query?: {
                 search?: string;
-                status?: "unpaid" | "paid";
+                status?: "paid" | "unpaid";
+                /** @description Clamped to 100. */
                 limit?: number;
             };
             header?: never;
@@ -3964,6 +4570,89 @@ export interface operations {
             };
         };
     };
+    DELETE_invoices_id: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonBody"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceDeleted"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     PATCH_invoices_id: {
         parameters: {
             query?: never;
@@ -3988,7 +4677,1029 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InvoiceUpdated"];
+                    "application/json": components["schemas"]["PaymentResult"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    DELETE_rooms_id_items_itemId: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpectedVersion"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomDetail"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    PATCH_rooms_id_items_itemId: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRoomItem"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomDetail"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    DELETE_placements_id: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpectedVersion"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlacementCancelledResult"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    PATCH_placements_id: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlacement"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlacementMutationResult"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    PATCH_medical_records_id_observations_observationId: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+                observationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateObservation"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicalRecord"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    GET_cycles_dashboard: {
+        parameters: {
+            query?: {
+                patientId?: string;
+                roomId?: string;
+                status?: "pending" | "assigned" | "in_care" | "extend" | "released" | "pending_approval";
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CyclePage"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    GET_cycles_id_requests_requestId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleRequest"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    GET_invoices_patients_patientId_context: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoicePatientContext"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    DELETE_invoices_id_lines_lineId: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteInvoiceLine"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceLineDeleted"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    PATCH_invoices_id_lines_lineId: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditInvoiceLine"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceLineMutation"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    POST_invoices_id_claim_verification: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClaimVerification"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimVerificationResult"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    GET_health: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Database connected. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "ok";
+                        /** @enum {string} */
+                        database: "connected";
+                    };
+                };
+            };
+            /** @description Database unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "unavailable";
+                    };
+                };
+            };
+        };
+    };
+    POST_cycles_id_requests_request_id_decision: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideCycleRequest"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionedResult"];
                 };
             };
             /** @description Unauthenticated. */
