@@ -42,10 +42,49 @@ struct NewInvoice {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct ChangePayment {
-    status: String,
+struct ChangeInvoice {
+    status: Option<String>,
+    covered_amount: Option<String>,
+    lines: Option<Vec<NewLine>>,
     reason: String,
     expected_version: i32,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DeleteInvoice {
+    reason: String,
+    expected_version: i32,
+}
+
+type ParsedLine = (String, i32, Decimal, Decimal);
+
+fn parse_lines(lines: Vec<NewLine>) -> AppResult<(Vec<ParsedLine>, Decimal)> {
+    if lines.is_empty() || lines.len() > 30 {
+        return Err(AppError::validation("Tagihan harus memuat 1–30 rincian."));
+    }
+    let mut total = Decimal::ZERO;
+    let mut parsed = Vec::with_capacity(lines.len());
+    for line in lines {
+        db::nonempty(&line.description, "Nama layanan", 160)?;
+        if !(1..=10_000).contains(&line.quantity) {
+            return Err(AppError::validation("Jumlah layanan harus 1–10.000."));
+        }
+        let unit_price = parse_money(&line.unit_price, "Harga satuan")?;
+        let line_total = unit_price
+            .checked_mul(Decimal::from(line.quantity))
+            .ok_or_else(|| AppError::validation("Total rincian terlalu besar."))?;
+        total = total
+            .checked_add(line_total)
+            .ok_or_else(|| AppError::validation("Total tagihan terlalu besar."))?;
+        parsed.push((
+            line.description.trim().to_owned(),
+            line.quantity,
+            unit_price,
+            line_total,
+        ));
+    }
+    Ok((parsed, total))
 }
 
 fn parse_money(value: &str, label: &str) -> AppResult<Decimal> {
@@ -80,7 +119,10 @@ fn validate_coverage(bpjs: bool, covered: Decimal, total: Decimal) -> AppResult<
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/invoices", get(list).post(create))
-        .route("/invoices/{id}", get(detail).patch(change_status))
+        .route(
+            "/invoices/{id}",
+            get(detail).patch(change_invoice).delete(delete_invoice),
+        )
 }
 
 async fn list(
@@ -100,7 +142,7 @@ async fn list(
     let search = query.search.as_deref().unwrap_or("").trim();
     let pattern = format!("%{search}%");
     let rows = sqlx::query_scalar::<_, Value>(
-        "SELECT jsonb_build_object('id',i.id,'patientId',i.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',i.placement_id,'bpjsSnapshot',i.bpjs_snapshot,'totalAmount',i.total_amount::text,'coveredAmount',i.covered_amount::text,'payableAmount',i.payable_amount::text,'status',i.status,'version',i.version,'createdAt',i.created_at,'lineCount',count(l.id)) FROM invoices i JOIN patients p ON p.id=i.patient_id LEFT JOIN invoice_lines l ON l.invoice_id=i.id WHERE ($1='' OR p.name ILIKE $2 OR p.medical_record_no ILIKE $2 OR i.id ILIKE $2) AND ($3::text IS NULL OR i.status=$3) GROUP BY i.id,p.name,p.medical_record_no ORDER BY i.created_at DESC,i.id LIMIT $4"
+        "SELECT jsonb_build_object('id',i.id,'patientId',i.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',i.placement_id,'bpjsSnapshot',i.bpjs_snapshot,'totalAmount',i.total_amount::text,'coveredAmount',i.covered_amount::text,'payableAmount',i.payable_amount::text,'status',i.status,'version',i.version,'createdAt',i.created_at,'lineCount',count(l.id)) FROM invoices i JOIN patients p ON p.id=i.patient_id LEFT JOIN invoice_lines l ON l.invoice_id=i.id WHERE i.deleted_at IS NULL AND ($1='' OR p.name ILIKE $2 OR p.medical_record_no ILIKE $2 OR i.id ILIKE $2) AND ($3::text IS NULL OR i.status=$3) GROUP BY i.id,p.name,p.medical_record_no ORDER BY i.created_at DESC,i.id LIMIT $4"
     ).bind(search).bind(pattern).bind(query.status.as_deref()).bind(limit).fetch_all(&state.pool).await?;
     let total = rows.len();
     Ok(Json(json!({"items":rows,"total":total})))
@@ -113,7 +155,7 @@ async fn detail(
 ) -> AppResult<Json<Value>> {
     user.require_roles(&["ADMISI"])?;
     let row = sqlx::query_scalar::<_, Value>(
-        "SELECT jsonb_build_object('id',i.id,'patientId',i.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',i.placement_id,'bpjsSnapshot',i.bpjs_snapshot,'totalAmount',i.total_amount::text,'coveredAmount',i.covered_amount::text,'payableAmount',i.payable_amount::text,'status',i.status,'version',i.version,'createdAt',i.created_at,'lines',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',l.id,'description',l.description,'quantity',l.quantity,'unitPrice',l.unit_price::text,'lineTotal',l.line_total::text) ORDER BY l.id) FROM invoice_lines l WHERE l.invoice_id=i.id),'[]'::jsonb),'history',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',h.id,'action',h.action,'reason',h.reason,'actor',u.name,'before',h.before_data,'after',h.after_data,'createdAt',h.created_at) ORDER BY h.created_at DESC) FROM invoice_history h JOIN users u ON u.id=h.actor_id WHERE h.invoice_id=i.id),'[]'::jsonb)) FROM invoices i JOIN patients p ON p.id=i.patient_id WHERE i.id=$1"
+        "SELECT jsonb_build_object('id',i.id,'patientId',i.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',i.placement_id,'bpjsSnapshot',i.bpjs_snapshot,'totalAmount',i.total_amount::text,'coveredAmount',i.covered_amount::text,'payableAmount',i.payable_amount::text,'status',i.status,'version',i.version,'createdAt',i.created_at,'lines',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',l.id,'description',l.description,'quantity',l.quantity,'unitPrice',l.unit_price::text,'lineTotal',l.line_total::text) ORDER BY l.id) FROM invoice_lines l WHERE l.invoice_id=i.id),'[]'::jsonb),'history',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',h.id,'action',h.action,'reason',h.reason,'actor',u.name,'before',h.before_data,'after',h.after_data,'createdAt',h.created_at) ORDER BY h.created_at DESC) FROM invoice_history h JOIN users u ON u.id=h.actor_id WHERE h.invoice_id=i.id),'[]'::jsonb)) FROM invoices i JOIN patients p ON p.id=i.patient_id WHERE i.id=$1 AND i.deleted_at IS NULL"
     ).bind(id).fetch_optional(&state.pool).await?.ok_or_else(AppError::not_found)?;
     Ok(Json(row))
 }
@@ -124,9 +166,6 @@ async fn create(
     Json(input): Json<NewInvoice>,
 ) -> AppResult<(axum::http::StatusCode, Json<Value>)> {
     user.require_roles(&["ADMISI"])?;
-    if input.lines.is_empty() || input.lines.len() > 30 {
-        return Err(AppError::validation("Tagihan harus memuat 1–30 rincian."));
-    }
     let patient = sqlx::query_as::<_, (String, bool)>("SELECT name,bpjs FROM patients WHERE id=$1")
         .bind(&input.patient_id)
         .fetch_optional(&state.pool)
@@ -140,27 +179,7 @@ async fn create(
             .await?
             .ok_or_else(|| AppError::validation("Penempatan pasien tidak cocok."))?;
     }
-    let mut total = Decimal::ZERO;
-    let mut parsed_lines = Vec::with_capacity(input.lines.len());
-    for line in input.lines {
-        db::nonempty(&line.description, "Nama layanan", 160)?;
-        if !(1..=10_000).contains(&line.quantity) {
-            return Err(AppError::validation("Jumlah layanan harus 1–10.000."));
-        }
-        let unit_price = parse_money(&line.unit_price, "Harga satuan")?;
-        let line_total = unit_price
-            .checked_mul(Decimal::from(line.quantity))
-            .ok_or_else(|| AppError::validation("Total rincian terlalu besar."))?;
-        total = total
-            .checked_add(line_total)
-            .ok_or_else(|| AppError::validation("Total tagihan terlalu besar."))?;
-        parsed_lines.push((
-            line.description.trim().to_owned(),
-            line.quantity,
-            unit_price,
-            line_total,
-        ));
-    }
+    let (parsed_lines, total) = parse_lines(input.lines)?;
     let covered = parse_money(&input.covered_amount, "Nilai jaminan")?;
     validate_coverage(patient.1, covered, total)?;
     let payable = total
@@ -189,20 +208,36 @@ async fn create(
     ))
 }
 
-async fn change_status(
+async fn change_invoice(
     State(state): State<AppState>,
     user: AuthUser,
     Path(id): Path<String>,
-    Json(input): Json<ChangePayment>,
+    Json(input): Json<ChangeInvoice>,
 ) -> AppResult<Json<Value>> {
     user.require_roles(&["ADMISI"])?;
     db::nonempty(&input.reason, "Alasan", 500)?;
-    if !matches!(input.status.as_str(), "paid" | "unpaid") {
+    if input.status.is_none() && input.covered_amount.is_none() && input.lines.is_none() {
+        return Err(AppError::validation("Tidak ada perubahan yang dikirim."));
+    }
+    if input
+        .status
+        .as_deref()
+        .is_some_and(|s| !matches!(s, "paid" | "unpaid"))
+    {
         return Err(AppError::validation("Status pembayaran tidak valid."));
     }
+    let new_lines = input.lines.map(parse_lines).transpose()?;
+    let new_covered = input
+        .covered_amount
+        .as_deref()
+        .map(|v| parse_money(v, "Nilai jaminan"))
+        .transpose()?;
     let mut tx = state.pool.begin().await?;
-    let before = sqlx::query_scalar::<_,Value>("SELECT jsonb_build_object('id',id,'status',status,'version',version,'totalAmount',total_amount::text,'coveredAmount',covered_amount::text,'payableAmount',payable_amount::text) FROM invoices WHERE id=$1 FOR UPDATE")
-        .bind(&id).fetch_optional(&mut *tx).await?.ok_or_else(AppError::not_found)?;
+    let before = sqlx::query_scalar::<_, Value>(INVOICE_SNAPSHOT_SQL)
+        .bind(&id)
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or_else(AppError::not_found)?;
     let current_version = before["version"]
         .as_i64()
         .and_then(|v| i32::try_from(v).ok())
@@ -212,24 +247,108 @@ async fn change_status(
             "Tagihan telah berubah. Muat ulang lalu coba lagi.",
         ));
     }
-    if before["status"].as_str() == Some(&input.status) {
+    if input
+        .status
+        .as_deref()
+        .is_some_and(|s| before["status"].as_str() == Some(s))
+    {
         return Err(AppError::validation(
             "Tagihan sudah memiliki status tersebut.",
         ));
     }
-    let changed = sqlx::query("UPDATE invoices SET status=$1,version=version+1,updated_at=now() WHERE id=$2 AND version=$3")
-        .bind(&input.status).bind(&id).bind(input.expected_version).execute(&mut *tx).await?;
+    let bpjs = before["bpjsSnapshot"].as_bool().unwrap_or(false);
+    let money = |key: &str| -> AppResult<Decimal> {
+        before[key]
+            .as_str()
+            .and_then(|v| Decimal::from_str(v).ok())
+            .ok_or_else(|| AppError::conflict("Data tagihan tidak valid."))
+    };
+    let total = match &new_lines {
+        Some((_, total)) => *total,
+        None => money("totalAmount")?,
+    };
+    let covered = match new_covered {
+        Some(value) => value,
+        None => money("coveredAmount")?,
+    };
+    validate_coverage(bpjs, covered, total)?;
+    let payable = total
+        .checked_sub(covered)
+        .ok_or_else(|| AppError::validation("Nilai jaminan tidak valid."))?;
+    let status = input
+        .status
+        .clone()
+        .unwrap_or_else(|| before["status"].as_str().unwrap_or("unpaid").to_owned());
+    let changed = sqlx::query("UPDATE invoices SET status=$1,total_amount=$2,covered_amount=$3,payable_amount=$4,version=version+1,updated_at=now() WHERE id=$5 AND version=$6 AND deleted_at IS NULL")
+        .bind(&status).bind(total).bind(covered).bind(payable).bind(&id).bind(input.expected_version).execute(&mut *tx).await?;
     if changed.rows_affected() != 1 {
         return Err(AppError::conflict(
             "Tagihan telah berubah. Muat ulang lalu coba lagi.",
         ));
     }
-    let after = json!({"id":id,"status":input.status,"version":input.expected_version+1,"totalAmount":before["totalAmount"],"coveredAmount":before["coveredAmount"],"payableAmount":before["payableAmount"]});
-    sqlx::query("INSERT INTO invoice_history(id,invoice_id,actor_id,action,reason,before_data,after_data) VALUES($1,$2,$3,'status_changed',$4,$5,$6)")
-        .bind(db::id()).bind(&id).bind(&user.id).bind(input.reason.trim()).bind(before).bind(&after).execute(&mut *tx).await?;
+    let mut after_lines = before["lines"].clone();
+    if let Some((parsed, _)) = &new_lines {
+        sqlx::query("DELETE FROM invoice_lines WHERE invoice_id=$1")
+            .bind(&id)
+            .execute(&mut *tx)
+            .await?;
+        let mut out = Vec::with_capacity(parsed.len());
+        for (description, quantity, unit_price, line_total) in parsed {
+            let line_id = db::id();
+            sqlx::query("INSERT INTO invoice_lines(id,invoice_id,description,quantity,unit_price,line_total) VALUES($1,$2,$3,$4,$5,$6)")
+                .bind(&line_id).bind(&id).bind(description).bind(quantity).bind(unit_price).bind(line_total).execute(&mut *tx).await?;
+            out.push(json!({"id":line_id,"description":description,"quantity":quantity,"unitPrice":unit_price.to_string(),"lineTotal":line_total.to_string()}));
+        }
+        after_lines = Value::Array(out);
+    }
+    let only_status = new_lines.is_none() && new_covered.is_none();
+    let action = if only_status {
+        "status_changed"
+    } else {
+        "updated"
+    };
+    let after = json!({"id":id,"status":status,"version":input.expected_version+1,"totalAmount":total.to_string(),"coveredAmount":covered.to_string(),"payableAmount":payable.to_string(),"lines":after_lines});
+    sqlx::query("INSERT INTO invoice_history(id,invoice_id,actor_id,action,reason,before_data,after_data) VALUES($1,$2,$3,$4,$5,$6,$7)")
+        .bind(db::id()).bind(&id).bind(&user.id).bind(action).bind(input.reason.trim()).bind(before).bind(&after).execute(&mut *tx).await?;
     tx.commit().await?;
     Ok(Json(after))
 }
+
+/// Soft delete: the invoice and its history stay in the database for audit; it is only hidden.
+async fn delete_invoice(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<String>,
+    Json(input): Json<DeleteInvoice>,
+) -> AppResult<Json<Value>> {
+    user.require_roles(&["ADMISI"])?;
+    db::nonempty(&input.reason, "Alasan", 500)?;
+    let mut tx = state.pool.begin().await?;
+    let before = sqlx::query_scalar::<_, Value>(INVOICE_SNAPSHOT_SQL)
+        .bind(&id)
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or_else(AppError::not_found)?;
+    if before["version"].as_i64() != Some(i64::from(input.expected_version)) {
+        return Err(AppError::conflict(
+            "Tagihan telah berubah. Muat ulang lalu coba lagi.",
+        ));
+    }
+    let changed = sqlx::query("UPDATE invoices SET deleted_at=now(),version=version+1,updated_at=now() WHERE id=$1 AND version=$2 AND deleted_at IS NULL")
+        .bind(&id).bind(input.expected_version).execute(&mut *tx).await?;
+    if changed.rows_affected() != 1 {
+        return Err(AppError::conflict(
+            "Tagihan telah berubah. Muat ulang lalu coba lagi.",
+        ));
+    }
+    let after = json!({"id":id,"deleted":true,"version":input.expected_version+1});
+    sqlx::query("INSERT INTO invoice_history(id,invoice_id,actor_id,action,reason,before_data,after_data) VALUES($1,$2,$3,'deleted',$4,$5,$6)")
+        .bind(db::id()).bind(&id).bind(&user.id).bind(input.reason.trim()).bind(before).bind(&after).execute(&mut *tx).await?;
+    tx.commit().await?;
+    Ok(Json(json!({"deleted":true})))
+}
+
+const INVOICE_SNAPSHOT_SQL: &str = "SELECT jsonb_build_object('id',i.id,'status',i.status,'version',i.version,'bpjsSnapshot',i.bpjs_snapshot,'totalAmount',i.total_amount::text,'coveredAmount',i.covered_amount::text,'payableAmount',i.payable_amount::text,'lines',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',l.id,'description',l.description,'quantity',l.quantity,'unitPrice',l.unit_price::text,'lineTotal',l.line_total::text) ORDER BY l.id) FROM invoice_lines l WHERE l.invoice_id=i.id),'[]'::jsonb)) FROM invoices i WHERE i.id=$1 AND i.deleted_at IS NULL FOR UPDATE OF i";
 
 #[cfg(test)]
 mod tests {

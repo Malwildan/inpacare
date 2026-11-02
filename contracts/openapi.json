@@ -3918,7 +3918,7 @@
       },
       "patch": {
         "operationId": "PATCH_invoices_id",
-        "summary": "Update payment status",
+        "summary": "Update invoice (status, lines, coverage)",
         "tags": [
           "Invoices"
         ],
@@ -4023,6 +4023,120 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ChangePayment"
+              }
+            }
+          }
+        },
+        "description": "ADMISI only. Send any of status, lines (replaces all lines) or coveredAmount, plus reason and expectedVersion. Totals are recomputed server-side; history is written atomically."
+      },
+      "delete": {
+        "operationId": "DELETE_invoices_id",
+        "summary": "Soft delete invoice",
+        "tags": [
+          "Tasks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deleted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "ADMISI"
+        ],
+        "description": "ADMISI only. expectedVersion and reason required. The invoice is hidden, not removed; a history record with the reason is kept.",
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteInvoice"
               }
             }
           }
@@ -5844,6 +5958,18 @@
           "status": {
             "type": "string"
           },
+          "coveredAmount": {
+            "type": "string",
+            "description": "Decimal string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewInvoiceLine"
+            },
+            "minItems": 1,
+            "maxItems": 30
+          },
           "reason": {
             "type": "string"
           },
@@ -5852,7 +5978,6 @@
           }
         },
         "required": [
-          "status",
           "reason",
           "expectedVersion"
         ],
@@ -6212,6 +6337,12 @@
           "payableAmount": {
             "type": "string",
             "description": "Decimal string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLine"
+            }
           }
         },
         "required": [
@@ -6368,6 +6499,22 @@
           "version",
           "createdAt",
           "requests"
+        ],
+        "additionalProperties": false
+      },
+      "DeleteInvoice": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "expectedVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reason",
+          "expectedVersion"
         ],
         "additionalProperties": false
       }

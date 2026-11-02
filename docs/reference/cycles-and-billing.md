@@ -72,7 +72,7 @@ Marks only the current user's record as read, idempotently. Unknown or another u
 
 ## Invoices
 
-Only ADMISI can list, create, read detail, or change invoice payment status. The API returns patient identity and billing data without medical-record content.
+Only ADMISI can list, create, read detail, edit, or delete invoices. The API returns patient identity and billing data without medical-record content.
 
 ### `GET /invoices?search=&status=&limit=`
 
@@ -94,13 +94,17 @@ Returns billing-only patient context, line details with subtotal, totals, and au
 
 ### `PATCH /invoices/{id}`
 
-Changes only payment status; requires a nonempty reason (up to 500 characters) and optimistic version:
+Changes payment status, replaces the line items, and/or changes BPJS coverage (send at least one of `status`, `lines`, `coveredAmount`). Requires a nonempty reason (up to 500 characters) and optimistic version. Totals are recomputed on the server with the same rules as create:
 
 ```json
 {"status":"paid","reason":"Bukti pembayaran dicocokkan.","expectedVersion":1}
 ```
 
-Returns the updated status and version. The row lock, version check, edit and history entry commit atomically. Repeated status and stale-version writes are rejected.
+Returns the updated status, totals, lines and version. The row lock, version check, edit and history entry (`status_changed` or `updated`, with before/after data) commit atomically. Repeated status and stale-version writes are rejected.
+
+### `DELETE /invoices/{id}`
+
+Soft delete. Body `{ "reason": "...", "expectedVersion": 2 }`. Sets `deleted_at`, increments the version and writes a `deleted` history record atomically; the invoice and its history are never hard-deleted. Deleted invoices disappear from list/detail (`404`). Returns `{ "deleted": true }`.
 
 ## Shared error contract
 
