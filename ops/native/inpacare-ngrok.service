@@ -1,6 +1,6 @@
 [Unit]
 Description=InpaCare stable ngrok HTTPS tunnel
-Requires=inpacare-web.service
+Wants=inpacare-web.service
 After=inpacare-web.service
 
 [Service]
