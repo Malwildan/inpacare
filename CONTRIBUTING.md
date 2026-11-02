@@ -21,7 +21,7 @@ Thank you for helping improve InpaCare. Small, focused changes are easiest to re
 | Change | Location |
 | --- | --- |
 | API handlers and domain permissions | `apps/api/src/` |
-| Schema changes | A new versioned TypeORM migration in `apps/api/src/database/migrations/` |
+| Schema changes | A new versioned TypeORM migration in `apps/api/src/infrastructure/database/migrations/` |
 | Pages and shared UI | `apps/web/src/routes/` and `apps/web/src/lib/` |
 | API contract | `contracts/openapi.json` |
 | API and browser workflows | `tests/api/` and `tests/e2e/` |

@@ -88,7 +88,7 @@ npm run types:api
 npm run test:api:unit
 ```
 
-`contracts/openapi.json` is the API contract. Regenerate TypeScript with `npm run types:api` after changing it. SQL migrations and the explicit CLI are under `apps/api/src/database/`.
+`contracts/openapi.json` is the API contract. Regenerate TypeScript with `npm run types:api` after changing it. SQL migrations and the explicit CLI are under `apps/api/src/infrastructure/database/`.
 
 For real API behavior, use the [API workflows](API_TESTS.md) with a fresh disposable database. For frontend changes, use the [browser workflows](BROWSER_TESTS.md), setting `INPACARE_TEST_URL=http://127.0.0.1:5173` if testing the Vite server. Test suites create data and should not target the shared demo.
 

@@ -1,40 +1,23 @@
-import { Controller, Get, Module, Res } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
-import { TypeOrmModule } from "@nestjs/typeorm";
-import { Response } from "express";
 import { DataSource } from "typeorm";
-import { Public, SessionGuard } from "./common/auth";
-import { createDataSource } from "./database/data-source";
-import { AuthModule } from "./modules/auth/auth.controller";
-import { ReferenceModule } from "./modules/reference/reference.module";
-import { RoomsModule } from "./modules/rooms/rooms.module";
-import { PlacementsModule } from "./modules/placements/placements.module";
-import { TasksModule } from "./modules/tasks/tasks.module";
-import { MedicalRecordsModule } from "./modules/medical-records/medical-records.module";
-import { CyclesModule } from "./modules/cycles/cycles.module";
-import { BillingModule } from "./modules/billing/billing.module";
-import { NotificationsModule } from "./modules/notifications/notifications.module";
-
-@Controller()
-class HealthController {
-  constructor(private readonly db: DataSource) {}
-  @Public()
-  @Get("health")
-  async health(@Res({ passthrough: true }) response: Response) {
-    try {
-      await this.db.query("SELECT 1");
-      return { status: "ok", database: "connected" };
-    } catch {
-      response.status(503);
-      return { status: "unavailable" };
-    }
-  }
-}
+import { HEALTH_PROBE } from "./application/shared/health-probe";
+import { TypeOrmHealthProbe } from "./infrastructure/database/health-probe";
+import { HealthController } from "./presentation/http/health.controller";
+import { SessionGuard } from "./presentation/http/guards/session.guard";
+import { ApplicationModule } from "./composition/application.module";
+import { AuthModule } from "./composition/auth.module";
+import { ReferenceModule } from "./composition/reference.module";
+import { RoomsModule } from "./composition/rooms.module";
+import { PlacementsModule } from "./composition/placements.module";
+import { TasksModule } from "./composition/tasks.module";
+import { MedicalRecordsModule } from "./composition/medical-records.module";
+import { CyclesModule } from "./composition/cycles.module";
+import { BillingModule } from "./composition/billing.module";
+import { NotificationsModule } from "./composition/notifications.module";
 @Module({
   imports: [
-    TypeOrmModule.forRootAsync({
-      useFactory: () => ({ ...createDataSource().options, retryAttempts: 1 }),
-    }),
+    ApplicationModule,
     AuthModule,
     ReferenceModule,
     RoomsModule,
@@ -46,6 +29,13 @@ class HealthController {
     NotificationsModule,
   ],
   controllers: [HealthController],
-  providers: [{ provide: APP_GUARD, useClass: SessionGuard }],
+  providers: [
+    {
+      provide: HEALTH_PROBE,
+      useFactory: (db: DataSource) => new TypeOrmHealthProbe(db),
+      inject: [DataSource],
+    },
+    { provide: APP_GUARD, useClass: SessionGuard },
+  ],
 })
 export class AppModule {}
