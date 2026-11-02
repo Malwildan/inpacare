@@ -48,6 +48,7 @@ From the repository root:
 
 ```sh
 npm ci
+npm run hooks:install
 npm run check
 npm run build
 npm run types:api
@@ -57,7 +58,11 @@ cargo test --locked --manifest-path apps/api/Cargo.toml
 
 Run checks appropriate to your change. For API behavior, run the [PostgreSQL workflow tests](docs/development/API_TESTS.md) against a fresh disposable database. For frontend behavior, run the [Playwright workflows](docs/development/BROWSER_TESTS.md) against a local synthetic instance. Documentation-only changes need working links and accurate commands; they do not require a full application rebuild.
 
-CI runs frontend checks, builds, generated-type drift detection, Rust unit tests, and the API workflow suite. Browser tests are a separate local check. Never run mutation tests against the shared public demo or a real-data database.
+CI runs frontend checks, builds, generated-type drift detection, Rust unit tests, and the API workflow suite. Independent checks run in parallel. Pull requests select checks by changed paths; recognized documentation-only changes skip application checks, and unknown paths run everything. Main pushes, nightly runs, and manual runs validate everything and seed caches for subsequent PRs. The two existing required check names remain stable and reject failures or unexpected skips. Run `npm run test:ci` to verify the selection logic.
+
+`npm run hooks:install` enables the committed pre-push hook in this checkout (Git hooks require a local install). For changed code it checks whitespace, Svelte/TypeScript, generated API types, and Rust compilation as applicable. Keep Node/npm and Cargo on PATH, and commit or stash tracked changes before pushing so checks see the code being pushed. New branches compare against `origin/main`, or the whole tree when that ref is unavailable. The hook uses existing project checkers; the project has no ESLint or formatter configuration to replace. Browser tests remain a separate local check. Never run mutation tests against the shared public demo or a real-data database.
+
+The hook validates the checked-out branch. Push branches separately after checking each one out; a multi-branch push with different tips is rejected. Tag updates and branch deletions do not run application checks.
 
 ## Submit a pull request
 

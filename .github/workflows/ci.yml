@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: '17 5 * * *'
   workflow_dispatch:
 
 permissions:
@@ -14,27 +16,150 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  web:
-    name: Frontend and API types
+  classify:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      full: ${{ steps.paths.outputs.full }}
+      web: ${{ steps.paths.outputs.web }}
+      api: ${{ steps.paths.outputs.api }}
+      contracts: ${{ steps.paths.outputs.contracts }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - uses: actions/setup-node@v4
+        id: npm-node
+        with:
+          node-version-file: .nvmrc
+      - name: Test CI selection and push checks
+        run: node --test tests/ci/*.test.mjs
+      - name: Classify changed paths
+        id: paths
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            node scripts/ci-changes.mjs --base "$BASE_SHA"
+          else
+            node scripts/ci-changes.mjs --full
+          fi
+
+  web-check:
+    runs-on: ubuntu-latest
+    needs: classify
+    if: needs.classify.outputs.full == 'true' || needs.classify.outputs.web == 'true'
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
+        id: npm-node
         with:
           node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
+      - uses: actions/cache@v4
+        id: npm-cache
+        with:
+          path: |
+            node_modules
+            apps/web/node_modules
+          key: npm-v1-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.npm-node.outputs.node-version }}-${{ hashFiles('package-lock.json', 'package.json', 'apps/web/package.json') }}
+      - if: steps.npm-cache.outputs.cache-hit != 'true'
+        run: npm ci
       - run: npm run check
+
+  web-build:
+    runs-on: ubuntu-latest
+    needs: classify
+    if: needs.classify.outputs.full == 'true' || needs.classify.outputs.web == 'true'
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        id: npm-node
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache@v4
+        id: npm-cache
+        with:
+          path: |
+            node_modules
+            apps/web/node_modules
+          key: npm-v1-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.npm-node.outputs.node-version }}-${{ hashFiles('package-lock.json', 'package.json', 'apps/web/package.json') }}
+      - if: steps.npm-cache.outputs.cache-hit != 'true'
+        run: npm ci
       - run: npm run build
+
+  api-contract-drift:
+    runs-on: ubuntu-latest
+    needs: classify
+    if: needs.classify.outputs.full == 'true' || needs.classify.outputs.contracts == 'true'
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        id: npm-node
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache@v4
+        id: npm-cache
+        with:
+          path: |
+            node_modules
+            apps/web/node_modules
+          key: npm-v1-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.npm-node.outputs.node-version }}-${{ hashFiles('package-lock.json', 'package.json', 'apps/web/package.json') }}
+      - if: steps.npm-cache.outputs.cache-hit != 'true'
+        run: npm ci
       - name: Check generated API types
         run: |
           npm run types:api
           git diff --exit-code -- apps/web/src/lib/generated/api.d.ts
 
-  api:
-    name: Rust and PostgreSQL workflows
+  web:
+    name: Frontend and API types
     runs-on: ubuntu-latest
+    needs: [classify, web-check, web-build, api-contract-drift]
+    if: always()
+    steps:
+      - name: Require all applicable web checks to pass
+        env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          FULL: ${{ needs.classify.outputs.full }}
+          WEB: ${{ needs.classify.outputs.web }}
+          CONTRACTS: ${{ needs.classify.outputs.contracts }}
+          WEB_CHECK_RESULT: ${{ needs.web-check.result }}
+          WEB_BUILD_RESULT: ${{ needs.web-build.result }}
+          CONTRACT_RESULT: ${{ needs.api-contract-drift.result }}
+        run: |
+          set -eu
+          test "$CLASSIFY_RESULT" = success
+          if [ "$FULL" = true ] || [ "$WEB" = true ]; then
+            test "$WEB_CHECK_RESULT" = success
+            test "$WEB_BUILD_RESULT" = success
+          fi
+          if [ "$FULL" = true ] || [ "$CONTRACTS" = true ]; then
+            test "$CONTRACT_RESULT" = success
+          fi
+
+  rust-tests:
+    runs-on: ubuntu-latest
+    needs: classify
+    if: needs.classify.outputs.full == 'true' || needs.classify.outputs.api == 'true'
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/api
+      - name: Run Rust unit tests
+        run: cargo test --locked --manifest-path apps/api/Cargo.toml
+
+  api-workflows:
+    runs-on: ubuntu-latest
+    needs: classify
+    if: needs.classify.outputs.full == 'true' || needs.classify.outputs.api == 'true'
     timeout-minutes: 20
     services:
       postgres:
@@ -58,8 +183,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Run Rust unit tests
-        run: cargo test --locked --manifest-path apps/api/Cargo.toml
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/api
       - name: Build API
         run: cargo build --locked --manifest-path apps/api/Cargo.toml
       - name: Run API workflows against the disposable database
@@ -80,3 +206,24 @@ jobs:
           done
           if [ "$ready" != 1 ]; then tail -c 6000 "$RUNNER_TEMP/inpacare-api.log"; exit 1; fi
           python3 -m unittest discover -s tests/api -v
+
+  api:
+    name: Rust and PostgreSQL workflows
+    runs-on: ubuntu-latest
+    needs: [classify, rust-tests, api-workflows]
+    if: always()
+    steps:
+      - name: Require all applicable API checks to pass
+        env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          FULL: ${{ needs.classify.outputs.full }}
+          API: ${{ needs.classify.outputs.api }}
+          RUST_RESULT: ${{ needs.rust-tests.result }}
+          WORKFLOW_RESULT: ${{ needs.api-workflows.result }}
+        run: |
+          set -eu
+          test "$CLASSIFY_RESULT" = success
+          if [ "$FULL" = true ] || [ "$API" = true ]; then
+            test "$RUST_RESULT" = success
+            test "$WORKFLOW_RESULT" = success
+          fi
