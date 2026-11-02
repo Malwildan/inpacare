@@ -4,6 +4,7 @@
 
 	let { data } = $props();
 	let search = $state('');
+	let roomFilter = $state('');
 	let statusFilter = $state('');
 	let busy = $state(false);
 	let error = $state('');
@@ -11,8 +12,11 @@
 
 	let cycles = $derived(data.cycles.filter((cycle: any) =>
 		(!statusFilter || cycle.status === statusFilter) &&
-		(!search || `${cycle.patientName} ${cycle.medicalRecordNo} ${cycle.room ?? ''}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()))
+		(!roomFilter || (roomFilter === '__unplaced__' ? !cycle.room : cycle.room === roomFilter)) &&
+		(!search || `${cycle.patientName} ${cycle.medicalRecordNo}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()))
 	));
+	let rooms = $derived([...new Set(data.cycles.map((cycle: any) => cycle.room).filter((room: unknown): room is string => typeof room === 'string' && room.length > 0))].sort((a, b) => a.localeCompare(b, 'id')));
+	let hasUnplaced = $derived(data.cycles.some((cycle: any) => !cycle.room));
 	let counts = $derived(['pending', 'assigned', 'in_care', 'extend', 'released'].map((status) => ({ status, count: data.cycles.filter((c: any) => c.status === status).length })));
 
 	async function send(path: string, method: string, payload?: object) {
@@ -78,7 +82,7 @@
 
 <section class="panel">
 	<div class="panel-header"><div><h2>Daftar rekap pasien</h2><span class="muted">{cycles.length} dari {data.cycles.length} pasien</span></div></div>
-	<div class="filters"><label class="field search-field">Cari nama atau nomor rekam medis<input bind:value={search} placeholder="Cari nama pasien..." /></label><label class="field">Status<select bind:value={statusFilter}><option value="">Semua status</option>{#each counts as item}<option value={item.status}>{({pending:'Pending',assigned:'Assigned',in_care:'In Care',extend:'Extend',released:'Pelepasan'} as Record<string,string>)[item.status]}</option>{/each}</select></label></div>
+	<div class="filters"><label class="field search-field">Cari nama atau nomor rekam medis<input bind:value={search} placeholder="Cari nama pasien..." /></label><label class="field">Ruangan<select bind:value={roomFilter}><option value="">Semua ruangan</option>{#each rooms as room}<option value={room}>{room}</option>{/each}{#if hasUnplaced}<option value="__unplaced__">Belum ditempatkan</option>{/if}</select></label><label class="field">Status<select bind:value={statusFilter}><option value="">Semua status</option>{#each counts as item}<option value={item.status}>{({pending:'Pending',assigned:'Assigned',in_care:'In Care',extend:'Extend',released:'Pelepasan'} as Record<string,string>)[item.status]}</option>{/each}</select></label></div>
 	<div class="table-wrap"><table class="data-table"><thead><tr><th>Pasien</th><th>Ruangan</th><th>Dokter</th><th>Perawat</th><th>Status</th><th>Proses</th></tr></thead><tbody>
 		{#each cycles as cycle (cycle.id)}<tr>
 			<td><strong>{cycle.patientName}</strong><span class="cell-meta">{cycle.id} · {cycle.medicalRecordNo}</span></td>
