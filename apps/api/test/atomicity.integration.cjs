@@ -327,3 +327,132 @@ test(
     assert.ok(results.some((r) => r.status === "fulfilled"));
   },
 );
+
+const validationError = pattern => error => error.getStatus?.() === 422 && pattern.test(error.getResponse().error.message);
+
+test("task edits recheck active PIC and placement, and creation history retains the full snapshot", { skip: !enabled }, async () => {
+  const f = await scenario("release");
+  const task = await taskService.create(nurse, {
+    patientId: f.patientId, placementId: f.placementId, picId: nurse.id,
+    title: "Audit snapshot", description: "Initial description", notes: "Initial note", priority: "high",
+    startsAt: new Date().toISOString(), endsAt: new Date(Date.now() + 60000).toISOString(),
+  });
+  assert.equal(task.createdById, nurse.id);
+  assert.equal(task.createdByName, nurse.name);
+  const history = await taskService.history(nurse, task.id);
+  assert.equal(history.items[0].before, null);
+  const snapshot = history.items[0].after;
+  for (const field of ["id", "title", "description", "notes", "priority", "patient_id", "room_id", "created_by", "starts_at", "ends_at", "version"]) assert.ok(field in snapshot, field);
+  assert.equal(snapshot.title, "Audit snapshot");
+  assert.equal(snapshot.notes, "Initial note");
+  for (const table of ["nurses", "users"]) {
+    const key = table === "nurses" ? "user_id" : "id";
+    await ds.query(`UPDATE ${table} SET active=false WHERE ${key}=$1`, [nurse.id]);
+    try { await assert.rejects(taskService.update(nurse, task.id, { expectedVersion: 1, notes: "Must not persist" }), validationError(/PIC harus perawat aktif/)); }
+    finally { await ds.query(`UPDATE ${table} SET active=true WHERE ${key}=$1`, [nurse.id]); }
+  }
+  await ds.query("UPDATE placements SET status='cancelled' WHERE id=$1", [f.placementId]);
+  await assert.rejects(taskService.update(nurse, task.id, { expectedVersion: 1, notes: "Must not persist" }), validationError(/Penempatan pasien tidak aktif/));
+  await ds.query("UPDATE placements SET status='active',ends_on=starts_on WHERE id=$1", [f.placementId]);
+  await assert.rejects(taskService.update(nurse, task.id, { expectedVersion: 1, notes: "Must not persist" }), validationError(/rentang penempatan/));
+  const [unchanged] = await ds.query("SELECT version,notes FROM tasks WHERE id=$1", [task.id]);
+  assert.deepEqual(unchanged, { version: 1, notes: "Initial note" });
+  assert.equal((await taskService.history(nurse, task.id)).total, 1);
+});
+
+test("clinical correction requires a meaningful reason and preserves the submitted audit explanation", { skip: !enabled }, async () => {
+  const f = await scenario("release");
+  const { RekamMedisService } = require("../dist/modules/medical-records/rekam-medis.service.js");
+  const service = new RekamMedisService(ds);
+  const input = { patientId: f.patientId, recordDate: day(), complaint: "Synthetic", diagnosis: "Before", treatment: "Synthetic" };
+  const record = await service.create(doctor, input);
+  await assert.rejects(service.update(doctor, record.id, { ...input, diagnosis: "After", expectedVersion: 1, reason: "  " }), validationError(/Alasan koreksi/));
+  await service.update(doctor, record.id, { ...input, diagnosis: "After", expectedVersion: 1, reason: "  Correct source entry  " });
+  const [history] = await ds.query("SELECT actor_id,reason,before_data,after_data FROM medical_history WHERE entity_id=$1 AND action='updated'", [record.id]);
+  assert.equal(history.actor_id, doctor.id);
+  assert.equal(history.reason, "Correct source entry");
+  assert.equal(history.before_data.diagnosis, "Before");
+  assert.equal(history.after_data.diagnosis, "After");
+});
+
+test("cycle deletion retains reason, actor and snapshots atomically with archival", { skip: !enabled }, async () => {
+  const f = await scenario("release");
+  await ds.query("DELETE FROM cycle_requests WHERE cycle_id=$1", [f.cycleId]);
+  await ds.query("UPDATE cycles SET status='pending' WHERE id=$1", [f.cycleId]);
+  await assert.rejects(cyclesService.remove(nurse, f.cycleId, { expectedVersion: 1, reason: "  " }), validationError(/Alasan penghapusan/));
+  await ds.query("CREATE FUNCTION fail_cycle_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'cycle audit failure'; END $$");
+  await ds.query("CREATE TRIGGER fail_cycle_audit BEFORE INSERT ON cycle_history FOR EACH ROW EXECUTE FUNCTION fail_cycle_audit()");
+  try {
+    await assert.rejects(cyclesService.remove(nurse, f.cycleId, { expectedVersion: 1, reason: "Duplicate recap" }), /cycle audit failure/);
+    const [row] = await ds.query("SELECT version,deleted_at FROM cycles WHERE id=$1", [f.cycleId]);
+    assert.deepEqual(row, { version: 1, deleted_at: null });
+  } finally {
+    await ds.query("DROP TRIGGER fail_cycle_audit ON cycle_history");
+    await ds.query("DROP FUNCTION fail_cycle_audit()");
+  }
+  await cyclesService.remove(nurse, f.cycleId, { expectedVersion: 1, reason: "  Duplicate recap  " });
+  const [audit] = await ds.query("SELECT * FROM cycle_history WHERE cycle_id=$1", [f.cycleId]);
+  assert.equal(audit.actor_id, nurse.id);
+  assert.equal(audit.reason, "Duplicate recap");
+  assert.equal(audit.before_data.deleted_at, null);
+  assert.ok(audit.after_data.deleted_at);
+  assert.equal(audit.after_data.version, 2);
+});
+
+test("claim results distinguish unreviewed, rejected and approved and retain negative decision attribution", { skip: !enabled }, async () => {
+  const f = await scenario("release");
+  const admisi = { ...nurse, id: newId(), role: "ADMISI", coordinator: false };
+  await ds.query("INSERT INTO users(id,username,name,role,password_hash) VALUES($1,$2,'Audit Admissions','ADMISI','test-only')", [admisi.id, `audit_${admisi.id}`]);
+  await ds.query("UPDATE patients SET bpjs=true WHERE id=$1", [f.patientId]);
+  const { TagihanService } = require("../dist/modules/billing/tagihan.service.js");
+  const service = new TagihanService(ds);
+  const invoice = await service.create(admisi, { patientId: f.patientId, coveredAmount: "0", lines: [{ description: "Synthetic service", quantity: 1, unitPrice: "10.00" }] });
+  assert.equal((await service.detail(admisi, invoice.id)).claimResult, null);
+  await assert.rejects(service.verifyClaim(admisi, invoice.id, { expectedVersion: 1, verified: false, result: "  ", reason: "Review" }), validationError(/Hasil verifikasi/));
+  await service.verifyClaim(admisi, invoice.id, { expectedVersion: 1, verified: false, result: "  Ditolak  ", reason: "Documents incomplete" });
+  const [rejected] = await ds.query("SELECT claim_result,claim_verified,claim_verified_by,claim_verified_at FROM invoices WHERE id=$1", [invoice.id]);
+  assert.equal(rejected.claim_result, "Ditolak");
+  assert.equal(rejected.claim_verified, false);
+  assert.equal(rejected.claim_verified_by, admisi.id);
+  assert.ok(rejected.claim_verified_at);
+  await service.verifyClaim(admisi, invoice.id, { expectedVersion: 2, verified: true, result: "Disetujui", reason: "Revised documents reviewed" });
+  const detail = await service.detail(admisi, invoice.id);
+  assert.equal(detail.claimResult, "Disetujui");
+  assert.equal(detail.claimVerified, true);
+  const rejectedAudit = detail.history.find(h => h.action === "claim_verification" && h.after.claimResult === "Ditolak");
+  assert.equal(rejectedAudit.before.claimResult, null);
+});
+
+test("adoption upgrades an existing Nest schema without inventing negative claim results", { skip: !enabled }, async () => {
+  const name = `nest_upgrade_${crypto.randomBytes(6).toString("hex")}`;
+  const admin = new Client({ connectionString: adminUrl });
+  await admin.connect();
+  let legacy;
+  try {
+    await admin.query(`CREATE DATABASE "${name}" OWNER nest_test`);
+    const url = checkedAdminUrl(); url.pathname = `/${name}`;
+    const { DataSource } = require("typeorm");
+    legacy = new DataSource({ ...ds.options, url: url.toString(), migrations: ds.options.migrations.slice(0, 2) });
+    await legacy.initialize();
+    await legacy.runMigrations({ transaction: "all" });
+    await legacy.query("INSERT INTO users(id,username,name,role,password_hash) VALUES('legacy-adm','legacy_adm','Legacy synthetic','ADMISI','test-only')");
+    await legacy.query("INSERT INTO patients(id,medical_record_no,name,birth_date,gender,bpjs) VALUES('legacy-patient','LEGACY-TEST','Legacy synthetic','1980-01-01','L',true)");
+    for (const [id, verified] of [["legacy-approved", true], ["legacy-unknown", false]]) {
+      await legacy.query("INSERT INTO invoices(id,patient_id,created_by,bpjs_snapshot,total_amount,covered_amount,payable_amount,claim_verified) VALUES($1,'legacy-patient','legacy-adm',true,10,0,10,$2)", [id, verified]);
+    }
+    const { spawnSync } = require("node:child_process");
+    const path = require("node:path");
+    const result = spawnSync(process.execPath, [path.resolve(__dirname,"../dist/database/cli.js"), "adopt"], { env: { ...process.env, DATABASE_URL: url.toString() }, encoding: "utf8", timeout: 30000 });
+    assert.equal(result.status, 0, result.stderr);
+    const rows = await legacy.query("SELECT id,claim_result,total_amount::text FROM invoices ORDER BY id");
+    assert.deepEqual(rows, [
+      { id: "legacy-approved", claim_result: "Terverifikasi (data lama)", total_amount: "10.00" },
+      { id: "legacy-unknown", claim_result: null, total_amount: "10.00" },
+    ]);
+    assert.equal((await legacy.query("SELECT count(*)::int n FROM migrations"))[0].n, 3);
+  } finally {
+    if (legacy?.isInitialized) await legacy.destroy();
+    await admin.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
+    await admin.end();
+  }
+});

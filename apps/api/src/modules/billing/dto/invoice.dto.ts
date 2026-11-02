@@ -45,6 +45,7 @@ export class DeleteInvoiceDto {
   @IsString() @MinLength(1) @MaxLength(500) reason!: string;
 }
 export class VerifyClaimDto {
+  @IsString() @MinLength(1) @MaxLength(120) result!: string;
   @IsInt() @Min(1) expectedVersion!: number;
   @IsString() @MinLength(1) @MaxLength(500) reason!: string;
   @IsBoolean() verified!: boolean;

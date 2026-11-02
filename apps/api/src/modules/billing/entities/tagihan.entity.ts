@@ -40,6 +40,8 @@ export class Tagihan {
   createdByRelation!: Pengguna;
   @Column({ name: "claim_verified", type: "boolean", default: false })
   claimVerified!: boolean;
+  @Column({ name: "claim_result", type: "varchar", length: 120, nullable: true })
+  claimResult?: string | null;
   @Column({ name: "claim_verified_at", type: "timestamptz", nullable: true })
   claimVerifiedAt?: Date | null;
   @Column({

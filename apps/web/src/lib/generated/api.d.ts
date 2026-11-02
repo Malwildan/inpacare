@@ -772,6 +772,8 @@ export interface components {
             /** Format: date-time */
             endsAt: string;
             version: number;
+            createdById: string;
+            createdByName: string;
         };
         TaskHistory: {
             id: string;
@@ -918,6 +920,7 @@ export interface components {
             createdAt: string;
             lineCount: number;
             claimVerified: boolean;
+            claimResult: string | null;
         };
         InvoiceDetail: {
             id: string;
@@ -952,6 +955,7 @@ export interface components {
                 createdAt: string;
             }[];
             claimVerified: boolean;
+            claimResult: string | null;
         };
         Notification: {
             id: string;
@@ -1063,6 +1067,7 @@ export interface components {
             notes?: string;
             /** Format: date */
             recordDate: string;
+            reason: string;
         };
         NewObservation: {
             symptoms: string;
@@ -1347,6 +1352,7 @@ export interface components {
             expectedVersion: number;
             reason: string;
             verified: boolean;
+            result: string;
         };
         PaymentResult: {
             /** @enum {string} */
@@ -1394,6 +1400,7 @@ export interface components {
         ClaimVerificationResult: {
             claimVerified: boolean;
             version: number;
+            claimResult: string;
         };
         InvoiceDeleted: {
             id: string;

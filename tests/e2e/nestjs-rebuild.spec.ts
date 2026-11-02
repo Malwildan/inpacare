@@ -5,6 +5,25 @@ import path from 'node:path';
 const password = 'InpaCareDemo!2026';
 const evidence = path.resolve('.local/nestjs-test');
 
+test('doctor correction requires and submits its explanation', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('ID petugas').fill('hendra');
+  await page.getByLabel('Kata sandi', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Masuk' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await page.goto('/medical-records/MR-001');
+  const form = page.locator('form').filter({ has: page.getByRole('button', { name: 'Simpan perubahan' }) });
+  await expect(form.getByLabel('Alasan koreksi')).toHaveAttribute('required', '');
+  await form.getByLabel('Alasan koreksi').fill('Koreksi sumber sintetis pada E2E.');
+  const saved = page.waitForResponse(r => r.request().method() === 'PATCH' && new URL(r.url()).pathname === '/api/v1/medical-records/MR-001');
+  await form.getByRole('button', { name: 'Simpan perubahan' }).click();
+  const response = await saved;
+  expect(response.status()).toBe(200);
+  expect(response.request().postDataJSON().reason).toBe('Koreksi sumber sintetis pada E2E.');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Catatan dokter' })).toBeVisible();
+});
+
 test('dashboard cycle filters are restored from and submitted to the server', async ({ page }) => {
 	await page.goto('/login');
 	await page.getByLabel('ID petugas').fill('rina');
@@ -46,13 +65,15 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	await line.getByRole('button', { name: 'Simpan' }).click();
 	await expect(detail).toContainText(updatedDescription);
 
-	page.once('dialog', dialog => dialog.accept('Verifikasi klaim manual pada E2E.'));
-	await detail.getByRole('button', { name: 'Verifikasi klaim' }).click();
-	await expect(detail).toContainText('Terverifikasi');
+	await detail.getByLabel('Hasil verifikasi klaim').fill('Ditolak');
+	await detail.getByLabel('Keputusan klaim').selectOption('false');
+	await detail.getByLabel('Alasan verifikasi').fill('Berkas sintetis belum lengkap.');
+	await detail.getByRole('button', { name: 'Simpan verifikasi klaim' }).click();
+	await expect(detail).toContainText('Ditolak');
 	await page.reload();
 	await page.getByRole('row').filter({ hasText: invoiceId }).getByRole('button', { name: 'Lihat detail' }).click();
 	await expect(page.locator('.invoice-detail')).toContainText(updatedDescription);
-	await expect(page.locator('.invoice-detail')).toContainText('Terverifikasi');
+	await expect(page.locator('.invoice-detail')).toContainText('Ditolak');
 	await mkdir(evidence, { recursive: true });
 	await page.screenshot({ path: path.join(evidence, 'e2e-invoice-detail.png'), fullPage: true, animations: 'disabled' });
 

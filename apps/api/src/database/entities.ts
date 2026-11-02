@@ -1,4 +1,6 @@
 import { AuditMedis } from "../modules/medical-records/entities/audit-medis.entity";
+import { AuditSiklus } from "../modules/cycles/entities/audit-siklus.entity";
+import { AuditAlignment1793577600002 } from "./migrations/1793577600002-AuditAlignment";
 import { DataSource } from "typeorm";
 import { Pengguna } from "../modules/auth/entities/pengguna.entity";
 import { Dokter } from "../modules/auth/entities/dokter.entity";
@@ -24,6 +26,7 @@ import { RebuildDelta1793577600001 } from "./migrations/1793577600001-RebuildDel
 
 export const ALL_ENTITIES = [
   AuditMedis,
+  AuditSiklus,
   Pengguna,
   Dokter,
   Perawat,
@@ -47,6 +50,7 @@ export const ALL_ENTITIES = [
 export const ALL_MIGRATIONS = [
   Baseline1793577600000,
   RebuildDelta1793577600001,
+  AuditAlignment1793577600002,
 ];
 
 export function createDataSource(): DataSource {

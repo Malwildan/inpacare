@@ -117,7 +117,7 @@ class RebuildWorkflows(unittest.TestCase):
         status, result = admisi.request("PATCH", f"/invoices/{invoice_id}/lines/{line_id}", line)
         self.assertEqual(status, 200, result)
         self.assertEqual(result["payableAmount"], "0.40")
-        status, result = admisi.request("POST", f"/invoices/{invoice_id}/claim-verification", {"verified": True, "expectedVersion": 2, "reason": "Bukti diperiksa manual"})
+        status, result = admisi.request("POST", f"/invoices/{invoice_id}/claim-verification", {"verified": True, "result": "Disetujui", "expectedVersion": 2, "reason": "Bukti diperiksa manual"})
         self.assertIn(status, (200, 201), result)
         status, result = admisi.request("PATCH", f"/invoices/{invoice_id}", {"status": "paid", "expectedVersion": 3, "reason": "Pembayaran dicatat"})
         self.assertEqual(status, 200, result)

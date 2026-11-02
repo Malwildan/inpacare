@@ -187,6 +187,7 @@ export class CyclesService {
 
   async remove(actor: Actor, cycleId: string, input: DeleteCycleDto) {
     if (actor.role !== "PERAWAT") throw AppError.forbidden();
+    if (!input.reason.trim()) throw AppError.validation("Alasan penghapusan wajib diisi.");
     return this.db.transaction(async (m) => {
       const seed = await m.query(
         `SELECT patient_id FROM cycles WHERE id=$1 AND nurse_id=$2 AND deleted_at IS NULL`,
@@ -197,7 +198,7 @@ export class CyclesService {
         seed[0].patient_id,
       ]);
       const [c] = await m.query(
-        `SELECT version,status FROM cycles WHERE id=$1 AND nurse_id=$2 AND deleted_at IS NULL FOR UPDATE`,
+        `SELECT * FROM cycles WHERE id=$1 AND nurse_id=$2 AND deleted_at IS NULL FOR UPDATE`,
         [cycleId, actor.id],
       );
       if (!c) throw AppError.notFound();
@@ -213,9 +214,13 @@ export class CyclesService {
         throw AppError.conflict(
           "Tutup permintaan yang masih menunggu sebelum menghapus rekap.",
         );
-      await m.query(
-        `UPDATE cycles SET deleted_at=now(),version=version+1,updated_at=now() WHERE id=$1`,
+      const [[after]] = await m.query(
+        `UPDATE cycles SET deleted_at=now(),version=version+1,updated_at=now() WHERE id=$1 RETURNING *`,
         [cycleId],
+      );
+      await m.query(
+        `INSERT INTO cycle_history(id,cycle_id,actor_id,action,reason,before_data,after_data) VALUES($1,$2,$3,'deleted',$4,$5::jsonb,$6::jsonb)`,
+        [id(), cycleId, actor.id, input.reason.trim(), JSON.stringify(c), JSON.stringify(after)],
       );
       return { id: cycleId, deleted: true, version: input.expectedVersion + 1 };
     });

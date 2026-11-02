@@ -23,6 +23,13 @@ const coordinator = (a: Actor) => a.role === "PERAWAT" && a.coordinator;
 @Injectable()
 export class TugasService {
   constructor(private readonly ds: DataSource) {}
+  private async requireActivePic(m: EntityManager, picId: string) {
+    const nurses = await m.query(
+      `SELECT u.id FROM nurses n JOIN users u ON u.id=n.user_id WHERE n.user_id=$1 AND n.active AND u.active AND u.role='PERAWAT' FOR SHARE OF n,u`,
+      [picId],
+    );
+    if (!nurses.length) throw AppError.validation("PIC harus perawat aktif.");
+  }
   private async row(
     m: EntityManager,
     taskId: string,
@@ -30,7 +37,7 @@ export class TugasService {
     includeDeleted = false,
   ) {
     const r = await m.query(
-      `SELECT t.id,t.title,t.description,t.notes,t.patient_id AS "patientId",p.name AS "patientName",p.medical_record_no AS "medicalRecordNo",t.room_id AS "roomId",r.name AS "roomName",t.pic_id AS "picId",u.name AS "picName",t.priority,t.status,t.starts_at AS "startsAt",t.ends_at AS "endsAt",t.version FROM tasks t JOIN patients p ON p.id=t.patient_id JOIN rooms r ON r.id=t.room_id JOIN users u ON u.id=t.pic_id WHERE t.id=$1 AND ($2 OR t.pic_id=$3) AND (t.deleted_at IS NULL OR $4)`,
+      `SELECT t.id,t.title,t.description,t.notes,t.created_by AS "createdById",creator.name AS "createdByName",t.patient_id AS "patientId",p.name AS "patientName",p.medical_record_no AS "medicalRecordNo",t.room_id AS "roomId",r.name AS "roomName",t.pic_id AS "picId",u.name AS "picName",t.priority,t.status,t.starts_at AS "startsAt",t.ends_at AS "endsAt",t.version FROM tasks t JOIN patients p ON p.id=t.patient_id JOIN rooms r ON r.id=t.room_id JOIN users u ON u.id=t.pic_id JOIN users creator ON creator.id=t.created_by WHERE t.id=$1 AND ($2 OR t.pic_id=$3) AND (t.deleted_at IS NULL OR $4)`,
       [taskId, coordinator(actor), actor.id, includeDeleted],
     );
     if (!r[0]) throw AppError.notFound();
@@ -95,7 +102,7 @@ export class TugasService {
     const baseWhere = `t.deleted_at IS NULL AND ($1 OR t.pic_id=$2) AND ($3='' OR p.name ILIKE '%'||$3||'%' OR t.title ILIKE '%'||$3||'%' OR p.medical_record_no ILIKE '%'||$3||'%') AND ($5::text IS NULL OR t.priority=$5) AND ($6::text IS NULL OR t.room_id=$6) AND ($7::text IS NULL OR t.patient_id=$7) AND ($8::text IS NULL OR t.pic_id=$8) AND ($9::date IS NULL OR (t.starts_at AT TIME ZONE 'Asia/Jakarta')::date >= $9) AND ($10::date IS NULL OR (t.starts_at AT TIME ZONE 'Asia/Jakarta')::date <= $10)`;
     const where = `${baseWhere} AND ($4::text IS NULL OR t.status=$4)`;
     const items = await this.ds.query(
-      `SELECT t.id,t.title,t.description,t.notes,t.patient_id AS "patientId",p.name AS "patientName",p.medical_record_no AS "medicalRecordNo",t.room_id AS "roomId",r.name AS "roomName",t.pic_id AS "picId",u.name AS "picName",t.priority,t.status,t.starts_at AS "startsAt",t.ends_at AS "endsAt",t.version FROM tasks t JOIN patients p ON p.id=t.patient_id JOIN rooms r ON r.id=t.room_id JOIN users u ON u.id=t.pic_id WHERE ${where} ORDER BY t.starts_at,t.id LIMIT $11 OFFSET $12`,
+      `SELECT t.id,t.title,t.description,t.notes,t.created_by AS "createdById",creator.name AS "createdByName",t.patient_id AS "patientId",p.name AS "patientName",p.medical_record_no AS "medicalRecordNo",t.room_id AS "roomId",r.name AS "roomName",t.pic_id AS "picId",u.name AS "picName",t.priority,t.status,t.starts_at AS "startsAt",t.ends_at AS "endsAt",t.version FROM tasks t JOIN patients p ON p.id=t.patient_id JOIN rooms r ON r.id=t.room_id JOIN users u ON u.id=t.pic_id JOIN users creator ON creator.id=t.created_by WHERE ${where} ORDER BY t.starts_at,t.id LIMIT $11 OFFSET $12`,
       params,
     );
     const totals = await this.ds.query(
@@ -159,11 +166,7 @@ export class TugasService {
         throw AppError.validation(
           "Penempatan ini sudah dirilis dan tidak dapat menerima tugas baru.",
         );
-      const nurses = await m.query(
-        `SELECT EXISTS(SELECT 1 FROM nurses n JOIN users u ON u.id=n.user_id WHERE n.user_id=$1 AND n.active AND u.active AND u.role='PERAWAT') ok`,
-        [d.picId],
-      );
-      if (!nurses[0].ok) throw AppError.validation("PIC harus perawat aktif.");
+      await this.requireActivePic(m, d.picId);
       await m.query(
         `INSERT INTO tasks(id,patient_id,room_id,placement_id,pic_id,created_by,title,description,notes,starts_at,ends_at,priority) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
         [
@@ -182,8 +185,8 @@ export class TugasService {
         ],
       );
       await m.query(
-        `INSERT INTO task_history(id,task_id,actor_id,action,after_data) VALUES($1,$2,$3,'created',jsonb_build_object('status','todo','picId',$4::text))`,
-        [id(), taskId, actor.id, d.picId],
+        `INSERT INTO task_history(id,task_id,actor_id,action,after_data) SELECT $1,t.id,$3,'created',to_jsonb(t) FROM tasks t WHERE t.id=$2`,
+        [id(), taskId, actor.id],
       );
     });
     return this.row(this.ds.manager, taskId, actor);
@@ -200,6 +203,9 @@ export class TugasService {
         throw AppError.notFound();
       if (t.version !== d.expectedVersion)
         throw AppError.conflict("Tugas berubah. Muat ulang sebelum menyimpan.");
+      if (placement.status !== "active")
+        throw AppError.validation("Penempatan pasien tidak aktif.");
+      await this.requireActivePic(m, t.pic_id);
       const admin = coordinator(actor);
       if (
         !admin &&
@@ -239,19 +245,17 @@ export class TugasService {
         throw AppError.validation(
           "Waktu selesai tidak boleh sebelum waktu mulai.",
         );
-      if (d.startsAt || d.endsAt) {
-        const fmt = (v: Date) =>
-          new Intl.DateTimeFormat("en-CA", {
-            timeZone: "Asia/Jakarta",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-          }).format(v);
-        if (fmt(start) < placement.starts_on || fmt(end) > placement.ends_on)
-          throw AppError.validation(
-            "Jadwal tugas harus berada dalam rentang penempatan.",
-          );
-      }
+      const fmt = (v: Date) =>
+        new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Jakarta",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(v);
+      if (fmt(start) < placement.starts_on || fmt(end) > placement.ends_on)
+        throw AppError.validation(
+          "Jadwal tugas harus berada dalam rentang penempatan.",
+        );
       const next = {
         title: d.title?.trim() ?? t.title,
         description: d.description?.trim() ?? t.description,
@@ -347,11 +351,7 @@ export class TugasService {
         throw AppError.validation(
           "Tugas selesai atau dibatalkan tidak dapat dialihkan.",
         );
-      const n = await m.query(
-        `SELECT EXISTS(SELECT 1 FROM nurses n JOIN users u ON u.id=n.user_id WHERE n.user_id=$1 AND n.active AND u.active AND u.role='PERAWAT') ok`,
-        [d.picId],
-      );
-      if (!n[0].ok) throw AppError.validation("PIC harus perawat aktif.");
+      await this.requireActivePic(m, d.picId);
       await m.query(
         "UPDATE tasks SET pic_id=$2,version=version+1,updated_at=now() WHERE id=$1",
         [taskId, d.picId],

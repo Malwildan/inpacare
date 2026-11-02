@@ -1,4 +1,4 @@
-import { createDataSource } from "./entities";
+import { ALL_MIGRATIONS, createDataSource } from "./entities";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
@@ -126,15 +126,11 @@ async function adopt(): Promise<void> {
     const delta = rows.filter(
       (row) => row.name === "RebuildDelta1793577600001",
     ).length;
+    const known = ALL_MIGRATIONS.map((Migration) => new Migration().name);
     if (
       baseline > 1 ||
       delta > 1 ||
-      rows.some(
-        (row) =>
-          !["Baseline1793577600000", "RebuildDelta1793577600001"].includes(
-            row.name,
-          ),
-      )
+      rows.some((row, i) => row.name !== known[i])
     )
       throw new Error(
         "Unexpected or duplicate TypeORM migration history; no baseline was marked.",
@@ -147,7 +143,10 @@ async function adopt(): Promise<void> {
       throw new Error(
         "Migration history is not empty; refusing to fake-mark the baseline.",
       );
-    if (delta === 1 && baseline === 1) return;
+    if (delta === 1 && baseline === 1) {
+      await ds.runMigrations({ transaction: "all" });
+      return;
+    }
     await assertBaselineFingerprint();
     if (baseline === 0)
       await ds.query("INSERT INTO migrations(timestamp,name) VALUES($1,$2)", [

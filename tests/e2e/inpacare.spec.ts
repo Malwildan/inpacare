@@ -132,6 +132,10 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await expect(pic.getByRole('status')).toContainText(/berhasil/i);
 	await expect(pic.getByRole('dialog')).toContainText(title);
 	await expect(pic.getByRole('dialog')).toContainText('created');
+	await expect(pic.getByRole('dialog')).toContainText('Pembuat:');
+	await expect(pic.getByRole('dialog')).toContainText('Rina');
+	await pic.getByText('Nilai sebelum dan sesudah', {exact:true}).first().click();
+	await expect(pic.locator('.audit-values').filter({hasText:'created_by'}).first()).toContainText(title);
 	await pic.getByLabel('Catatan tindakan').fill('Pemeriksaan diselesaikan melalui alur E2E.');
 	await pic.getByRole('button',{name:'Simpan catatan'}).click();
 	await expect(pic.getByRole('dialog')).toContainText('Pemeriksaan diselesaikan melalui alur E2E.');

@@ -250,7 +250,7 @@ class Workflows(unittest.TestCase):
         self.assertIn(status, (200, 201), record)
         self.assertTrue(record.get("id"), record)
         update = {
-            "expectedVersion": 1, "complaint": create["complaint"], "diagnosis": create["diagnosis"],
+            "expectedVersion": 1, "reason": "Koreksi pengujian", "complaint": create["complaint"], "diagnosis": create["diagnosis"],
             "treatment": create["treatment"], "notes": create["notes"], "recordDate": create["recordDate"],
         }
         self.assert_error(self.users["maya"].request("PATCH", f"/medical-records/{record['id']}", update), 403, "FORBIDDEN")

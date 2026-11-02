@@ -12,13 +12,15 @@ import {
   UpdateRoomItemDto,
 } from "./dto/room.dto";
 
+const ROOM_SELECT = `SELECT jsonb_build_object('id',r.id,'name',r.name,'roomClass',r.room_class,'capacity',r.capacity,'status',r.status,'picId',r.pic_id,'picName',u.name,'dailyRate',r.daily_rate::text,'version',r.version,'items',COALESCE(i.items,'[]'::jsonb),'totalCost',COALESCE(i.total_cost,0)::text,'occupants',COALESCE(o.occupants,0)) AS value FROM rooms r LEFT JOIN users u ON u.id=r.pic_id LEFT JOIN LATERAL (SELECT jsonb_agg(jsonb_build_object('id',ri.id,'name',ri.name,'category',ri.category,'quantity',ri.quantity,'unitPrice',ri.unit_price::text) ORDER BY ri.name) items,sum(ri.quantity*ri.unit_price) total_cost FROM room_items ri WHERE ri.room_id=r.id AND ri.deleted_at IS NULL) i ON true LEFT JOIN LATERAL (SELECT count(*) occupants FROM placements p WHERE p.room_id=r.id AND p.status='active' AND p.starts_on<=timezone('Asia/Jakarta',now())::date AND p.ends_on>=timezone('Asia/Jakarta',now())::date) o ON true`;
+
 @Injectable()
 export class RuangInapService {
   constructor(private readonly dataSource: DataSource) {}
 
   private async room(manager: EntityManager, roomId: string) {
     const rows = await manager.query(
-      `SELECT jsonb_build_object('id',r.id,'name',r.name,'roomClass',r.room_class,'capacity',r.capacity,'status',r.status,'picId',r.pic_id,'picName',u.name,'dailyRate',r.daily_rate::text,'version',r.version,'items',COALESCE(i.items,'[]'::jsonb),'totalCost',COALESCE(i.total_cost,0)::text,'occupants',COALESCE(o.occupants,0)) AS value FROM rooms r LEFT JOIN users u ON u.id=r.pic_id LEFT JOIN LATERAL (SELECT jsonb_agg(jsonb_build_object('id',ri.id,'name',ri.name,'category',ri.category,'quantity',ri.quantity,'unitPrice',ri.unit_price::text) ORDER BY ri.name) items,sum(ri.quantity*ri.unit_price) total_cost FROM room_items ri WHERE ri.room_id=r.id AND ri.deleted_at IS NULL) i ON true LEFT JOIN LATERAL (SELECT count(*) occupants FROM placements p WHERE p.room_id=r.id AND p.status='active' AND p.starts_on<=timezone('Asia/Jakarta',now())::date AND p.ends_on>=timezone('Asia/Jakarta',now())::date) o ON true WHERE r.id=$1 AND r.deleted_at IS NULL`,
+      `${ROOM_SELECT} WHERE r.id=$1 AND r.deleted_at IS NULL`,
       [roomId],
     );
     if (!rows[0]) throw AppError.notFound();
@@ -26,7 +28,7 @@ export class RuangInapService {
   }
   async list() {
     const rows = await this.dataSource.query(
-      `SELECT jsonb_build_object('id',r.id,'name',r.name,'roomClass',r.room_class,'capacity',r.capacity,'status',r.status,'picId',r.pic_id,'picName',u.name,'dailyRate',r.daily_rate::text,'version',r.version,'items',COALESCE(i.items,'[]'::jsonb),'totalCost',COALESCE(i.total_cost,0)::text,'occupants',COALESCE(o.occupants,0)) AS value FROM rooms r LEFT JOIN users u ON u.id=r.pic_id LEFT JOIN LATERAL (SELECT jsonb_agg(jsonb_build_object('id',ri.id,'name',ri.name,'category',ri.category,'quantity',ri.quantity,'unitPrice',ri.unit_price::text) ORDER BY ri.name) items,sum(ri.quantity*ri.unit_price) total_cost FROM room_items ri WHERE ri.room_id=r.id AND ri.deleted_at IS NULL) i ON true LEFT JOIN LATERAL (SELECT count(*) occupants FROM placements p WHERE p.room_id=r.id AND p.status='active' AND p.starts_on<=timezone('Asia/Jakarta',now())::date AND p.ends_on>=timezone('Asia/Jakarta',now())::date) o ON true WHERE r.deleted_at IS NULL ORDER BY r.name LIMIT 100`,
+      `${ROOM_SELECT} WHERE r.deleted_at IS NULL ORDER BY r.name LIMIT 100`,
     );
     return { items: rows.map((r: { value: unknown }) => r.value) };
   }

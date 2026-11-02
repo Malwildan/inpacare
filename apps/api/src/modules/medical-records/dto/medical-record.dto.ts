@@ -25,6 +25,7 @@ export class CreateMedicalRecordDto {
 }
 
 export class UpdateMedicalRecordDto {
+  @IsString() @MinLength(1) @MaxLength(500) reason!: string;
   @IsString() @MinLength(1) @MaxLength(5000) complaint!: string;
   @IsString() @MinLength(1) @MaxLength(5000) diagnosis!: string;
   @IsString() @MinLength(1) @MaxLength(5000) treatment!: string;

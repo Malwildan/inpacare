@@ -116,6 +116,7 @@ export class RekamMedisService {
 
   async update(actor: Actor, recordId: string, input: UpdateMedicalRecordDto) {
     if (actor.role !== "DOKTER") throw AppError.forbidden();
+    if (!input.reason.trim()) throw AppError.validation("Alasan koreksi wajib diisi.");
     for (const [value, label] of [
       [input.complaint, "Keluhan"],
       [input.diagnosis, "Diagnosis"],
@@ -155,7 +156,7 @@ export class RekamMedisService {
         ],
       );
       await m.query(
-        `INSERT INTO medical_history(id,entity_type,entity_id,actor_id,action,reason,before_data,after_data) VALUES($1,'medical_record',$2,$3,'updated','Rekam medis dikoreksi',$4::jsonb,$5::jsonb)`,
+        `INSERT INTO medical_history(id,entity_type,entity_id,actor_id,action,reason,before_data,after_data) VALUES($1,'medical_record',$2,$3,'updated',$6,$4::jsonb,$5::jsonb)`,
         [
           id(),
           recordId,
@@ -169,6 +170,7 @@ export class RekamMedisService {
             version: before.version,
           }),
           JSON.stringify(after),
+          input.reason.trim(),
         ],
       );
       return this.findReadable(m, actor, recordId);

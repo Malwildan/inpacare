@@ -4313,19 +4313,19 @@
           "sourceType": "VARCHAR(120)",
           "sourceKey": "—",
           "sourceConstraints": "NULL",
-          "actualPersistenceOrProjection": "invoices.claim_verified",
-          "targetTypeNullabilityAndVisibility": "invoices.claim_verified boolean NOT NULL; TypeScript boolean public; Source UML visibility private (UML class attributes). Source UML private attribute maps to a public TypeScript TypeORM property.",
+          "actualPersistenceOrProjection": "invoices.claim_result",
+          "targetTypeNullabilityAndVisibility": "invoices.claim_result varchar(120) NULL; TypeScript string | null public; source private attribute maps to public ORM property.",
           "actualMapping": {
-            "target": "invoices.claim_verified",
+            "target": "invoices.claim_result",
             "columns": [
               {
                 "table": "invoices",
-                "column": "claim_verified",
-                "ormProperty": "claimVerified",
-                "postgresType": "boolean",
-                "nullable": false,
+                "column": "claim_result",
+                "ormProperty": "claimResult",
+                "postgresType": "varchar(120)",
+                "nullable": true,
                 "primary": false,
-                "tsDeclaredType": "boolean",
+                "tsDeclaredType": "string | null",
                 "tsVisibility": "public"
               }
             ],
@@ -4343,6 +4343,11 @@
               "file": "apps/api/test/database.integration.cjs",
               "test": "database lifecycle: fresh migration, adoption, drift refusal, seed and ORM behavior",
               "coverage": "group-level database/ORM evidence only"
+            },
+            {
+              "file": "apps/api/test/atomicity.integration.cjs",
+              "test": "claim results distinguish unreviewed, rejected and approved and retain negative decision attribution",
+              "coverage": "Direct assertions on result nullability, negative/positive stored text, attribution and audit history."
             }
           ]
         },
@@ -5009,6 +5014,22 @@
       "reason": "durable approval request/decision history",
       "status": "mapped_unverified",
       "actualColumnCount": 12
+    },
+    {
+      "targetClass": "AuditSiklus",
+      "targetFile": "apps/api/src/modules/cycles/entities/audit-siklus.entity.ts",
+      "physicalTable": "cycle_history",
+      "reason": "atomic cycle archival audit: actor, reason, before/after and time",
+      "status": "mapped_unverified",
+      "actualColumnCount": 8
+    },
+    {
+      "targetClass": "AuditMedis",
+      "targetFile": "apps/api/src/modules/medical-records/entities/audit-medis.entity.ts",
+      "physicalTable": "medical_history",
+      "reason": "clinical correction audit",
+      "status": "mapped_unverified",
+      "actualColumnCount": 9
     }
   ],
   "controllers": [
@@ -10209,5 +10230,15 @@
     "contractPaths": 34,
     "source": "compiled Nest route contract test"
   },
-  "baselineReconciledCommit": "ccb463823f03952e86b3099f9213ad0e09ed0cd5"
+  "baselineReconciledCommit": "ccb463823f03952e86b3099f9213ad0e09ed0cd5",
+  "auditFollowupEvidence": {
+    "report": "docs/validation/NESTJS_AUDIT_FOLLOWUP.md",
+    "reviewedHead": "3f7d58ceebbfcf628ac75367e19c34d3b44e2795",
+    "unitAndContractTests": 12,
+    "postgresIntegrationTests": 10,
+    "httpWorkflows": 16,
+    "liveSchemaChecks": 1,
+    "e2eWorkflows": 11,
+    "limits": "Targeted audit regressions plus existing suites; not individual certification of every source row."
+  }
 }

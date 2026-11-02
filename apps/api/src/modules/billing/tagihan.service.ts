@@ -41,7 +41,7 @@ export class TagihanService {
       throw AppError.validation("Status pembayaran tidak valid.");
     const pattern = `%${search.trim()}%`;
     const rows = await this.db.query(
-      `SELECT jsonb_build_object('id',i.id,'patientId',i.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',i.placement_id,'bpjsSnapshot',i.bpjs_snapshot,'totalAmount',i.total_amount::text,'coveredAmount',i.covered_amount::text,'payableAmount',i.payable_amount::text,'status',i.status,'claimVerified',i.claim_verified,'version',i.version,'createdAt',i.created_at,'lineCount',count(l.id)) AS item FROM invoices i JOIN patients p ON p.id=i.patient_id LEFT JOIN invoice_lines l ON l.invoice_id=i.id WHERE i.deleted_at IS NULL AND ($1='' OR p.name ILIKE $2 OR p.medical_record_no ILIKE $2 OR i.id ILIKE $2) AND ($3::text IS NULL OR i.status=$3) GROUP BY i.id,p.name,p.medical_record_no ORDER BY i.created_at DESC,i.id LIMIT $4`,
+      `SELECT jsonb_build_object('id',i.id,'patientId',i.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',i.placement_id,'bpjsSnapshot',i.bpjs_snapshot,'totalAmount',i.total_amount::text,'coveredAmount',i.covered_amount::text,'payableAmount',i.payable_amount::text,'status',i.status,'claimVerified',i.claim_verified,'claimResult',i.claim_result,'version',i.version,'createdAt',i.created_at,'lineCount',count(l.id)) AS item FROM invoices i JOIN patients p ON p.id=i.patient_id LEFT JOIN invoice_lines l ON l.invoice_id=i.id WHERE i.deleted_at IS NULL AND ($1='' OR p.name ILIKE $2 OR p.medical_record_no ILIKE $2 OR i.id ILIKE $2) AND ($3::text IS NULL OR i.status=$3) GROUP BY i.id,p.name,p.medical_record_no ORDER BY i.created_at DESC,i.id LIMIT $4`,
       [
         search.trim(),
         pattern,
@@ -78,7 +78,7 @@ export class TagihanService {
   async detail(actor: Actor, invoiceId: string) {
     this.role(actor);
     const [row] = await this.db.query(
-      `SELECT jsonb_build_object('id',i.id,'patientId',i.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',i.placement_id,'bpjsSnapshot',i.bpjs_snapshot,'totalAmount',i.total_amount::text,'coveredAmount',i.covered_amount::text,'payableAmount',i.payable_amount::text,'status',i.status,'claimVerified',i.claim_verified,'version',i.version,'createdAt',i.created_at,'lines',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',l.id,'roomItemId',l.room_item_id,'kind',l.kind,'description',l.description,'quantity',l.quantity,'unitPrice',l.unit_price::text,'lineTotal',l.line_total::text) ORDER BY l.id) FROM invoice_lines l WHERE l.invoice_id=i.id),'[]'::jsonb),'history',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',h.id,'action',h.action,'reason',h.reason,'actor',u.name,'before',h.before_data,'after',h.after_data,'createdAt',h.created_at) ORDER BY h.created_at DESC) FROM invoice_history h JOIN users u ON u.id=h.actor_id WHERE h.invoice_id=i.id),'[]'::jsonb)) AS item FROM invoices i JOIN patients p ON p.id=i.patient_id WHERE i.id=$1 AND i.deleted_at IS NULL`,
+      `SELECT jsonb_build_object('id',i.id,'patientId',i.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',i.placement_id,'bpjsSnapshot',i.bpjs_snapshot,'totalAmount',i.total_amount::text,'coveredAmount',i.covered_amount::text,'payableAmount',i.payable_amount::text,'status',i.status,'claimVerified',i.claim_verified,'claimResult',i.claim_result,'version',i.version,'createdAt',i.created_at,'lines',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',l.id,'roomItemId',l.room_item_id,'kind',l.kind,'description',l.description,'quantity',l.quantity,'unitPrice',l.unit_price::text,'lineTotal',l.line_total::text) ORDER BY l.id) FROM invoice_lines l WHERE l.invoice_id=i.id),'[]'::jsonb),'history',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',h.id,'action',h.action,'reason',h.reason,'actor',u.name,'before',h.before_data,'after',h.after_data,'createdAt',h.created_at) ORDER BY h.created_at DESC) FROM invoice_history h JOIN users u ON u.id=h.actor_id WHERE h.invoice_id=i.id),'[]'::jsonb)) AS item FROM invoices i JOIN patients p ON p.id=i.patient_id WHERE i.id=$1 AND i.deleted_at IS NULL`,
       [invoiceId],
     );
     if (!row) throw AppError.notFound();
@@ -435,6 +435,7 @@ export class TagihanService {
   }
   async verifyClaim(actor: Actor, invoiceId: string, input: VerifyClaimDto) {
     this.role(actor);
+    if (!input.result.trim()) throw AppError.validation("Hasil verifikasi wajib diisi.");
     if (!input.reason.trim()) throw AppError.validation("Alasan wajib diisi.");
     return this.db.transaction(async (m) => {
       const [inv] = await m.query(
@@ -448,14 +449,16 @@ export class TagihanService {
         throw AppError.conflict();
       const before = {
         claimVerified: !!inv.claim_verified,
+        claimResult: inv.claim_result,
         version: Number(inv.version),
       };
       await m.query(
-        `UPDATE invoices SET claim_verified=$1,claim_verified_at=CASE WHEN $1 THEN now() ELSE NULL END,claim_verified_by=CASE WHEN $1 THEN $2 ELSE NULL END,version=version+1,updated_at=now() WHERE id=$3`,
-        [input.verified, actor.id, invoiceId],
+        `UPDATE invoices SET claim_verified=$1,claim_result=$4,claim_verified_at=now(),claim_verified_by=$2,version=version+1,updated_at=now() WHERE id=$3`,
+        [input.verified, actor.id, invoiceId, input.result.trim()],
       );
       const after = {
         claimVerified: input.verified,
+        claimResult: input.result.trim(),
         version: Number(inv.version) + 1,
       };
       await this.history(

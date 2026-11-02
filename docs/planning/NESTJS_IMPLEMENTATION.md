@@ -28,3 +28,7 @@ Run `node scripts/check-nestjs-traceability.mjs` to validate the 17/122/53/30 in
 Run `npm run types:api` to regenerate `apps/web/src/lib/generated/api.d.ts` from the contract. Run `npm run test:api:contract` to compare the generated Nest route metadata and DTO validation metadata against the contract.
 
 Behavior parity remains open at the individual source-row level. Grouped suite results are recorded as evidence without claiming each field or method was directly exercised.
+
+## Audit follow-up
+
+The review of `3f7d58c` found seven concrete gaps despite passing mapping checks. Their fixes and fresh regression evidence are recorded in [Modul 2 audit follow-up](../validation/NESTJS_AUDIT_FOLLOWUP.md). Current verification: 12 unit/contract tests, 10 PostgreSQL integration tests, 16 HTTP workflows, 1 live JSON-schema check and 11 E2E workflows. Historical verification counts above describe the original rebuild acceptance.
