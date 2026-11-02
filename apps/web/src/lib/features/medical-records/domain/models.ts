@@ -1,0 +1,113 @@
+export type ClinicalRecord = {
+    id: string;
+    patientId: string;
+    patientName: string;
+    medicalRecordNo: string;
+    doctorId: string;
+    doctorName: string;
+    recordDate: string;
+    complaint: string;
+    diagnosis: string;
+    treatment: string;
+    notes: string;
+    version: number;
+    createdAt: string;
+    updatedAt: string;
+    observations: ({
+        id: string;
+        nurseId: string;
+        nurseName: string;
+        symptoms: string;
+        nursingNote: string;
+        observedAt: string;
+        version: number;
+        temperature: number | null;
+        systolic: number | null;
+        diastolic: number | null;
+        bloodPressure: string | null;
+        pulse: number | null;
+        respiratoryRate: number | null;
+        spo2: number | null;
+    })[];
+};
+export type MedicalSummary = {
+    id: string;
+    patientId: string;
+    patientName: string;
+    medicalRecordNo: string;
+    doctorName: string;
+    recordDate: string;
+    diagnosis: string;
+    treatment: string;
+    notes: string;
+    version: number;
+    createdAt: string;
+    observationCount: number;
+};
+export type AdmissionRecord = {
+    id: string;
+    patientId: string;
+    doctorId: string;
+    recordDate: string;
+};
+export type Observation = {
+    id: string;
+    nurseId: string;
+    nurseName: string;
+    symptoms: string;
+    nursingNote: string;
+    observedAt: string;
+    version: number;
+    temperature: number | null;
+    systolic: number | null;
+    diastolic: number | null;
+    bloodPressure: string | null;
+    pulse: number | null;
+    respiratoryRate: number | null;
+    spo2: number | null;
+};
+export type NewMedicalRecord = {
+    patientId: string;
+    complaint: string;
+    diagnosis: string;
+    treatment: string;
+    notes?: string;
+    recordDate: string;
+};
+export type UpdateMedicalRecord = {
+    expectedVersion: number;
+    complaint: string;
+    diagnosis: string;
+    treatment: string;
+    notes?: string;
+    recordDate: string;
+    reason: string;
+};
+export type NewObservation = {
+    symptoms: string;
+    nursingNote?: string;
+    observedAt: string;
+    temperature?: number;
+    systolic?: number;
+    diastolic?: number;
+    pulse?: number;
+    respiratoryRate?: number;
+    spo2?: number;
+};
+export type UpdateObservation = {
+    symptoms: string;
+    nursingNote?: string;
+    observedAt: string;
+    temperature?: number;
+    systolic?: number;
+    diastolic?: number;
+    pulse?: number;
+    respiratoryRate?: number;
+    spo2?: number;
+    expectedVersion: number;
+    reason: string;
+};
+export type DeleteRecord = {
+    expectedVersion: number;
+    reason: string;
+};

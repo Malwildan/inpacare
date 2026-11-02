@@ -1,3 +1,9 @@
 import { redirect } from '@sveltejs/kit';
+import { createAuth } from '$lib/app/composition/auth';
+import { landingPage } from '$lib/app/navigation';
 import type { PageServerLoad } from './$types';
-export const load:PageServerLoad=async({fetch})=>{const response=await fetch('/api/v1/session');if(response.ok){const {user}=await response.json();redirect(303,user.role==='ADMISI'?'/invoices':'/dashboard');}return {};};
+export const load: PageServerLoad = async ({ fetch }) => {
+ const user = await createAuth(fetch).current().catch(() => null);
+ if (user) redirect(303, landingPage(user));
+ return {};
+};

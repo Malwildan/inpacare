@@ -1,0 +1,71 @@
+<script lang="ts">
+import { invalidateAll } from '$app/navigation';
+import type { MedicalRecords, MedicalDetailData, Observation } from '$lib/features/medical-records';
+import { sessionFailure } from '$lib/shared/presentation/session';
+import { formText } from '$lib/shared/presentation/form';
+import { Plus } from 'lucide-svelte';
+let { data, medical }: {
+    data: MedicalDetailData;
+    medical: MedicalRecords;
+} = $props();
+let busy = $state(false);
+let error = $state('');
+let notice = $state('');
+let editingObservation = $state<string | null>(null);
+let record = $derived(data.record);
+const canEdit = $derived(data.user.role === 'DOKTER' && data.user.id === record.doctorId);
+const canObserve = $derived(data.user.role === 'PERAWAT');
+async function send(operation: () => Promise<unknown>) { busy = true; error = ''; notice = ''; try {
+    await operation();
+    await invalidateAll();
+    editingObservation = null;
+    notice = 'Perubahan tersimpan.';
+}
+catch (e) {
+    error = sessionFailure(e);
+}
+finally {
+    busy = false;
+} }
+async function update(event: SubmitEvent) { event.preventDefault(); const f = new FormData(event.currentTarget as HTMLFormElement); await send(() => medical.update(record.id, { expectedVersion: record.version!, complaint: formText(f, 'complaint'), diagnosis: formText(f, 'diagnosis'), treatment: formText(f, 'treatment'), notes: formText(f, 'notes'), recordDate: formText(f, 'recordDate'), reason: formText(f, 'reason') })); }
+async function observe(event: SubmitEvent) { event.preventDefault(); const f = new FormData(event.currentTarget as HTMLFormElement); const number = (key: string) => { const value = String(f.get(key) ?? '').trim(); return value === '' ? undefined : Number(value); }; await send(() => medical.observe(record.id, { symptoms: formText(f, 'symptoms'), nursingNote: formText(f, 'nursingNote') || undefined, observedAt: new Date().toISOString(), temperature: number('temperature'), systolic: number('systolic'), diastolic: number('diastolic'), pulse: number('pulse'), respiratoryRate: number('respiratoryRate'), spo2: number('spo2') })); }
+async function correctObservation(event: SubmitEvent, observation: Observation) { event.preventDefault(); const f = new FormData(event.currentTarget as HTMLFormElement); const number = (key: string) => { const value = String(f.get(key) ?? '').trim(); return value === '' ? undefined : Number(value); }; await send(() => medical.correctObservation(record.id, observation.id, { expectedVersion: observation.version, reason: formText(f, 'reason'), symptoms: formText(f, 'symptoms'), nursingNote: formText(f, 'nursingNote') || undefined, observedAt: new Date(String(formText(f, 'observedAt'))).toISOString(), temperature: number('temperature'), systolic: number('systolic'), diastolic: number('diastolic'), pulse: number('pulse'), respiratoryRate: number('respiratoryRate'), spo2: number('spo2') })); }
+async function removeRecord() { const reason = prompt('Alasan pengarsipan rekam medis:'); if (!reason?.trim())
+    return; if (confirm('Arsipkan rekam medis ini?')) {
+    await send(() => medical.archive(record.id, { expectedVersion: record.version!, reason }));
+    if (!error)
+        location.assign('/medical-records');
+} }
+function measurement(value: number | null, unit: string) { return value === null || value === undefined ? '—' : `${value} ${unit}`; }
+</script>
+<svelte:head><title>{record.patientName} · Rekam Medis | InpaCare</title></svelte:head>
+<div class="crumb"><a href="/medical-records" class="text-link">Rekam Medis</a><span> / {record.medicalRecordNo}</span></div>
+<section class="page-heading"><div><h1 class="page-title">Rekam Medis · {record.patientName}</h1><p class="page-subtitle">{record.medicalRecordNo} · {new Date(record.recordDate+'T12:00:00').toLocaleDateString('id-ID')}{#if record.doctorName} · {record.doctorName}{/if}</p></div><div class="heading-actions">{#if canEdit}<button class="button danger" disabled={busy} onclick={()=>void removeRecord()}>Arsipkan rekam medis</button>{/if}<a href="/medical-records" class="button secondary">Kembali</a></div></section>
+{#if error}<p class="error" role="alert">{error}</p>{/if}{#if notice}<p class="success" role="status">{notice}</p>{/if}
+{#if data.admisiProjection}<section class="panel"><h2>Proyeksi administrasi baca saja</h2><p class="muted">Informasi klinis disembunyikan untuk akun Admisi.</p><dl class="clinical-grid"><div><dt>ID pasien</dt><dd>{record.patientId}</dd></div><div><dt>Nomor rekam medis</dt><dd>{record.medicalRecordNo}</dd></div><div><dt>ID dokter</dt><dd>{record.doctorId}</dd></div><div><dt>Tanggal rekam medis</dt><dd>{new Date(record.recordDate+'T12:00:00').toLocaleDateString('id-ID')}</dd></div></dl></section>{:else}
+<section class="panel record-panel"><div class="panel-header"><div><h2>Catatan dokter</h2><p class="muted">Terakhir diperbarui {new Date(record.updatedAt??record.recordDate).toLocaleString('id-ID')} · versi {record.version??'—'}</p></div></div>{#if canEdit}<form class="form-grid" onsubmit={update}><label class="field">Tanggal<input type="date" name="recordDate" value={record.recordDate} required /></label><label class="field">Keluhan<textarea name="complaint" rows="3" required>{record.complaint??''}</textarea></label><label class="field">Diagnosis<textarea name="diagnosis" rows="3" required>{record.diagnosis??''}</textarea></label><label class="field">Tindakan<textarea name="treatment" rows="3" required>{record.treatment??''}</textarea></label><label class="field">Catatan medis<textarea name="notes" rows="3">{record.notes??''}</textarea></label><label class="field">Alasan koreksi<input name="reason" required maxlength="500" /></label><div class="form-actions"><button class="button primary" disabled={busy}>Simpan perubahan</button></div></form>{:else}<dl class="clinical-grid"><div><dt>Keluhan</dt><dd>{record.complaint??'—'}</dd></div><div><dt>Diagnosis</dt><dd>{record.diagnosis??'—'}</dd></div><div><dt>Tindakan</dt><dd>{record.treatment??'—'}</dd></div><div><dt>Catatan medis</dt><dd>{record.notes||'—'}</dd></div></dl>{/if}</section>
+<section class="panel"><div class="panel-header"><div><h2>Observasi keperawatan</h2><p class="muted">Pengukuran disimpan sebagai catatan yang dikirim perawat.</p></div><span class="badge">{(record.observations?.length ?? 0)} observasi</span></div>{#if canObserve}<details class="observe-form"><summary class="button secondary small"><Plus size={14} aria-hidden="true"/> Tambah observasi</summary><form class="form-grid" onsubmit={observe}><label class="field">Gejala/kondisi<textarea name="symptoms" rows="2" required maxlength="3000"></textarea></label><label class="field">Catatan keperawatan<textarea name="nursingNote" rows="2" maxlength="3000"></textarea></label><div class="vitals-grid"><label class="field">Suhu (°C)<input name="temperature" type="number" min="0" max="100" step="0.1" /></label><label class="field">Sistolik<input name="systolic" type="number" min="0" step="1" /></label><label class="field">Diastolik<input name="diastolic" type="number" min="0" step="1" /></label><label class="field">Nadi (bpm)<input name="pulse" type="number" min="0" step="1" /></label><label class="field">Pernapasan (/menit)<input name="respiratoryRate" type="number" min="0" step="1" /></label><label class="field">Saturasi O₂ (%)<input name="spo2" type="number" min="0" max="100" step="0.01" /></label></div><div class="form-actions"><button class="button primary" disabled={busy}>Simpan observasi</button></div></form></details>{/if}
+	<div class="observations">{#each (record.observations ?? []) as observation (observation.id)}<article class="observation"><div class="observation-heading"><div><strong>{observation.nurseName}</strong><span class="muted"> · {new Date(observation.observedAt).toLocaleString('id-ID')} · v{observation.version}</span></div>{#if canObserve&&observation.nurseId===data.user.id}<button class="button secondary small" aria-expanded={editingObservation===observation.id} onclick={()=>editingObservation=editingObservation===observation.id?null:observation.id}>Koreksi observasi</button>{/if}</div><p><strong>Gejala/kondisi:</strong> {observation.symptoms}</p>{#if observation.nursingNote}<p><strong>Catatan:</strong> {observation.nursingNote}</p>{/if}<dl class="vitals-grid values"><div><dt>Suhu</dt><dd>{measurement(observation.temperature,'°C')}</dd></div><div><dt>Tekanan darah</dt><dd>{observation.bloodPressure??'—'}</dd></div><div><dt>Nadi</dt><dd>{measurement(observation.pulse,'bpm')}</dd></div><div><dt>Pernapasan</dt><dd>{measurement(observation.respiratoryRate,'/menit')}</dd></div><div><dt>Saturasi</dt><dd>{measurement(observation.spo2,'%')}</dd></div></dl>
+		{#if editingObservation===observation.id}<form class="form-grid correction-form" onsubmit={(event)=>correctObservation(event,observation)}><label class="field">Waktu observasi<input name="observedAt" type="datetime-local" value={new Date(new Date(observation.observedAt).getTime()-new Date(observation.observedAt).getTimezoneOffset()*60000).toISOString().slice(0,16)} required/></label><label class="field">Gejala/kondisi<textarea name="symptoms" required>{observation.symptoms}</textarea></label><label class="field">Catatan keperawatan<textarea name="nursingNote">{observation.nursingNote}</textarea></label><div class="vitals-grid"><label class="field">Suhu<input name="temperature" type="number" step="0.1" value={observation.temperature??''}/></label><label class="field">Sistolik<input name="systolic" type="number" value={observation.systolic??''}/></label><label class="field">Diastolik<input name="diastolic" type="number" value={observation.diastolic??''}/></label><label class="field">Nadi<input name="pulse" type="number" value={observation.pulse??''}/></label><label class="field">Pernapasan<input name="respiratoryRate" type="number" value={observation.respiratoryRate??''}/></label><label class="field">Saturasi<input name="spo2" type="number" step="0.01" value={observation.spo2??''}/></label></div><label class="field">Alasan koreksi<input name="reason" required maxlength="500"/></label><div class="form-actions"><button class="button primary" disabled={busy}>Simpan koreksi</button><button class="button secondary" type="button" onclick={()=>editingObservation=null}>Batal</button></div></form>{/if}</article>{:else}<p class="empty">Belum ada observasi keperawatan.</p>{/each}</div>
+</section>
+{/if}
+<style>
+.crumb{font-size:13px;color:var(--muted);margin-bottom:16px}.heading-actions{display:flex;gap:10px;flex-wrap:wrap}.correction-form{margin-top:20px;padding:20px;background:var(--background);border-radius:var(--radius)}
+.clinical-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 32px;margin:24px 0 0}
+.clinical-grid div{padding-bottom:20px;border-bottom:1px solid var(--border);min-width:0}
+.clinical-grid dt,.values dt{color:var(--muted);font-size:13px}
+.clinical-grid dd,.values dd{margin:8px 0 0;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
+.clinical-grid dd{line-height:1.7;color:var(--text)}
+.observe-form{margin:20px 0}
+.observe-form summary{display:inline-flex;cursor:pointer}
+.observe-form[open] summary{margin-bottom:24px}
+.vitals-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.observe-form .vitals-grid{grid-column:1/-1}
+.values{margin:20px 0 0}
+.observation{border-top:1px solid var(--border);padding:24px 0}
+.observation:last-child{padding-bottom:0}
+.observation p{font-size:14px;margin-top:12px;line-height:1.7}
+.observation-heading{font-size:14px}
+.values dd{font-variant-numeric:tabular-nums;font-weight:550}
+@media(max-width:650px){.clinical-grid{grid-template-columns:1fr}.vitals-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.panel-header{align-items:flex-start;flex-wrap:wrap}}
+</style>
