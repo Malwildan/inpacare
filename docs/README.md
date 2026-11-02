@@ -36,3 +36,5 @@ Start with the [project README](../README.md), then choose the guide for your ta
 - [Requirements evidence](planning/sources/requirements-evidence.md).
 
 Planning captures describe the source and decisions at the time of implementation. The original requirements export, student IDs, machine-specific deployment records, and authentication diagnostics are excluded from this public repository. Referenced third-party source material retains its original authorship and access settings.
+
+- [Backend architecture and layer responsibilities](development/ARCHITECTURE.md)

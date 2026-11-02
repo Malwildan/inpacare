@@ -6,9 +6,10 @@ import {
   NestExpressApplication,
 } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
-import { ApiExceptionFilter, AppError } from "./common/errors";
-import { trustedOrigins } from "./common/auth";
-
+import { ApiExceptionFilter } from "./presentation/http/filters/api-exception.filter";
+import { DomainError } from "./domain/shared/domain-error";
+import { securityHeaders } from "./presentation/http/middleware/security-headers.middleware";
+import { trustedOrigins } from "./presentation/http/security/auth-context";
 export async function createApp() {
   trustedOrigins();
   const app = await NestFactory.create<NestExpressApplication>(
@@ -21,21 +22,7 @@ export async function createApp() {
   if (!["loopback", "uniquelocal", "false"].includes(trustProxy))
     throw new Error("TRUST_PROXY must be loopback, uniquelocal or false");
   app.set("trust proxy", trustProxy === "false" ? false : trustProxy);
-  app.use(
-    (
-      _req: unknown,
-      res: { set: (headers: Record<string, string>) => void },
-      next: () => void,
-    ) => {
-      res.set({
-        "x-content-type-options": "nosniff",
-        "x-frame-options": "DENY",
-        "referrer-policy": "same-origin",
-        "cache-control": "no-store",
-      });
-      next();
-    },
-  );
+  app.use(securityHeaders);
   app.useBodyParser("json", { limit: "256kb", strict: true });
   app.setGlobalPrefix("api/v1", {
     exclude: [{ path: "health", method: RequestMethod.GET }],
@@ -46,7 +33,7 @@ export async function createApp() {
       whitelist: true,
       forbidNonWhitelisted: true,
       forbidUnknownValues: true,
-      exceptionFactory: () => AppError.validation(),
+      exceptionFactory: () => DomainError.validation(),
       validationError: { target: false, value: false },
     }),
   );

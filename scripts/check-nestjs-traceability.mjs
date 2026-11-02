@@ -7,13 +7,17 @@ const require = createRequire(import.meta.url);
 const ts = require('typescript');
 require('reflect-metadata');
 const { DataSource } = require('typeorm');
-const { ALL_ENTITIES } = require(path.join(root, 'apps/api/dist/database/entities'));
+const { ALL_ENTITIES } = require(path.join(root, 'apps/api/dist/infrastructure/database/entity-registry'));
 const trace = JSON.parse(fs.readFileSync(path.join(root, 'docs/planning/NESTJS_TRACEABILITY.json'), 'utf8'));
 const contract = JSON.parse(fs.readFileSync(path.join(root, 'contracts/openapi.json'), 'utf8'));
+const migrationDirectory = path.join(root, 'apps/api/src/infrastructure/database/migrations');
 const migration = [
-  'apps/api/src/database/migrations/baseline.sql',
-  'apps/api/src/database/migrations/1793577600001-RebuildDelta.ts',
-].map((file) => fs.readFileSync(path.join(root, file), 'utf8')).join('\n');
+  fs.readFileSync(path.join(migrationDirectory, 'baseline.sql'), 'utf8'),
+  ...fs.readdirSync(migrationDirectory)
+    .filter((file) => file.endsWith('.ts'))
+    .sort()
+    .map((file) => fs.readFileSync(path.join(migrationDirectory, file), 'utf8')),
+].join('\n');
 const errors = [];
 const fail = (message) => errors.push(message);
 const expected = { entities: 17, attributes: 122, methods: 53, relationships: 30 };
@@ -61,6 +65,36 @@ function hasSymbol(file, symbol) {
   }
   visit(ast);
   return found;
+}
+function targetInfo(file, symbol) {
+  const { ast } = source(file);
+  const [className, memberName] = symbol.includes('.') ? symbol.split('.', 2) : ['', symbol];
+  let result = null;
+  const parameterSignature = (parameter) => {
+    const optional = parameter.questionToken || parameter.initializer ? '?' : '';
+    const type = parameter.type?.getText(ast) || (parameter.initializer ? `default(${parameter.initializer.getText(ast)})` : 'inferred');
+    return `${parameter.name.getText(ast)}${optional}: ${type}`;
+  };
+  function visit(node, owner = '') {
+    const cls = ts.isClassDeclaration(node) && node.name ? node.name.text : owner;
+    if (className && cls === className && ts.isMethodDeclaration(node) && node.name.getText(ast).replace(/["']/g, '') === memberName) {
+      const visibility = node.modifiers?.some((m) => m.kind === ts.SyntaxKind.PrivateKeyword) ? 'private' : node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ProtectedKeyword) ? 'protected' : 'public';
+      result = { visibility, signature: `${symbol}(${node.parameters.map(parameterSignature).join(', ')}): ${node.type?.getText(ast) || 'inferred'}` };
+    }
+    if (!className && ts.isFunctionDeclaration(node) && node.name?.text === memberName) {
+      const visibility = node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ? 'exported' : 'module-private';
+      result = { visibility, signature: `${symbol}(${node.parameters.map(parameterSignature).join(', ')}): ${node.type?.getText(ast) || 'inferred'}` };
+    }
+    if (!className && ts.isVariableDeclaration(node) && node.name.getText(ast) === memberName && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) {
+      const declaration = node.parent.parent;
+      const visibility = declaration.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ? 'exported' : 'module-private';
+      const fn = node.initializer;
+      result = { visibility, signature: `${symbol}(${fn.parameters.map(parameterSignature).join(', ')}): ${fn.type?.getText(ast) || 'inferred'}` };
+    }
+    for (const child of node.getChildren(ast)) visit(child, cls);
+  }
+  visit(ast);
+  return result;
 }
 
 function inspectPlaceholders(value, at = 'traceability') {
@@ -152,7 +186,14 @@ for (const controller of trace.controllers) for (const row of controller.methods
   if (!row.mappingComplete || row.status === 'planned') fail(`${at}: method mapping is incomplete`);
   const target = row.methodMapping;
   if (!target?.targetFile || !target.targetSymbol || !target.targetSignature || !target.targetVisibility) fail(`${at}: missing target signature/visibility`);
-  else if (!hasSymbol(target.targetFile, target.targetSymbol)) fail(`${at}: TypeScript target symbol not found: ${target.targetFile}#${target.targetSymbol}`);
+  else {
+    const actual = targetInfo(target.targetFile, target.targetSymbol);
+    if (!actual) fail(`${at}: TypeScript target symbol not found: ${target.targetFile}#${target.targetSymbol}`);
+    else {
+      if (target.targetSignature.replaceAll('\r\n', '\n') !== actual.signature.replaceAll('\r\n', '\n')) fail(`${at}: recorded target signature drift for ${target.targetSymbol}; expected ${actual.signature}`);
+      if (target.targetVisibility !== actual.visibility) fail(`${at}: recorded target visibility drift for ${target.targetSymbol}; expected ${actual.visibility}`);
+    }
+  }
   if (!row.signatureMapping || /freeze|TBD/i.test(row.signatureMapping)) fail(`${at}: signature mapping placeholder`);
   const explicitUiGap = typeof row.uiMapping?.uiGap === 'string' && row.uiMapping.uiGap.length > 0;
   if ((!row.uiMapping?.routeFamily?.length && !explicitUiGap) || !row.uiMapping?.handlerState || /freeze|TBD/i.test(row.uiMapping.handlerState)) fail(`${at}: UI route/handler mapping missing`);

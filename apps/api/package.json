@@ -5,13 +5,13 @@
   "scripts": {
     "dev": "node --watch -r ts-node/register src/main.ts",
     "check": "tsc --noEmit",
-    "build": "tsc && node scripts/copy-assets.cjs",
+    "build": "node scripts/build.cjs",
     "start": "node dist/main.js",
-    "test": "node --test test/*.test.cjs",
+    "test": "node --test test/architecture/*.test.cjs test/domain/*.test.cjs test/application/*.test.cjs test/contract/*.test.cjs",
     "migration:run": "node dist/database/cli.js migrate",
     "migration:adopt": "node dist/database/cli.js adopt",
     "seed": "node dist/database/cli.js seed",
-    "test:integration": "node --test test/*.integration.cjs"
+    "test:integration": "node --test test/integration/*.integration.cjs"
   },
   "dependencies": {
     "@nestjs/common": "12.3.2",
