@@ -2,7 +2,7 @@
 
 `tests/api/test_workflows.py` uses Python's standard library to exercise the real Axum API and PostgreSQL. It signs in through Argon2-backed accounts, keeps cookies, sends CSRF/origin headers, and verifies stored behavior with follow-up reads.
 
-The 11 workflows cover sessions and role permissions, coordinator/PIC task progression and reassignment, stale-version writes and audit atomicity, task cancellation/logical deletion, pagination counts, clinical access, equipment costs, concurrent room capacity, doctor decisions/notifications, decimal invoice totals, and placed/unplaced care-cycle transitions.
+The workflows cover sessions and role permissions, persistent cookie lifetime/restoration and logout revocation, coordinator/PIC task progression and reassignment, stale-version writes and audit atomicity, task cancellation/logical deletion, pagination counts, clinical access, equipment costs, concurrent room capacity, doctor decisions/notifications, decimal invoice totals, and placed/unplaced care-cycle transitions.
 
 Tests mutate records and complete a cycle. Always use a fresh disposable synthetic database. Do not run this suite against the shared public demo, your development dataset, or patient information.
 

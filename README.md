@@ -22,6 +22,8 @@ Built as an educational project with an Indonesian-language interface and synthe
 
 Authentication uses Argon2 password hashes, server-side sessions, same-origin/CSRF checks, and role permissions. Changes that require concurrency protection use version checks and database transactions.
 
+New logins stay signed in on the same browser for up to 30 days, including after closing and reopening it. Sessions expire 30 days after login, or immediately when you sign out; clearing site cookies also requires signing in again. Use **Keluar** when leaving a shared device. Existing sessions keep their original expiry until the next login.
+
 ## Stack
 
 | Layer | Technology |
