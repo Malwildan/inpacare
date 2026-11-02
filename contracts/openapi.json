@@ -3,7 +3,7 @@
   "info": {
     "title": "InpaCare API",
     "version": "0.1.0",
-    "description": "Contract for the synthetic local demo. Type generation does not generate or verify Rust handlers."
+    "description": "Contract for the synthetic local demo. Type generation does not generate or verify Rust handlers.\n\nRuntime route inventory: the legacy API operations plus room/item soft-delete and item edit, placement edit/cancel, medical-record delete and observation correction, cycle dashboard/request detail/delete, invoice patient context/line edit-delete/claim verification, and public health. Mutations require Origin; authenticated mutations also require the session cookie and X-CSRF-Token."
   },
   "servers": [
     {
@@ -61,10 +61,15 @@
                   "$ref": "#/components/schemas/UserEnvelope"
                 }
               }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "description": "HttpOnly session cookie; Secure in production; SameSite=Lax.",
+                "schema": {
+                  "type": "string"
+                }
+              }
             }
-          },
-          "429": {
-            "description": "Login throttled."
           },
           "401": {
             "description": "Invalid credentials.",
@@ -96,6 +101,9 @@
               }
             }
           },
+          "429": {
+            "description": "Login throttled."
+          },
           "500": {
             "description": "Unexpected error.",
             "content": {
@@ -117,7 +125,9 @@
               }
             }
           }
-        }
+        },
+        "security": [],
+        "x-controller-roles": []
       },
       "get": {
         "operationId": "GET_session",
@@ -202,7 +212,8 @@
           {
             "SessionCookie": []
           }
-        ]
+        ],
+        "x-controller-roles": []
       },
       "delete": {
         "operationId": "DELETE_session",
@@ -210,10 +221,22 @@
         "tags": [
           "Session"
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
         "responses": {
           "204": {
-            "description": "Success."
+            "description": "Success.",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Clears the session cookie.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthenticated.",
@@ -278,9 +301,11 @@
         },
         "security": [
           {
-            "SessionCookie": []
+            "SessionCookie": [],
+            "CSRFToken": []
           }
-        ]
+        ],
+        "x-controller-roles": []
       }
     },
     "/api/v1/reference": {
@@ -367,7 +392,8 @@
           {
             "SessionCookie": []
           }
-        ]
+        ],
+        "x-controller-roles": []
       }
     },
     "/api/v1/patients": {
@@ -474,7 +500,8 @@
           {
             "SessionCookie": []
           }
-        ]
+        ],
+        "x-controller-roles": []
       }
     },
     "/api/v1/patients/{id}/context": {
@@ -571,7 +598,8 @@
           {
             "SessionCookie": []
           }
-        ]
+        ],
+        "x-controller-roles": []
       }
     },
     "/api/v1/staff": {
@@ -658,7 +686,8 @@
           {
             "SessionCookie": []
           }
-        ]
+        ],
+        "x-controller-roles": []
       }
     },
     "/api/v1/rooms": {
@@ -750,6 +779,11 @@
           {
             "SessionCookie": []
           }
+        ],
+        "x-controller-roles": [
+          "DOKTER",
+          "PERAWAT",
+          "ADMISI"
         ]
       },
       "post": {
@@ -853,7 +887,10 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       }
     },
     "/api/v1/rooms/{id}": {
@@ -955,6 +992,11 @@
           {
             "SessionCookie": []
           }
+        ],
+        "x-controller-roles": [
+          "DOKTER",
+          "PERAWAT",
+          "ADMISI"
         ]
       },
       "patch": {
@@ -1067,7 +1109,119 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
+      },
+      "delete": {
+        "operationId": "DELETE_rooms_id",
+        "summary": "Soft-delete an unused room",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deleted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedVersion"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       }
     },
     "/api/v1/rooms/{id}/items": {
@@ -1181,7 +1335,10 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       }
     },
     "/api/v1/occupancy": {
@@ -1306,6 +1463,11 @@
           {
             "SessionCookie": []
           }
+        ],
+        "x-controller-roles": [
+          "DOKTER",
+          "PERAWAT",
+          "ADMISI"
         ]
       }
     },
@@ -1322,6 +1484,16 @@
           }
         ],
         "responses": {
+          "201": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlacementResult"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Unauthenticated.",
             "content": {
@@ -1381,16 +1553,6 @@
                 }
               }
             }
-          },
-          "201": {
-            "description": "Success.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlacementResult"
-                }
-              }
-            }
           }
         },
         "x-required-roles": [
@@ -1412,7 +1574,10 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       }
     },
     "/api/v1/tasks": {
@@ -1428,7 +1593,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 100
             }
           },
           {
@@ -1463,7 +1629,44 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "patientId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "picId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
             }
           },
           {
@@ -1472,10 +1675,10 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 50,
               "minimum": 1,
-              "maximum": 100
-            }
+              "default": 50
+            },
+            "description": "Clamped to 100."
           },
           {
             "name": "offset",
@@ -1483,10 +1686,10 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0,
               "minimum": 0,
-              "maximum": 100000
-            }
+              "default": 0
+            },
+            "description": "Clamped to 100000."
           }
         ],
         "responses": {
@@ -1568,6 +1771,9 @@
           {
             "SessionCookie": []
           }
+        ],
+        "x-controller-roles": [
+          "PERAWAT"
         ]
       },
       "post": {
@@ -1672,7 +1878,10 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       }
     },
     "/api/v1/tasks/{id}": {
@@ -1772,6 +1981,9 @@
           {
             "SessionCookie": []
           }
+        ],
+        "x-controller-roles": [
+          "PERAWAT"
         ]
       },
       "patch": {
@@ -1885,7 +2097,10 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       },
       "delete": {
         "operationId": "DELETE_tasks_id",
@@ -1998,7 +2213,10 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       }
     },
     "/api/v1/tasks/{id}/reassign": {
@@ -2113,7 +2331,10 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       }
     },
     "/api/v1/tasks/{id}/history": {
@@ -2213,6 +2434,9 @@
           {
             "SessionCookie": []
           }
+        ],
+        "x-controller-roles": [
+          "PERAWAT"
         ]
       }
     },
@@ -2324,6 +2548,11 @@
           {
             "SessionCookie": []
           }
+        ],
+        "x-controller-roles": [
+          "DOKTER",
+          "PERAWAT",
+          "ADMISI"
         ]
       },
       "post": {
@@ -2427,7 +2656,10 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "DOKTER"
+        ]
       }
     },
     "/api/v1/medical-records/{id}": {
@@ -2454,7 +2686,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MedicalRecord"
+                  "$ref": "#/components/schemas/MedicalRecordDetail"
                 }
               }
             }
@@ -2528,7 +2760,8 @@
           {
             "SessionCookie": []
           }
-        ]
+        ],
+        "x-controller-roles": []
       },
       "patch": {
         "operationId": "PATCH_medical_records_id",
@@ -2640,7 +2873,119 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "DOKTER"
+        ]
+      },
+      "delete": {
+        "operationId": "DELETE_medical_records_id",
+        "summary": "Soft-delete a medical record",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalRecordDeleted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonBody"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "DOKTER"
+        ]
       }
     },
     "/api/v1/medical-records/{id}/observations": {
@@ -2755,7 +3100,10 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       }
     },
     "/api/v1/cycles": {
@@ -2765,7 +3113,51 @@
         "tags": [
           "Cycles"
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "patientId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "roomId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "assigned",
+                "in_care",
+                "extend",
+                "released",
+                "pending_approval"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success.",
@@ -2846,6 +3238,10 @@
           {
             "SessionCookie": []
           }
+        ],
+        "x-controller-roles": [
+          "DOKTER",
+          "PERAWAT"
         ]
       },
       "post": {
@@ -2949,7 +3345,10 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       }
     },
     "/api/v1/cycles/{id}": {
@@ -3050,6 +3449,10 @@
           {
             "SessionCookie": []
           }
+        ],
+        "x-controller-roles": [
+          "DOKTER",
+          "PERAWAT"
         ]
       },
       "patch": {
@@ -3162,7 +3565,119 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
+      },
+      "delete": {
+        "operationId": "DELETE_cycles_id",
+        "summary": "Soft-delete a cycle",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteCycleResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteCycle"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       }
     },
     "/api/v1/cycles/{id}/requests": {
@@ -3277,10 +3792,2091 @@
               }
             }
           }
-        }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       }
     },
-    "/api/v1/cycles/{id}/requests/{request_id}/decision": {
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "GET_notifications",
+        "summary": "List notifications",
+        "tags": [
+          "Notifications"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-controller-roles": []
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "post": {
+        "operationId": "POST_notifications_id_read",
+        "summary": "Mark notification read",
+        "tags": [
+          "Notifications"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationRead"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": []
+      }
+    },
+    "/api/v1/invoices": {
+      "get": {
+        "operationId": "GET_invoices",
+        "summary": "List invoices",
+        "tags": [
+          "Invoices"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 10,
+              "enum": [
+                "paid",
+                "unpaid"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 50
+            },
+            "description": "Clamped to 100."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "ADMISI"
+        ],
+        "description": "Total counts the bounded result page.",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-controller-roles": [
+          "ADMISI"
+        ]
+      },
+      "post": {
+        "operationId": "POST_invoices",
+        "summary": "Create invoice",
+        "tags": [
+          "Invoices"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceCreated"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "ADMISI"
+        ],
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewInvoice"
+              }
+            }
+          }
+        },
+        "x-controller-roles": [
+          "ADMISI"
+        ]
+      }
+    },
+    "/api/v1/invoices/{id}": {
+      "get": {
+        "operationId": "GET_invoices_id",
+        "summary": "Read invoice/history",
+        "tags": [
+          "Invoices"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "ADMISI"
+        ],
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-controller-roles": [
+          "ADMISI"
+        ]
+      },
+      "patch": {
+        "operationId": "PATCH_invoices_id",
+        "summary": "Update payment status",
+        "tags": [
+          "Invoices"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "ADMISI"
+        ],
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePayment"
+              }
+            }
+          }
+        },
+        "x-controller-roles": [
+          "ADMISI"
+        ]
+      },
+      "delete": {
+        "operationId": "DELETE_invoices_id",
+        "summary": "Soft-delete an unpaid invoice",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDeleted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonBody"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "ADMISI"
+        ]
+      }
+    },
+    "/api/v1/rooms/{id}/items/{itemId}": {
+      "patch": {
+        "operationId": "PATCH_rooms_id_items_itemId",
+        "summary": "Update a room item",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoomItem"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
+      },
+      "delete": {
+        "operationId": "DELETE_rooms_id_items_itemId",
+        "summary": "Soft-delete a room item",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedVersion"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
+      }
+    },
+    "/api/v1/placements/{id}": {
+      "patch": {
+        "operationId": "PATCH_placements_id",
+        "summary": "Reschedule or move a placement",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlacementMutationResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlacement"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
+      },
+      "delete": {
+        "operationId": "DELETE_placements_id",
+        "summary": "Cancel a placement without active tasks or cycles",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlacementCancelledResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedVersion"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
+      }
+    },
+    "/api/v1/medical-records/{id}/observations/{observationId}": {
+      "patch": {
+        "operationId": "PATCH_medical_records_id_observations_observationId",
+        "summary": "Correct an observation and its vital signs",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalRecord"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "observationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateObservation"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
+      }
+    },
+    "/api/v1/cycles/dashboard": {
+      "get": {
+        "operationId": "GET_cycles_dashboard",
+        "summary": "List cycles for the dashboard",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CyclePage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "patientId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "roomId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "assigned",
+                "in_care",
+                "extend",
+                "released",
+                "pending_approval"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          }
+        ],
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "DOKTER",
+          "PERAWAT"
+        ]
+      }
+    },
+    "/api/v1/cycles/{id}/requests/{requestId}": {
+      "get": {
+        "operationId": "GET_cycles_id_requests_requestId",
+        "summary": "Read a cycle request",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleRequest"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "DOKTER",
+          "PERAWAT"
+        ]
+      }
+    },
+    "/api/v1/invoices/patients/{patientId}/context": {
+      "get": {
+        "operationId": "GET_invoices_patients_patientId_context",
+        "summary": "Read patient and invoice context",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePatientContext"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "patientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "ADMISI"
+        ]
+      }
+    },
+    "/api/v1/invoices/{id}/lines/{lineId}": {
+      "patch": {
+        "operationId": "PATCH_invoices_id_lines_lineId",
+        "summary": "Edit an invoice line",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceLineMutation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditInvoiceLine"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "ADMISI"
+        ]
+      },
+      "delete": {
+        "operationId": "DELETE_invoices_id_lines_lineId",
+        "summary": "Delete an invoice line",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceLineDeleted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteInvoiceLine"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "ADMISI"
+        ]
+      }
+    },
+    "/api/v1/invoices/{id}/claim-verification": {
+      "post": {
+        "operationId": "POST_invoices_id_claim_verification",
+        "summary": "Record claim verification",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimVerificationResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or origin/CSRF check failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimVerification"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "ADMISI"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "GET_health",
+        "summary": "Check API and database availability",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Database connected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok"
+                      ]
+                    },
+                    "database": {
+                      "type": "string",
+                      "enum": [
+                        "connected"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "database"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "unavailable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "x-controller-roles": []
+      }
+    },
+    "/api/v1/cycles/{id}/requests/{requestId}/decision": {
       "post": {
         "operationId": "POST_cycles_id_requests_request_id_decision",
         "summary": "Doctor decision",
@@ -3400,633 +5996,10 @@
               }
             }
           }
-        }
-      }
-    },
-    "/api/v1/notifications": {
-      "get": {
-        "operationId": "GET_notifications",
-        "summary": "List notifications",
-        "tags": [
-          "Notifications"
-        ],
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Success.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationPage"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
         },
-        "security": [
-          {
-            "SessionCookie": []
-          }
+        "x-controller-roles": [
+          "DOKTER"
         ]
-      }
-    },
-    "/api/v1/notifications/{id}/read": {
-      "post": {
-        "operationId": "POST_notifications_id_read",
-        "summary": "Mark notification read",
-        "tags": [
-          "Notifications"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/Origin"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "maxLength": 36
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationRead"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "SessionCookie": [],
-            "CSRFToken": []
-          }
-        ]
-      }
-    },
-    "/api/v1/invoices": {
-      "get": {
-        "operationId": "GET_invoices",
-        "summary": "List invoices",
-        "tags": [
-          "Invoices"
-        ],
-        "parameters": [
-          {
-            "name": "search",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "unpaid",
-                "paid"
-              ]
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 50,
-              "minimum": 1,
-              "maximum": 100
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvoicePage"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "x-required-roles": [
-          "ADMISI"
-        ],
-        "description": "Total counts the bounded result page.",
-        "security": [
-          {
-            "SessionCookie": []
-          }
-        ]
-      },
-      "post": {
-        "operationId": "POST_invoices",
-        "summary": "Create invoice",
-        "tags": [
-          "Invoices"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/Origin"
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvoiceCreated"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "x-required-roles": [
-          "ADMISI"
-        ],
-        "security": [
-          {
-            "SessionCookie": [],
-            "CSRFToken": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewInvoice"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/invoices/{id}": {
-      "get": {
-        "operationId": "GET_invoices_id",
-        "summary": "Read invoice/history",
-        "tags": [
-          "Invoices"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "maxLength": 36
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvoiceDetail"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "x-required-roles": [
-          "ADMISI"
-        ],
-        "security": [
-          {
-            "SessionCookie": []
-          }
-        ]
-      },
-      "patch": {
-        "operationId": "PATCH_invoices_id",
-        "summary": "Update payment status",
-        "tags": [
-          "Invoices"
-        ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/Origin"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "maxLength": 36
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvoiceUpdated"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "x-required-roles": [
-          "ADMISI"
-        ],
-        "security": [
-          {
-            "SessionCookie": [],
-            "CSRFToken": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChangePayment"
-              }
-            }
-          }
-        }
       }
     }
   },
@@ -4225,13 +6198,19 @@
             "maxLength": 36
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1
           },
           "category": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1
           },
           "quantity": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
           },
           "unitPrice": {
             "type": "string",
@@ -4255,22 +6234,33 @@
             "maxLength": 36
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1
           },
           "roomClass": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1
           },
           "capacity": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "available",
+              "maintenance"
+            ]
           },
           "picId": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 36
           },
           "picName": {
             "type": [
@@ -4283,7 +6273,8 @@
             "description": "Decimal string"
           },
           "version": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1
           },
           "items": {
             "type": "array",
@@ -4296,7 +6287,8 @@
             "description": "Decimal string"
           },
           "occupants": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         "required": [
@@ -4336,6 +6328,12 @@
           "roomName": {
             "type": "string"
           },
+          "roomClass": {
+            "type": "string"
+          },
+          "medicalRecordNo": {
+            "type": "string"
+          },
           "startsOn": {
             "type": "string",
             "format": "date"
@@ -4348,7 +6346,8 @@
             "type": "string"
           },
           "version": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1
           }
         },
         "required": [
@@ -4798,9 +6797,25 @@
             "type": "string",
             "format": "date-time"
           },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
           "temperature": {
             "type": [
               "number",
+              "null"
+            ]
+          },
+          "systolic": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "diastolic": {
+            "type": [
+              "integer",
               "null"
             ]
           },
@@ -4836,7 +6851,10 @@
           "symptoms",
           "nursingNote",
           "observedAt",
+          "version",
           "temperature",
+          "systolic",
+          "diastolic",
           "bloodPressure",
           "pulse",
           "respiratoryRate",
@@ -4928,8 +6946,16 @@
             "type": "string",
             "maxLength": 36
           },
+          "cycleId": {
+            "type": "string",
+            "maxLength": 36
+          },
           "kind": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "extend",
+              "release"
+            ]
           },
           "requestedEnd": {
             "type": [
@@ -4967,11 +6993,13 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "format": "date-time"
           }
         },
         "required": [
           "id",
+          "cycleId",
           "kind",
           "requestedEnd",
           "reason",
@@ -5042,6 +7070,16 @@
             "items": {
               "$ref": "#/components/schemas/CycleRequest"
             }
+          },
+          "roomId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36
+          },
+          "pendingApproval": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -5082,10 +7120,22 @@
           "lineTotal": {
             "type": "string",
             "description": "Decimal string"
+          },
+          "roomItemId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36
+          },
+          "kind": {
+            "type": "string"
           }
         },
         "required": [
           "id",
+          "roomItemId",
+          "kind",
           "description",
           "quantity",
           "unitPrice",
@@ -5143,6 +7193,9 @@
           },
           "lineCount": {
             "type": "integer"
+          },
+          "claimVerified": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -5158,7 +7211,8 @@
           "status",
           "version",
           "createdAt",
-          "lineCount"
+          "lineCount",
+          "claimVerified"
         ],
         "additionalProperties": false
       },
@@ -5261,6 +7315,9 @@
               ],
               "additionalProperties": false
             }
+          },
+          "claimVerified": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -5277,7 +7334,8 @@
           "version",
           "createdAt",
           "lines",
-          "history"
+          "history",
+          "claimVerified"
         ],
         "additionalProperties": false
       },
@@ -5365,26 +7423,38 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1
           },
           "roomClass": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1
           },
           "capacity": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "available",
+              "maintenance"
+            ]
           },
           "picId": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 36
           },
           "dailyRate": {
             "type": "string",
-            "description": "Decimal string"
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "Nonnegative decimal with at most two fractional digits."
           }
         },
         "required": [
@@ -5398,29 +7468,42 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1
           },
           "roomClass": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1
           },
           "capacity": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "available",
+              "maintenance"
+            ]
           },
           "picId": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 36
           },
           "dailyRate": {
             "type": "string",
-            "description": "Decimal string"
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "Nonnegative decimal with at most two fractional digits."
           },
           "expectedVersion": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1
           }
         },
         "required": [
@@ -5428,7 +7511,6 @@
           "roomClass",
           "capacity",
           "status",
-          "picId",
           "dailyRate",
           "expectedVersion"
         ],
@@ -5438,17 +7520,24 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1
           },
           "category": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1
           },
           "quantity": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
           },
           "unitPrice": {
             "type": "string",
-            "description": "Decimal string"
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "Nonnegative decimal with at most two fractional digits."
           }
         },
         "required": [
@@ -5464,19 +7553,23 @@
         "properties": {
           "patientId": {
             "type": "string",
-            "maxLength": 36
+            "maxLength": 36,
+            "minLength": 1
           },
           "roomId": {
             "type": "string",
-            "maxLength": 36
+            "maxLength": 36,
+            "minLength": 1
           },
           "startsOn": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
           },
           "endsOn": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
           }
         },
         "required": [
@@ -5492,27 +7585,39 @@
         "properties": {
           "patientId": {
             "type": "string",
-            "maxLength": 36
+            "maxLength": 36,
+            "minLength": 1
           },
           "placementId": {
             "type": "string",
-            "maxLength": 36
+            "maxLength": 36,
+            "minLength": 1
           },
           "picId": {
             "type": "string",
-            "maxLength": 36
+            "maxLength": 36,
+            "minLength": 1
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 5000
           },
           "notes": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 3000
           },
           "priority": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ]
           },
           "startsAt": {
             "type": "string",
@@ -5538,16 +7643,50 @@
         "type": "object",
         "properties": {
           "expectedVersion": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1
           },
-          "status": {
-            "type": "string"
+          "title": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
           },
           "notes": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 3000
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ]
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "done",
+              "cancelled"
+            ]
           },
           "reason": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500
           }
         },
         "required": [
@@ -5661,38 +7800,47 @@
         "type": "object",
         "properties": {
           "symptoms": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1
           },
           "nursingNote": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 3000
           },
           "observedAt": {
             "type": "string",
             "format": "date-time"
           },
           "temperature": {
-            "type": [
-              "number",
-              "null"
-            ]
+            "type": "number",
+            "minimum": 30,
+            "maximum": 45
           },
           "systolic": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 50,
+            "maximum": 250
           },
           "diastolic": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 30,
+            "maximum": 150
           },
           "pulse": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 20,
+            "maximum": 250
           },
           "respiratoryRate": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 60
           },
           "spo2": {
-            "type": [
-              "number",
-              "null"
-            ]
+            "type": "number",
+            "minimum": 50,
+            "maximum": 100
           }
         },
         "required": [
@@ -5716,7 +7864,8 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 36
           }
         },
         "required": [
@@ -5729,14 +7878,28 @@
         "type": "object",
         "properties": {
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "pending",
+              "assigned",
+              "in_care",
+              "extend",
+              "released"
+            ]
+          },
+          "placementId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36
           },
           "expectedVersion": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1
           }
         },
         "required": [
-          "status",
           "expectedVersion"
         ],
         "additionalProperties": false
@@ -5787,14 +7950,31 @@
       "NewInvoiceLine": {
         "type": "object",
         "properties": {
+          "roomItemId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36
+          },
+          "kind": {
+            "type": "string",
+            "maxLength": 40
+          },
           "description": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1
           },
           "quantity": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
           },
           "unitPrice": {
             "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
             "description": "Decimal string"
           }
         },
@@ -5917,7 +8097,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Placement"
+              "$ref": "#/components/schemas/OccupancyPlacement"
             }
           },
           "from": {
@@ -6123,12 +8303,20 @@
           },
           "version": {
             "type": "integer"
+          },
+          "placementId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36
           }
         },
         "required": [
           "ok",
           "status",
-          "version"
+          "version",
+          "placementId"
         ],
         "additionalProperties": false
       },
@@ -6353,6 +8541,16 @@
             "items": {
               "$ref": "#/components/schemas/CycleRequestSummary"
             }
+          },
+          "roomId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36
+          },
+          "pendingApproval": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -6368,6 +8566,773 @@
           "version",
           "createdAt",
           "requests"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateRoomItem": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "unitPrice": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "Nonnegative decimal with at most two fractional digits."
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "name",
+          "category",
+          "quantity",
+          "unitPrice",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "ExpectedVersion": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "UpdatePlacement": {
+        "type": "object",
+        "properties": {
+          "patientId": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 1
+          },
+          "roomId": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 1
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "endsOn": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "patientId",
+          "roomId",
+          "startsOn",
+          "endsOn",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "PlacementMutationResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "patientId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "roomId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "endsOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "patientId",
+          "roomId",
+          "startsOn",
+          "endsOn",
+          "status",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "PlacementCancelledResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "cancelled"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "OccupancyPlacement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "patientId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "patientName": {
+            "type": "string"
+          },
+          "medicalRecordNo": {
+            "type": "string"
+          },
+          "roomId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "roomName": {
+            "type": "string"
+          },
+          "roomClass": {
+            "type": "string"
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "endsOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "patientId",
+          "patientName",
+          "medicalRecordNo",
+          "roomId",
+          "roomName",
+          "roomClass",
+          "startsOn",
+          "endsOn",
+          "status",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateObservation": {
+        "type": "object",
+        "properties": {
+          "symptoms": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1
+          },
+          "nursingNote": {
+            "type": "string",
+            "maxLength": 3000
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "temperature": {
+            "type": "number",
+            "minimum": 30,
+            "maximum": 45
+          },
+          "systolic": {
+            "type": "integer",
+            "minimum": 50,
+            "maximum": 250
+          },
+          "diastolic": {
+            "type": "integer",
+            "minimum": 30,
+            "maximum": 150
+          },
+          "pulse": {
+            "type": "integer",
+            "minimum": 20,
+            "maximum": 250
+          },
+          "respiratoryRate": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 60
+          },
+          "spo2": {
+            "type": "number",
+            "minimum": 50,
+            "maximum": 100
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "symptoms",
+          "observedAt",
+          "expectedVersion",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "MedicalRecordDeleted": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "deleted",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "MedicalRecordAdmisiProjection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "patientId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "doctorId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "recordDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "id",
+          "patientId",
+          "doctorId",
+          "recordDate"
+        ],
+        "additionalProperties": false
+      },
+      "MedicalRecordDetail": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/MedicalRecord"
+          },
+          {
+            "$ref": "#/components/schemas/MedicalRecordAdmisiProjection"
+          }
+        ]
+      },
+      "DeleteCycleResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "deleted",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "EditInvoiceLine": {
+        "type": "object",
+        "properties": {
+          "roomItemId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36
+          },
+          "kind": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "unitPrice": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "description": "Decimal string"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "description",
+          "quantity",
+          "unitPrice",
+          "expectedVersion",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "DeleteInvoiceLine": {
+        "$ref": "#/components/schemas/ReasonBody"
+      },
+      "ClaimVerification": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
+          },
+          "verified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "reason",
+          "verified"
+        ],
+        "additionalProperties": false
+      },
+      "PaymentResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "paid",
+              "unpaid"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "totalAmount": {
+            "type": "string",
+            "description": "Decimal string"
+          },
+          "coveredAmount": {
+            "type": "string",
+            "description": "Decimal string"
+          },
+          "payableAmount": {
+            "type": "string",
+            "description": "Decimal string"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "totalAmount",
+          "coveredAmount",
+          "payableAmount"
+        ],
+        "additionalProperties": false
+      },
+      "InvoiceLineMutation": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "line": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 36
+              },
+              "roomItemId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 36
+              },
+              "kind": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "unitPrice": {
+                "type": "string",
+                "description": "Decimal string"
+              },
+              "lineTotal": {
+                "type": "string",
+                "description": "Decimal string"
+              }
+            },
+            "required": [
+              "id",
+              "roomItemId",
+              "kind",
+              "description",
+              "quantity",
+              "unitPrice",
+              "lineTotal"
+            ],
+            "additionalProperties": false
+          },
+          "totalAmount": {
+            "type": "string",
+            "description": "Decimal string"
+          },
+          "coveredAmount": {
+            "type": "string",
+            "description": "Decimal string"
+          },
+          "payableAmount": {
+            "type": "string",
+            "description": "Decimal string"
+          }
+        },
+        "required": [
+          "ok",
+          "version",
+          "line",
+          "totalAmount",
+          "coveredAmount",
+          "payableAmount"
+        ],
+        "additionalProperties": false
+      },
+      "InvoiceLineDeleted": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "deletedLineId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "totalAmount": {
+            "type": "string",
+            "description": "Decimal string"
+          },
+          "coveredAmount": {
+            "type": "string",
+            "description": "Decimal string"
+          },
+          "payableAmount": {
+            "type": "string",
+            "description": "Decimal string"
+          }
+        },
+        "required": [
+          "ok",
+          "version",
+          "deletedLineId",
+          "totalAmount",
+          "coveredAmount",
+          "payableAmount"
+        ],
+        "additionalProperties": false
+      },
+      "ClaimVerificationResult": {
+        "type": "object",
+        "properties": {
+          "claimVerified": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "claimVerified",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "InvoiceDeleted": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "deleted",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "InvoicePatientContext": {
+        "type": "object",
+        "properties": {
+          "patient": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 36
+              },
+              "name": {
+                "type": "string"
+              },
+              "medicalRecordNo": {
+                "type": "string"
+              },
+              "bpjs": {
+                "type": "boolean"
+              },
+              "bpjsNumber": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "medicalRecordNo",
+              "bpjs",
+              "bpjsNumber"
+            ],
+            "additionalProperties": false
+          },
+          "placements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 36
+                },
+                "roomId": {
+                  "type": "string",
+                  "maxLength": 36
+                },
+                "room": {
+                  "type": "string"
+                },
+                "startsOn": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "endsOn": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "status": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "roomId",
+                "room",
+                "startsOn",
+                "endsOn",
+                "status"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "invoices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 36
+                },
+                "status": {
+                  "type": "string"
+                },
+                "totalAmount": {
+                  "type": "string",
+                  "description": "Decimal string"
+                },
+                "payableAmount": {
+                  "type": "string",
+                  "description": "Decimal string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "status",
+                "totalAmount",
+                "payableAmount",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "patient",
+          "placements",
+          "invoices"
+        ],
+        "additionalProperties": false
+      },
+      "DeleteCycle": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "reason"
         ],
         "additionalProperties": false
       }

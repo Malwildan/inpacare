@@ -1,15 +1,24 @@
 {
   "name": "inpacare",
   "private": true,
-  "workspaces": ["apps/web"],
+  "workspaces": [
+    "apps/web",
+    "apps/api"
+  ],
   "scripts": {
     "hooks:install": "git config --local core.hooksPath .githooks",
     "test:ci": "node --test tests/ci/*.test.mjs",
     "dev": "npm run dev --workspace apps/web",
-    "check": "npm run check --workspace apps/web",
-    "build": "npm run build --workspace apps/web",
+    "check": "npm run check:api && npm run check --workspace apps/web",
+    "build": "npm run build:api && npm run build --workspace apps/web",
     "test:e2e": "playwright test",
-    "types:api": "openapi-typescript contracts/openapi.json -o apps/web/src/lib/generated/api.d.ts"
+    "types:api": "openapi-typescript contracts/openapi.json -o apps/web/src/lib/generated/api.d.ts",
+    "dev:api": "npm run dev --workspace apps/api",
+    "check:api": "npm run check --workspace apps/api",
+    "build:api": "npm run build --workspace apps/api",
+    "test:api:unit": "npm run test --workspace apps/api",
+    "test:api:integration": "npm run test:integration --workspace apps/api",
+    "test:api:contract": "node --test apps/api/test/contract.test.cjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",

@@ -11,6 +11,7 @@
 	let editing = $state<string | null>(null);
 	let viewing = $state<string | null>(null);
 	let addingTo = $state<string | null>(null);
+	let editingItem = $state<{ roomId: string; item: any } | null>(null);
 	let busy = $state(false);
 	let error = $state('');
 	let success = $state('');
@@ -34,6 +35,14 @@
 			success = 'Perubahan berhasil disimpan.';
 		} catch (e) { error = e instanceof Error ? e.message : 'Perubahan gagal disimpan.'; }
 		finally { busy = false; }
+	}
+	async function removeRoom(room: any) {
+		if (!confirm(`Hapus ruangan ${room.name}?`)) return;
+		await submit(`/rooms/${room.id}`, 'DELETE', { expectedVersion: room.version });
+	}
+	async function removeItem(room: any, item: any) {
+		if (!confirm(`Hapus item ${item.name} dari ruangan?`)) return;
+		await submit(`/rooms/${room.id}/items/${item.id}`, 'DELETE', { expectedVersion: room.version });
 	}
 </script>
 
@@ -76,11 +85,12 @@
 				<td>{room.roomClass}</td><td>{room.picName ?? 'Belum ditentukan'}</td><td>Rp {Number(room.totalCost).toLocaleString('id-ID')}</td>
 				<td><span class="badge {room.status === 'maintenance' ? 'maintenance' : room.occupants > 0 ? 'occupied' : 'available'}">{room.status === 'maintenance' ? 'Maintenance' : room.occupants > 0 ? 'Occupied' : 'Available'}</span></td>
 				<td><div class="actions"><button class="button secondary small" aria-expanded={viewing===room.id} onclick={() => { viewing=viewing===room.id?null:room.id; editing=null; addingTo=null; creating=false; }}>Lihat</button>
-				{#if data.user.role === 'PERAWAT'}<button class="button secondary small" aria-expanded={editing === room.id} onclick={() => { editing=editing===room.id?null:room.id; viewing=null; creating=false; addingTo=null; error=''; }}>Ubah</button><button class="button secondary small" aria-expanded={addingTo === room.id} onclick={() => { addingTo=addingTo===room.id?null:room.id; viewing=null; editing=null; creating=false; error=''; }}><Plus size={14} aria-hidden="true"/> Item</button>{/if}</div></td>
+				{#if data.user.role === 'PERAWAT'}<button class="button secondary small" aria-expanded={editing === room.id} onclick={() => { editing=editing===room.id?null:room.id; viewing=null; creating=false; addingTo=null; error=''; }}>Ubah</button><button class="button secondary small" aria-expanded={addingTo === room.id} onclick={() => { addingTo=addingTo===room.id?null:room.id; viewing=null; editing=null; creating=false; error=''; }}><Plus size={14} aria-hidden="true"/> Item</button><button class="button danger small" disabled={busy || room.occupants>0} title={room.occupants>0?'Kosongkan penempatan aktif sebelum menghapus':''} onclick={() => void removeRoom(room)}>Hapus</button>{/if}</div></td>
 			</tr>
 			{#if viewing===room.id}<tr><td colspan="6"><div class="room-detail">
 				<div class="detail-grid"><div class="detail-item"><span>Tipe</span><strong>{room.roomClass}</strong></div><div class="detail-item"><span>Kapasitas</span><strong>{room.capacity} pasien</strong></div><div class="detail-item"><span>Tarif harian</span><strong>Rp {Number(room.dailyRate).toLocaleString('id-ID')}</strong></div><div class="detail-item"><span>Total biaya inventaris</span><strong>Rp {Number(room.totalCost).toLocaleString('id-ID')}</strong></div></div>
-				<h3>Perlengkapan dan fasilitas</h3>{#if room.items.length}<div class="item-list">{#each room.items as item}<span>{item.name} · {item.category} · {item.quantity} × Rp {Number(item.unitPrice).toLocaleString('id-ID')}</span>{/each}</div>{:else}<p class="muted">Belum ada item yang dicatat.</p>{/if}
+				<h3>Perlengkapan dan fasilitas</h3>{#if room.items.length}<div class="item-list">{#each room.items as item}<div class="room-item"><span>{item.name} · {item.category} · {item.quantity} × Rp {Number(item.unitPrice).toLocaleString('id-ID')}</span>{#if data.user.role==='PERAWAT'}<button class="text-link" onclick={()=>editingItem={roomId:room.id,item}}>Ubah</button><button class="text-link danger-link" onclick={()=>void removeItem(room,item)}>Hapus</button>{/if}</div>{/each}</div>{:else}<p class="muted">Belum ada item yang dicatat.</p>{/if}
+				{#if editingItem?.roomId===room.id}<form class="inline-edit" onsubmit={(event)=>{event.preventDefault();const f=new FormData(event.currentTarget);void submit(`/rooms/${room.id}/items/${editingItem!.item.id}`,'PATCH',{name:f.get('name'),category:f.get('category'),quantity:Number(f.get('quantity')),unitPrice:String(f.get('unitPrice')),expectedVersion:room.version});}}><label class="field">Nama<input name="name" required value={editingItem.item.name}/></label><label class="field">Kategori<input name="category" required value={editingItem.item.category}/></label><label class="field">Jumlah<input name="quantity" type="number" min="1" required value={editingItem.item.quantity}/></label><label class="field">Harga satuan<input name="unitPrice" type="number" min="0" step="0.01" required value={editingItem.item.unitPrice}/></label><div class="form-actions"><button class="button primary" disabled={busy}>Simpan item</button><button type="button" class="button secondary" onclick={()=>editingItem=null}>Batal</button></div></form>{/if}
 			</div></td></tr>{/if}
 			{#if editing === room.id}<tr><td colspan="6"><form class="inline-edit" onsubmit={(event) => { event.preventDefault(); const f=new FormData(event.currentTarget); void submit('/rooms/'+room.id,'PATCH',{name:f.get('name'),roomClass:f.get('roomClass'),capacity:Number(f.get('capacity')),status:f.get('status'),picId:f.get('picId') || null,dailyRate:f.get('dailyRate'),expectedVersion:room.version}); }}>
 				<label class="field">Nama<input name="name" required value={room.name} /></label><label class="field">Tipe<input name="roomClass" required value={room.roomClass} /></label>

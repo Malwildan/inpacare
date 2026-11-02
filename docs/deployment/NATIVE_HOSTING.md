@@ -1,28 +1,35 @@
 # Native Linux hosting
 
-For automatic updates after successful `main` builds, enable [continuous delivery](CONTINUOUS_DELIVERY.md) on an existing installation.
+Run the production frontend, NestJS API, and PostgreSQL as user services on an **x86_64 Linux host with systemd**. The installer targets Ubuntu 24.04-compatible distributions, including Linux Mint 22. This is not a macOS launchd installer; for other hosts, adapt the runtime or use the [Docker package](HOSTING.md).
 
-Run the production frontend, Rust API, and PostgreSQL as user services on an **x86_64 Linux host with systemd**. The provided runtime installer targets Ubuntu 24.04-compatible distributions, including Linux Mint 22. This path is not a macOS launchd installer; for other hosts, adapt the runtime or use the [Docker package](HOSTING.md).
+## Prepare the application
 
-## Prepare a release
-
-The release folder needs:
-
-- A Linux executable at `bin/inpacare-api`. See [cross-building from Windows](LINUX_BUILD.md), or build with a Linux Rust toolchain and copy the release executable there.
-- The adapter-node production frontend at `apps/web/build`, created with `npm ci && npm run build`.
-- The repository's `scripts/` and `ops/native/` directories.
-
-Run from the release root:
+The release needs Node.js 24.18+ and the compiled API/frontend output. The setup script installs a project-local Node/PostgreSQL runtime. From the repository root:
 
 ```sh
 bash scripts/setup-native-linux.sh
+.runtime/node/bin/npm ci --no-audit --no-fund
+.runtime/node/bin/npm run build:api
+.runtime/node/bin/npm run build
+bash scripts/native-host.sh prepare
+bash scripts/native-host.sh migrate
+```
+
+For a new empty database, `migrate` is a separate explicit operation before app start. It is safe to re-run because the migration runner tracks applied versions. For a database created by the prior Rust API, do not run `migrate`: back it up, stop API/web writes, and run `bash scripts/native-host.sh adopt`. Adoption checks the known schema fingerprint before marking the baseline and applying the additive delta. Restart the previous app only after adoption succeeds. Automatic updates refuse an unadopted non-empty database before stopping services; see [continuous delivery](CONTINUOUS_DELIVERY.md#existing-rust-database-adoption).
+
+To create synthetic demo accounts, seed only when the database is empty and provide a demo-only password explicitly:
+
+```sh
+SEED_DEMO_PASSWORD='choose-a-demo-only-password' bash scripts/native-host.sh seed-demo
+```
+
+Set `TRUSTED_ORIGINS` in `.data/native.env` to each exact browser origin you use, including host/IP and port. All mutating requests, including login, require a trusted origin. Then install services:
+
+```sh
 bash scripts/native-host.sh install
 ```
 
-The scripts extract Node/PostgreSQL into `.runtime`, create private credentials and a new database under `.data`, then enable `inpacare-db`, `inpacare-api`, and `inpacare-web` user services. They do not require sudo or install global packages. Existing database files and credentials are preserved.
-
-Open **http://127.0.0.1:8088** on the host, or its reachable LAN address on port 8088. The API binds `127.0.0.1:8080`, PostgreSQL binds `127.0.0.1:55432`, and the frontend binds `0.0.0.0:8088`. The native runtime uses PostgreSQL 16; do not copy a data directory from a different PostgreSQL major version.
-
+The project-local runtime is under `.runtime`; private credentials and PostgreSQL data are under `.data`. The setup does not require sudo or install global packages. Existing database files and credentials are preserved. The API binds to `127.0.0.1:8080`, PostgreSQL to `127.0.0.1:55432`, and the frontend to `0.0.0.0:8088`; the host page is **http://127.0.0.1:8088**. PostgreSQL uses major version 16; do not copy a data directory across major versions.
 ## Service lifecycle and persistence
 
 ```sh

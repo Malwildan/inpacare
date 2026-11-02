@@ -3,7 +3,7 @@
 [![CI](https://github.com/Malwildan/inpacare/actions/workflows/ci.yml/badge.svg)](https://github.com/Malwildan/inpacare/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-An inpatient-care management application built with **SvelteKit, Rust, and PostgreSQL**. InpaCare connects room placement, nursing tasks, clinical records, care-cycle decisions, and billing in one role-aware workflow.
+An inpatient-care management application built with **SvelteKit, NestJS, and PostgreSQL**. InpaCare connects room placement, nursing tasks, clinical records, care-cycle decisions, and billing in one role-aware workflow.
 
 Built as an educational project with an Indonesian-language interface and synthetic records. It is a working reference implementation, with remaining scope documented in [project status](docs/PROJECT_STATUS.md).
 
@@ -29,16 +29,16 @@ New logins stay signed in on the same browser for up to 30 days, including after
 | Layer | Technology |
 | --- | --- |
 | Frontend | Svelte 5, SvelteKit, TypeScript, adapter-node |
-| Backend | Rust, Axum, Tokio, SQLx |
+| Backend | Node.js 24.18+, NestJS, TypeORM |
 | Database | PostgreSQL 16+ |
-| Validation | Rust unit tests, Python API workflows, Playwright browser tests |
+| Validation | TypeScript checks and unit tests, Python API workflows, Playwright browser tests |
 | Hosting | Native Linux user services or the alternative Docker Compose package |
 
-Pages render on the server. Browser requests use SvelteKit's same-origin `/api/v1` proxy, which forwards to the Rust API; PostgreSQL stores the application data. The API contract lives in [contracts/openapi.json](contracts/openapi.json).
+Pages render on the server. Browser requests use SvelteKit's same-origin `/api/v1` proxy, which forwards to the NestJS API; PostgreSQL stores the application data. The API contract lives in [contracts/openapi.json](contracts/openapi.json).
 
 ## Quick start
 
-Clone the repository and install **Node.js 24 LTS** and **Python 3**. The Windows helper downloads a project-local Rust/PostgreSQL runtime; manual development also requires Rust stable and PostgreSQL.
+Clone the repository and install **Node.js 24.18+**, **Python 3**, and PostgreSQL. On Windows, the helper keeps PostgreSQL data and credentials inside `.local/`; Rust is not required.
 
 ```sh
 git clone https://github.com/Malwildan/inpacare.git
@@ -47,17 +47,28 @@ cd inpacare
 
 ### Windows
 
-Run PowerShell from the repository root:
+Run PowerShell from the repository root. Initialize the local PostgreSQL cluster, build the compiled API/frontend, then apply the migration explicitly before start:
 
 ```powershell
-./scripts/start.ps1
+./scripts/setup-runtime.ps1
+./scripts/database.ps1 -Action Start
+npm ci
+npm run build:api
+npm run build
+$env:DATABASE_URL = (Get-Content .local/database-url.txt -Raw).Trim()
+npm run migration:run --workspace @inpacare/api
+# Optional, synthetic demo data only:
+$env:SEED_DEMO_PASSWORD = 'choose-a-demo-only-password'
+npm run seed --workspace @inpacare/api
+Remove-Item Env:SEED_DEMO_PASSWORD
+./scripts/start.ps1 -SkipBuild
 ```
 
-Open **http://127.0.0.1:3000**. The helper installs isolated tools, builds the API and frontend, runs migrations, and seeds an empty database. Stop the app with `./scripts/stop.ps1`; subsequent starts can use `./scripts/start.ps1 -SkipBuild`.
+Open **http://127.0.0.1:3000**. App start never migrates or seeds. See [development setup](docs/development/GETTING_STARTED.md) for manual setup. Stop the app with `./scripts/stop.ps1`.
 
 ### Linux, macOS, or an existing toolchain
 
-Follow the [development guide](docs/development/GETTING_STARTED.md) to run the Rust API and SvelteKit development server. For self-hosting, see [native Linux hosting](docs/deployment/NATIVE_HOSTING.md) or [Docker Compose](docs/deployment/HOSTING.md).
+Follow the [development guide](docs/development/GETTING_STARTED.md) to run the NestJS API and SvelteKit development server. For self-hosting, see [native Linux hosting](docs/deployment/NATIVE_HOSTING.md) or [Docker Compose](docs/deployment/HOSTING.md).
 
 ## Demo accounts
 
@@ -68,19 +79,19 @@ Follow the [development guide](docs/development/GETTING_STARTED.md) to run the R
 | `hendra`, `maya` | Doctor |
 | `admisi` | Admissions and billing |
 
-Password for all synthetic accounts: **`InpaCareDemo!2026`**. Seeding requires `SEED_DEMO=1`. The public demo may display ngrok's **Visit Site** screen on the first visit and is available while its host is online.
+Choose a password explicitly when seeding synthetic accounts. The seed command refuses a non-empty users table. The public demo may display ngrok's **Visit Site** screen on the first visit and is available while its host is online.
 
 ## Repository layout
 
 ```text
 .github/             CI, issue forms, and pull request template
 apps/
-  api/               Axum API, PostgreSQL migrations, domain modules
+  api/               NestJS API, PostgreSQL migrations, domain modules
   web/               SvelteKit routes, shared components, static assets
 contracts/           OpenAPI specification and generated-type instructions
 docs/
   development/       Setup, testing, and implementation conventions
-  deployment/        Docker, native Linux hosting, and cross-build guides
+  deployment/        Docker and native Linux hosting guides
   reference/         Domain API notes
   planning/          Requirements, decisions, and design references
   validation/        Shareable synthetic performance evidence
@@ -101,10 +112,13 @@ npm ci
 npm run check
 npm run build
 npm run types:api
-cargo test --locked --manifest-path apps/api/Cargo.toml
+npm run check:api
+npm run build:api
+npm run test:api:unit
+npm run test:api:integration
 ```
 
-The [CI workflow](.github/workflows/ci.yml) checks the frontend, generated API types, Rust unit tests, and API workflows against a disposable PostgreSQL service. Successful main builds publish a verified Linux release for [automatic native demo updates](docs/deployment/CONTINUOUS_DELIVERY.md). Browser checks run separately against a local synthetic instance; see [API testing](docs/development/API_TESTS.md) and [browser testing](docs/development/BROWSER_TESTS.md).
+The [CI workflow](.github/workflows/ci.yml) checks the frontend, generated API types, NestJS unit/integration tests, and API workflows against disposable PostgreSQL services. Successful main builds publish a verified Linux release for [automatic native demo updates](docs/deployment/CONTINUOUS_DELIVERY.md). Browser checks run separately against a local synthetic instance; see [API testing](docs/development/API_TESTS.md) and [browser testing](docs/development/BROWSER_TESTS.md).
 
 ## Contributing
 

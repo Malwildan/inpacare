@@ -4,10 +4,10 @@ Every pull request runs applicable frontend, contract, and API checks. Pushes to
 `main`, including merged PRs, run all checks. Manual CI runs also run the full
 suite; the daily scheduled run checks for regressions.
 
-After the frontend, Rust, and disposable PostgreSQL checks pass, CI builds the
-static **x86_64 Linux** API and adapter-node frontend. It extracts the resulting
-archive, installs production dependencies, checks both web listeners, and runs
-the API workflows against that exact packaged binary. Changes to CI or its
+After the frontend, NestJS, and disposable PostgreSQL checks pass, CI packages
+the compiled Node API and adapter-node frontend. It installs production
+dependencies, explicitly migrates and seeds disposable PostgreSQL, checks both
+web listeners, and runs the API workflows against that exact package. Changes to CI or its
 scripts exercise this packaging job in PRs as well.
 
 Successful `main` pushes and manual runs on `main` publish a release named
@@ -54,6 +54,31 @@ systemctl --user start inpacare-update.service
 The installed updater is a separate copy; rerun the installer to upgrade it.
 Use the timer to update application files after CD is enabled.
 
+## Existing Rust database adoption
+
+On the first update of a non-empty Rust database, the updater prepares the verified release package and checks for the NestJS baseline marker before it stops any service. If the marker is missing, it refuses the update and reports the prepared path under `.deploy/releases/`. Disable the timer, take a fresh database backup, and perform the one-time fingerprint-checked adoption in a maintenance window:
+
+```sh
+ROOT=/absolute/path/to/inpacare
+RELEASE="$ROOT/.deploy/releases/FULL_COMMIT_SHA"
+systemctl --user disable --now inpacare-update.timer
+mkdir -p "$ROOT/.data/backups"
+chmod 700 "$ROOT/.data/backups"
+set -a
+. "$ROOT/.data/native.env"
+set +a
+"$ROOT/.runtime/postgres/usr/lib/postgresql/16/bin/pg_dump" --format=custom \
+  --file="$ROOT/.data/backups/pre-adoption.dump" "$DATABASE_URL"
+systemctl --user stop inpacare-web inpacare-api
+export PATH="$ROOT/.runtime/node/bin:$PATH"
+cd "$RELEASE"
+npm run migration:adopt --workspace @inpacare/api
+systemctl --user start inpacare-api inpacare-web
+systemctl --user enable --now inpacare-update.timer
+```
+
+If the schema fingerprint check fails, keep the release pointer unchanged and do not run the new API; restart the previous app and reconcile the schema separately. After successful adoption, the next updater run applies any pending migrations explicitly before starting the candidate API.
+
 ## Activation, backups, and recovery
 
 The updater accepts only the latest native release matching the current `main`
@@ -63,14 +88,16 @@ directory. A file lock prevents concurrent updates; preparation leaves the
 running app available.
 
 Before activation, it writes an owner-only PostgreSQL backup under
-`.data/backups/pre-update-*.dump`. It then stops API/web, atomically switches the
-current-release symlink, starts API/web, and checks the API and HTTP/HTTPS-origin
-web listeners. The database and tunnel services keep running. Expect a short
-interruption while API/web restart.
+`.data/backups/pre-update-*.dump`, then runs the release migration explicitly
+while the current API/web remain online. A migration or dependency-install
+failure leaves the running version active. After migration succeeds, it stops
+API/web, atomically switches the current-release symlink, starts API/web, and
+checks the API and HTTP/HTTPS-origin web listeners. The database and tunnel
+services keep running; expect only the brief API/web restart interruption.
 
 If activation fails, the previous application pointer is restored and its
-services are started. **This does not reverse database migrations or restore a
-database backup.** Keep migrations compatible with the previous app version;
+services are started. **This does not reverse a completed database migration or
+restore a database backup.** Keep migrations additive and compatible with the previous app version;
 restoring a backup is a separate, deliberate recovery step that can discard
 writes made after that backup. Check both service health and logs after a failure.
 

@@ -28,7 +28,7 @@
 		{ path: '/dashboard', label: 'Dashboard Siklus', icon: LayoutDashboard, roles: ['DOKTER', 'PERAWAT'] },
 		{ path: '/rooms', label: 'Manajemen Ruangan', icon: BedDouble, roles: ['PERAWAT', 'ADMISI'] },
 		{ path: '/calendar', label: 'Kalender Ruangan', icon: CalendarDays, roles: ['PERAWAT', 'DOKTER', 'ADMISI'] },
-		{ path: '/medical-records', label: 'Rekam Medis', icon: FileHeart, roles: ['DOKTER', 'PERAWAT'] },
+		{ path: '/medical-records', label: 'Rekam Medis', icon: FileHeart, roles: ['DOKTER', 'PERAWAT', 'ADMISI'] },
 		{ path: '/tasks', label: 'Tugas Perawatan', icon: ClipboardList, roles: ['PERAWAT'] },
 		{ path: '/invoices', label: 'Tagihan', icon: ReceiptText, roles: ['ADMISI'] }
 	];

@@ -8,20 +8,23 @@ test('runs only the frontend checks for frontend source paths', () => {
   });
 });
 
-test('npm manifests and lockfiles also check the API type generator', () => {
-  for (const path of ['package.json', 'package-lock.json', 'apps/web/package.json']) {
+test('root npm manifests check API, frontend, and generated types', () => {
+  for (const path of ['package.json', 'package-lock.json']) {
     assert.deepEqual(classifyPaths([path]), {
-      full: false, web: true, api: false, contracts: true
+      full: false, web: true, api: true, contracts: true
     });
   }
+  assert.deepEqual(classifyPaths(['apps/web/package.json']), {
+    full: false, web: true, api: false, contracts: true
+  });
 });
 
-test('runs API checks for Rust, database, API test, and Cargo lockfile paths', () => {
+test('runs API checks for NestJS, migrations, API test, and workspace paths', () => {
   assert.deepEqual(classifyPaths([
-    'apps/api/src/main.rs',
-    'apps/api/migrations/0001_initial.sql',
+    'apps/api/src/main.ts',
+    'apps/api/src/database/migrations/0001_initial.sql',
     'tests/api/test_tasks.py',
-    'apps/api/Cargo.lock'
+    'apps/api/package.json'
   ]), { full: false, web: false, api: true, contracts: false });
 });
 

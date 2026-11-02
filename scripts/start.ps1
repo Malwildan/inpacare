@@ -1,19 +1,14 @@
-param([switch]$SkipBuild, [ValidateSet('Release','Debug')][string]$Configuration='Release')
+param([switch]$SkipBuild)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectRoot
 & (Join-Path $PSScriptRoot 'setup-runtime.ps1')
 & (Join-Path $PSScriptRoot 'database.ps1') -Action start
-$env:RUSTUP_HOME = Join-Path $projectRoot '.local/rustup'
-$env:CARGO_HOME = Join-Path $projectRoot '.local/cargo'
-$env:PATH = (Join-Path $env:CARGO_HOME 'bin') + ';' + (Join-Path $projectRoot '.local/mingw/mingw64/bin') + ';' + $env:PATH
 if (-not $SkipBuild) {
  & npm.cmd ci --no-audit --no-fund
  if ($LASTEXITCODE -ne 0) { throw 'npm ci failed' }
- $buildArguments=@('build','--locked','--manifest-path',(Join-Path $projectRoot 'apps/api/Cargo.toml'))
- if($Configuration -eq 'Release'){$buildArguments+='--release'}
- & cargo @buildArguments
- if ($LASTEXITCODE -ne 0) { throw 'API release build failed' }
+ & npm.cmd run build:api
+ if ($LASTEXITCODE -ne 0) { throw 'API build failed' }
  & npm.cmd run build
  if ($LASTEXITCODE -ne 0) { throw 'Web release build failed' }
 }
@@ -25,11 +20,13 @@ if (Test-Path -LiteralPath $pidFile) {
  }
 }
 if (-not $env:DATABASE_URL) { $env:DATABASE_URL = (Get-Content -LiteralPath (Join-Path $projectRoot '.local/database-url.txt') -Raw).Trim() }
-$env:SEED_DEMO = '1'
 $env:API_BIND = '127.0.0.1:8080'
-$apiFolder=if($Configuration -eq 'Debug'){'debug'}else{'release'}
-$apiFile = Join-Path $projectRoot "apps/api/target/$apiFolder/inpacare-api.exe"
-$apiProcess = Start-Process -FilePath $apiFile -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $projectRoot '.local/api.stdout.log') -RedirectStandardError (Join-Path $projectRoot '.local/api.stderr.log')
+$env:TRUSTED_ORIGINS = 'http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:8080'
+$node = (Get-Command node.exe -ErrorAction Stop).Source
+$apiFile = Join-Path $projectRoot 'apps/api/dist/main.js'
+if (-not (Test-Path -LiteralPath $apiFile)) { throw 'Compiled API is missing. Run npm run build:api first.' }
+$webProcess = $null
+$apiProcess = Start-Process -FilePath $node -ArgumentList @('"' + $apiFile + '"') -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $projectRoot '.local/api.stdout.log') -RedirectStandardError (Join-Path $projectRoot '.local/api.stderr.log')
 try {
  $ready = $false
  for ($attempt=0; $attempt -lt 30; $attempt++) {
@@ -42,7 +39,7 @@ try {
  $env:PORT = '3000'
  $webFile = Join-Path $projectRoot 'apps/web/build/index.js'
  $webProcess = Start-Process -FilePath (Get-Command node.exe).Source -ArgumentList @(('"' + $webFile + '"')) -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $projectRoot '.local/web.stdout.log') -RedirectStandardError (Join-Path $projectRoot '.local/web.stderr.log')
- @{api=$apiProcess.Id;web=$webProcess.Id;root=$projectRoot;apiMode=$apiFolder} | ConvertTo-Json | Set-Content -LiteralPath $pidFile
+ @{api=$apiProcess.Id;web=$webProcess.Id;root=$projectRoot;apiMode='node'} | ConvertTo-Json | Set-Content -LiteralPath $pidFile
  $webReady=$false
  for ($attempt=0;$attempt -lt 20;$attempt++) {
   try { $result=Invoke-WebRequest 'http://127.0.0.1:3000/login' -UseBasicParsing -TimeoutSec 2; if($result.StatusCode -eq 200){$webReady=$true;break} } catch {}
@@ -50,4 +47,9 @@ try {
  }
  if(-not $webReady){throw 'Web did not become healthy; see .local/web.stderr.log'}
  Write-Output 'InpaCare is running at http://127.0.0.1:3000'
-} catch { Stop-Process -Id $apiProcess.Id -ErrorAction SilentlyContinue; throw }
+} catch {
+ if ($webProcess -and -not $webProcess.HasExited) { Stop-Process -Id $webProcess.Id -ErrorAction SilentlyContinue }
+ if ($apiProcess -and -not $apiProcess.HasExited) { Stop-Process -Id $apiProcess.Id -ErrorAction SilentlyContinue }
+ Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
+ throw
+}

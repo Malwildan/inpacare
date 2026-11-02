@@ -56,7 +56,11 @@ try {
       check('npm', ['run', 'types:api']);
       git(['diff', '--exit-code', '--', 'apps/web/src/lib/generated/api.d.ts']);
     }
-    if (affected.api) check('cargo', ['check', '--locked', '--manifest-path', 'apps/api/Cargo.toml']);
+    if (affected.api) {
+      check('npm', ['run', 'check:api']);
+      check('npm', ['run', 'build:api']);
+      check('npm', ['run', 'test:api:unit']);
+    }
   }
 } catch (error) {
   console.error(`pre-push: ${error.message}`);

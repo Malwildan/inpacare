@@ -24,7 +24,8 @@ from urllib.request import Request, urlopen
 API = "https://api.github.com/repos/Malwildan/inpacare"
 ASSETS = ("inpacare-linux-x86_64.tar.gz", "SHA256SUMS")
 REQUIRED = (
-    "REVISION", "bin/inpacare-api", "apps/web/build/index.js", "apps/web/build/handler.js", "package.json",
+    "REVISION", "apps/api/package.json", "apps/api/dist/main.js", "apps/api/dist/database/cli.js",
+    "apps/web/build/index.js", "apps/web/build/handler.js", "package.json",
     "package-lock.json", "apps/web/package.json", "scripts/native-host.sh",
     "scripts/native-web.mjs",
 )
@@ -104,8 +105,6 @@ def verify_archive(archive: Path, sums: Path, sha: str, target: Path) -> None:
         path = target / required
         if not path.is_file():
             raise DeployError(f"Release is missing required path: {required}")
-    if not os.access(target / "bin/inpacare-api", os.X_OK):
-        raise DeployError("Release API binary is not executable")
 
 
 def run(args: list[str], *, env: dict | None = None, timeout: int = 120,
@@ -137,9 +136,10 @@ def verify_root(root: Path) -> dict[str, str]:
     if not env_file.is_file() or not (data / "postgres/PG_VERSION").is_file():
         raise DeployError("Existing native.env and PostgreSQL data are required; run native setup first")
     tools = (runtime / "node/bin/node", runtime / "node/bin/npm",
-             runtime / "postgres/usr/lib/postgresql/16/bin/pg_dump")
+             runtime / "postgres/usr/lib/postgresql/16/bin/pg_dump",
+             runtime / "postgres/usr/lib/postgresql/16/bin/psql")
     if any(not tool.is_file() or not os.access(tool, os.X_OK) for tool in tools):
-        raise DeployError("Bundled Node/npm and PostgreSQL 16 pg_dump must be installed")
+        raise DeployError("Bundled Node/npm and PostgreSQL 16 pg_dump/psql must be installed")
     for service in ("inpacare-db", "inpacare-api", "inpacare-web"):
         result = run(["systemctl", "--user", "is-active", service], check=False, timeout=10)
         if result.returncode or result.stdout.strip() != "active":
@@ -177,6 +177,15 @@ def health(url: str) -> bool:
             return 200 <= response.status < 400
     except (OSError, HTTPError, URLError):
         return False
+
+
+def wait_api_healthy() -> bool:
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        if health("http://127.0.0.1:8080/health"):
+            return True
+        time.sleep(1)
+    return False
 
 
 def wait_healthy(values: dict[str, str]) -> bool:
@@ -218,6 +227,24 @@ def database_backup(root: Path, values: dict[str, str], sha: str) -> Path:
     return path
 
 
+def require_explicit_adoption(root: Path, values: dict[str, str], release_dir: Path) -> None:
+    parsed = urlsplit(values["DATABASE_URL"])
+    if parsed.scheme not in ("postgres", "postgresql") or not parsed.hostname or not parsed.username or not parsed.password:
+        raise DeployError("DATABASE_URL must contain PostgreSQL host, user, and password")
+    env = os.environ.copy()
+    env.update({"PGHOST": parsed.hostname, "PGPORT": str(parsed.port or 5432),
+                "PGUSER": unquote(parsed.username), "PGPASSWORD": unquote(parsed.password),
+                "PGDATABASE": unquote(parsed.path.lstrip("/"))})
+    pg_bin = root / ".runtime/postgres/usr/lib/postgresql/16/bin"
+    env["LD_LIBRARY_PATH"] = str(root / ".runtime/postgres/usr/lib/x86_64-linux-gnu") + ":" + str(pg_bin.parent / "lib")
+    psql = str(pg_bin / "psql")
+    has_history = run([psql, "-X", "-qAt", "-c", "SELECT to_regclass('migrations') IS NOT NULL"], env=env, timeout=30).stdout.strip() == "t"
+    baseline = has_history and run([psql, "-X", "-qAt", "-c", "SELECT count(*) FROM migrations WHERE name='Baseline1793577600000'"], env=env, timeout=30).stdout.strip() == "1"
+    tables = int(run([psql, "-X", "-qAt", "-c", "SELECT count(*) FROM information_schema.tables WHERE table_schema=current_schema() AND table_type='BASE TABLE' AND table_name NOT IN ('migrations','_sqlx_migrations')"], env=env, timeout=30).stdout.strip())
+    if tables and not baseline:
+        raise DeployError(f"Existing database needs explicit NestJS adoption before updating. Prepared release: {release_dir}. Disable the update timer, back up the database, stop API/web, source `.data/native.env`, run `npm run migration:adopt --workspace @inpacare/api` from that release, then restart the current app and re-enable the timer.")
+
+
 def deploy(root: Path, sha: str, release: dict, values: dict[str, str]) -> None:
     if main_sha() != sha:
         raise DeployError("Latest native release is not the current main commit")
@@ -228,39 +255,46 @@ def deploy(root: Path, sha: str, release: dict, values: dict[str, str]) -> None:
     releases = deploy_dir / "releases"
     releases.mkdir(mode=0o700, parents=True, exist_ok=True)
     release_dir = releases / sha
-    if release_dir.exists():
-        failed = releases / f"{sha}.failed-{datetime.now(timezone.utc):%Y%m%dT%H%M%S%fZ}"
-        release_dir.rename(failed)
-    stage = Path(tempfile.mkdtemp(prefix=f".{sha}-", dir=releases))
-    # Preserve failed stages for diagnosis; the next attempt uses a fresh directory.
-    archive, sums = stage / ASSETS[0], stage / ASSETS[1]
-    for name in ASSETS:
-        url = asset_url(sha, name)
-        if assets[name].get("browser_download_url") != url:
-            raise DeployError(f"Unexpected release asset URL: {name}")
-        download(url, stage / name)
-    unpacked = stage / "unpacked"
-    unpacked.mkdir()
-    verify_archive(archive, sums, sha, unpacked)
-    archive.unlink()
-    sums.unlink()
-    for item in unpacked.iterdir():
-        item.rename(stage / item.name)
-    unpacked.rmdir()
-    (stage / ".data").symlink_to(root / ".data", target_is_directory=True)
-    (stage / ".runtime").symlink_to(root / ".runtime", target_is_directory=True)
     env = os.environ.copy()
     node_bin = str(root / ".runtime/node/bin")
     env["PATH"] = node_bin + os.pathsep + env.get("PATH", "")
-    run([str(root / ".runtime/node/bin/npm"), "ci", "--omit=dev", "--ignore-scripts",
-         "--workspace", "apps/web", "--include-workspace-root=false"], env=env, cwd=stage, timeout=600)
-    stage.rename(release_dir)
+    prepared = (release_dir / "REVISION").is_file() and (release_dir / "REVISION").read_text().strip() == sha and (release_dir / "node_modules").is_dir()
+    if not prepared:
+        if release_dir.exists():
+            failed = releases / f"{sha}.failed-{datetime.now(timezone.utc):%Y%m%dT%H%M%S%fZ}"
+            release_dir.rename(failed)
+        stage = Path(tempfile.mkdtemp(prefix=f".{sha}-", dir=releases))
+        # Preserve failed stages for diagnosis; the next attempt uses a fresh directory.
+        archive, sums = stage / ASSETS[0], stage / ASSETS[1]
+        for name in ASSETS:
+            url = asset_url(sha, name)
+            if assets[name].get("browser_download_url") != url:
+                raise DeployError(f"Unexpected release asset URL: {name}")
+            download(url, stage / name)
+        unpacked = stage / "unpacked"
+        unpacked.mkdir()
+        verify_archive(archive, sums, sha, unpacked)
+        archive.unlink()
+        sums.unlink()
+        for item in unpacked.iterdir():
+            item.rename(stage / item.name)
+        unpacked.rmdir()
+        (stage / ".data").symlink_to(root / ".data", target_is_directory=True)
+        (stage / ".runtime").symlink_to(root / ".runtime", target_is_directory=True)
+        run([str(root / ".runtime/node/bin/npm"), "ci", "--omit=dev", "--no-audit", "--no-fund",
+             "--workspace", "apps/api", "--workspace", "apps/web", "--include-workspace-root=false"], env=env, cwd=stage, timeout=600)
+        stage.rename(release_dir)
 
     if main_sha() != sha:
         print("Main advanced while preparing the release; keeping the running version.")
         return
 
+    require_explicit_adoption(root, values, release_dir)
+
     database_backup(root, values, sha)
+    if main_sha() != sha:
+        print("Main advanced while preparing the release; keeping the running version.")
+        return
     current = deploy_dir / "current"
     if current.is_symlink():
         old_target = current.resolve()
@@ -270,10 +304,18 @@ def deploy(root: Path, sha: str, release: dict, values: dict[str, str]) -> None:
     switched = False
     try:
         run(["systemctl", "--user", "stop", "inpacare-web", "inpacare-api"], timeout=30)
+        migration_env = os.environ.copy()
+        migration_env.update(values)
+        migration_env["PATH"] = node_bin + os.pathsep + migration_env.get("PATH", "")
+        run([str(root / ".runtime/node/bin/npm"), "run", "migration:run", "--workspace", "@inpacare/api"],
+            env=migration_env, cwd=release_dir, timeout=600)
         atomic_pointer(current, release_dir)
         switched = True
         run(["systemctl", "--user", "daemon-reload"], timeout=30)
-        run(["systemctl", "--user", "start", "inpacare-api", "inpacare-web"], timeout=60)
+        run(["systemctl", "--user", "start", "inpacare-api"], timeout=60)
+        if not wait_api_healthy():
+            raise DeployError("Updated API failed health checks; web traffic was not opened")
+        run(["systemctl", "--user", "start", "inpacare-web"], timeout=60)
         if not wait_healthy(values):
             raise DeployError("Updated API/web failed health checks")
     except Exception:
@@ -283,8 +325,7 @@ def deploy(root: Path, sha: str, release: dict, values: dict[str, str]) -> None:
             atomic_pointer(current, old_target)
             with contextlib.suppress(Exception):
                 run(["systemctl", "--user", "daemon-reload"], timeout=30)
-        # Database migrations may have run; restoring code cannot reverse them.
-        print("Update failed; database was not restored because application migrations may be irreversible.", file=sys.stderr)
+        print("Update failed; the database was backed up before the explicit migration and was not automatically restored.", file=sys.stderr)
         with contextlib.suppress(Exception):
             run(["systemctl", "--user", "start", "inpacare-api", "inpacare-web"], timeout=60)
         raise

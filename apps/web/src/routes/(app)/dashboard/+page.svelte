@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { api } from '$lib/api';
 	import Modal from '$lib/components/Modal.svelte';
 
 	type CycleDetail = {
-		id: string; patientName: string; medicalRecordNo: string; room: string | null;
+		id: string; patientId: string; patientName: string; medicalRecordNo: string; room: string | null; placementId?: string | null;
 		doctorName: string; nurseName: string; status: string; version: number;
 		requests: { id: string; kind: string; requestedEnd: string | null; reason: string;
 			requestedBy: string; status: string; note: string | null; decidedBy: string | null }[];
@@ -16,7 +16,9 @@
 	let { data } = $props();
 	let search = $state('');
 	let roomFilter = $state('');
+	let patientFilter = $state('');
 	let statusFilter = $state('');
+	$effect(()=>{search=data.filters.search;roomFilter=data.filters.roomId;patientFilter=data.filters.patientId;statusFilter=data.filters.status;});
 	let busy = $state(false);
 	let error = $state('');
 	let success = $state('');
@@ -25,13 +27,8 @@
 	let detailLoading = $state(false);
 	let requestKind = $state('release');
 
-	let cycles = $derived(data.cycles.filter((cycle: any) =>
-		(!statusFilter || cycle.status === statusFilter) &&
-		(!roomFilter || (roomFilter === '__unplaced__' ? !cycle.room : cycle.room === roomFilter)) &&
-		(!search || `${cycle.patientName} ${cycle.medicalRecordNo}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()))
-	));
-	let rooms = $derived([...new Set(data.cycles.map((cycle: any) => cycle.room).filter((room: unknown): room is string => typeof room === 'string' && room.length > 0))].sort((a, b) => a.localeCompare(b, 'id')));
-	let hasUnplaced = $derived(data.cycles.some((cycle: any) => !cycle.room));
+	let cycles = $derived(data.cycles);
+	let rooms = $derived(data.reference.rooms);
 	let counts = $derived(['pending', 'assigned', 'in_care', 'extend', 'released'].map((status) => ({ status, count: data.cycles.filter((c: any) => c.status === status).length })));
 
 	async function openDetail(id: string) {
@@ -43,6 +40,7 @@
 			if (selectedCycleId === id) error = cause instanceof Error ? cause.message : 'Detail gagal dimuat.';
 		} finally { if (selectedCycleId === id) detailLoading = false; }
 	}
+	async function filterCycles(event:SubmitEvent){event.preventDefault();const query=new URLSearchParams();for(const [key,value] of Object.entries({search:search.trim(),roomId:roomFilter,patientId:patientFilter,status:statusFilter}))if(value)query.set(key,value);await goto(`/dashboard${query.size?'?'+query:''}`,{keepFocus:true,noScroll:true});}
 	function closeDetail() { selectedCycleId = null; selectedCycle = null; error = ''; }
 
 	async function send(path: string, method: string, payload?: object): Promise<boolean> {
@@ -77,6 +75,8 @@
 		const form = new FormData(event.currentTarget as HTMLFormElement);
 		if (await send(`/cycles/${cycle.id}/requests/${requestId}/decision`, 'POST', { decision, note: form.get('note'), expectedVersion: cycle.version })) closeDetail();
 	}
+	async function assignPlacement(event:SubmitEvent,cycle:CycleDetail){event.preventDefault();const form=new FormData(event.currentTarget as HTMLFormElement);if(await send(`/cycles/${cycle.id}`,'PATCH',{expectedVersion:cycle.version,placementId:form.get('placementId')||null}))closeDetail();}
+	async function deleteCycle(cycle:CycleDetail){if(cycle.status!=='pending')return;const reason=prompt('Alasan menghapus rekap pending:');if(!reason?.trim())return;if(confirm('Hapus rekap pending ini?')&&await send(`/cycles/${cycle.id}`,'DELETE',{expectedVersion:cycle.version,reason}))closeDetail();}
 </script>
 
 <svelte:head><title>Dashboard Siklus | InpaCare</title></svelte:head>
@@ -110,7 +110,7 @@
 
 <section class="panel">
 	<div class="panel-header"><div><h2>Daftar rekap pasien</h2><span class="muted">{cycles.length} dari {data.cycles.length} pasien</span></div></div>
-	<div class="filters"><label class="field search-field">Cari nama atau nomor rekam medis<input type="search" bind:value={search} placeholder="Cari nama pasien..." /></label><label class="field">Ruangan<select bind:value={roomFilter}><option value="">Semua ruangan</option>{#each rooms as room}<option value={room}>{room}</option>{/each}{#if hasUnplaced}<option value="__unplaced__">Belum ditempatkan</option>{/if}</select></label><label class="field">Status<select bind:value={statusFilter}><option value="">Semua status</option>{#each counts as item}<option value={item.status}>{({pending:'Pending',assigned:'Assigned',in_care:'In Care',extend:'Extend',released:'Pelepasan'} as Record<string,string>)[item.status]}</option>{/each}</select></label></div>
+	<form class="filters" onsubmit={filterCycles}><label class="field search-field">Cari nama atau nomor rekam medis<input type="search" bind:value={search} placeholder="Cari nama pasien..." /></label><label class="field">Pasien<select bind:value={patientFilter}><option value="">Semua pasien</option>{#each data.reference.patients as patient}<option value={patient.id}>{patient.name} · {patient.medicalRecordNo}</option>{/each}</select></label><label class="field">Ruangan<select bind:value={roomFilter}><option value="">Semua ruangan</option>{#each rooms as room}<option value={room.id}>{room.name}</option>{/each}</select></label><label class="field">Status<select bind:value={statusFilter}><option value="">Semua status</option>{#each counts as item}<option value={item.status}>{({pending:'Pending',assigned:'Assigned',in_care:'In Care',extend:'Extend',released:'Pelepasan'} as Record<string,string>)[item.status]}</option>{/each}<option value="pending_approval">Menunggu keputusan</option></select></label><button class="button primary" type="submit">Terapkan filter</button></form>
 	<div class="table-wrap"><table class="data-table"><thead><tr><th>Pasien</th><th>Ruangan</th><th>Dokter</th><th>Perawat</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
 		{#each cycles as cycle (cycle.id)}<tr>
 			<td><strong>{cycle.patientName}</strong><span class="cell-meta">{cycle.id} · {cycle.medicalRecordNo}</span></td>
@@ -134,6 +134,7 @@
 				<div class="detail-item"><span>Status saat ini</span><strong><Badge value={selectedCycle.status}/></strong></div>
 			</div>
 			{#if error}<p class="error" role="alert">{error}</p>{/if}
+			{#if data.user.role==='PERAWAT'&&selectedCycle.status==='pending'}<section class="detail-section"><h3>Penempatan pasien</h3><p class="muted">Rekap pending dapat dihubungkan ke penempatan aktif atau dikembalikan menjadi belum ditempatkan.</p><form onsubmit={(event)=>assignPlacement(event,selectedCycle!)}><label class="field">Penempatan<select name="placementId" value={selectedCycle.placementId??''}><option value="">Belum ditempatkan</option>{#each data.reference.placements.filter((p:any)=>p.status==='active'&&p.patientId===selectedCycle!.patientId) as placement}<option value={placement.id}>{placement.roomName} · {placement.startsOn}–{placement.endsOn}</option>{/each}</select></label><div class="form-actions"><button class="button primary" disabled={busy}>Simpan penempatan</button><button type="button" class="button danger" disabled={busy} onclick={()=>void deleteCycle(selectedCycle!)}>Hapus rekap</button></div></form></section>{/if}
 			{#if data.user.role === 'PERAWAT' && ['pending', 'assigned'].includes(selectedCycle.status)}
 				<section class="detail-section"><h3>Perbarui status</h3><p class="muted">Lanjutkan ke tahap berikutnya dalam siklus perawatan.</p>
 					<form onsubmit={(event) => transition(event, selectedCycle!)}><label class="field">Tahap berikutnya<select name="status" required><option value={selectedCycle.status === 'pending' ? 'assigned' : 'in_care'}>{selectedCycle.status === 'pending' ? 'Assigned' : 'In Care'}</option></select></label><div class="form-actions"><button class="button primary" disabled={busy}>Simpan status</button></div></form>

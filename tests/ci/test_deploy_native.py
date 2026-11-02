@@ -21,12 +21,13 @@ SHA = "a" * 40
 
 def make_release(folder: Path, sha=SHA, extra=None):
     source = folder / "source"
-    (source / "bin").mkdir(parents=True, exist_ok=True)
+    (source / "apps/api/dist/database").mkdir(parents=True, exist_ok=True)
     (source / "apps/web/build").mkdir(parents=True, exist_ok=True)
     (source / "scripts").mkdir(parents=True, exist_ok=True)
     (source / "REVISION").write_text(sha + "\n")
-    (source / "bin/inpacare-api").write_text("binary")
-    (source / "bin/inpacare-api").chmod(0o755)
+    (source / "apps/api/package.json").write_text("{}")
+    (source / "apps/api/dist/main.js").write_text("api")
+    (source / "apps/api/dist/database/cli.js").write_text("cli")
     (source / "package.json").write_text("{}")
     (source / "package-lock.json").write_text("{}")
     (source / "apps/web/package.json").write_text("{}")
@@ -51,7 +52,7 @@ def fake_root(folder: Path):
     (root / ".data/postgres").mkdir(parents=True)
     (root / ".data/postgres/PG_VERSION").write_text("16\n")
     (root / ".data/native.env").write_text("DATABASE_URL=postgres://demo:secret@127.0.0.1:55432/inpacare\n")
-    for tool in ("node/bin/node", "node/bin/npm", "postgres/usr/lib/postgresql/16/bin/pg_dump"):
+    for tool in ("node/bin/node", "node/bin/npm", "postgres/usr/lib/postgresql/16/bin/pg_dump", "postgres/usr/lib/postgresql/16/bin/psql"):
         path = root / ".runtime" / tool
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("tool")
@@ -112,7 +113,7 @@ class DeployNativeTests(unittest.TestCase):
             with self.assertRaisesRegex(deploy_native.DeployError, "Unsupported archive entry"):
                 deploy_native.verify_archive(archive, sums, SHA, folder / "out3")
 
-    def run_deployment(self, succeed, *, backup_fails=False, main_advances=False):
+    def run_deployment(self, succeed, *, backup_fails=False, migration_fails=False, main_advances=False, adoption_required=False):
         temp = tempfile.TemporaryDirectory()
         folder = Path(temp.name)
         root = fake_root(folder)
@@ -125,8 +126,16 @@ class DeployNativeTests(unittest.TestCase):
             dest.write_bytes(shutil_source.read_bytes())
 
         def fake_run(args, **kwargs):
+            if Path(args[0]).name == "psql":
+                query = args[-1]
+                result = "f\n" if "to_regclass" in query else ("19\n" if adoption_required else "0\n")
+                return type("Result", (), {"returncode": 0, "stdout": result, "stderr": ""})()
             if Path(args[0]).name == "npm":
-                (kwargs["cwd"] / "node_modules").mkdir()
+                (kwargs["cwd"] / "node_modules").mkdir(exist_ok=True)
+                if "migration:run" in args:
+                    events.append("migration")
+                    if migration_fails:
+                        raise deploy_native.DeployError("Migration failed")
             elif "pg_dump" in args[0]:
                 events.append("backup")
                 if backup_fails:
@@ -134,12 +143,20 @@ class DeployNativeTests(unittest.TestCase):
                 Path(args[args.index("--file") + 1]).write_bytes(b"backup")
             elif args[:4] == ["systemctl", "--user", "stop", "inpacare-web"]:
                 events.append("stop")
+            elif args[:4] == ["systemctl", "--user", "start", "inpacare-api"]:
+                events.append("start-api")
+            elif args[:4] == ["systemctl", "--user", "start", "inpacare-web"]:
+                events.append("start-web")
             return type("Result", (), {"returncode": 0, "stdout": "active\n", "stderr": ""})()
 
-        patches = [patch.object(deploy_native, "main_sha", side_effect=[SHA, "b" * 40 if main_advances else SHA]),
+        revisions = [SHA, "b" * 40 if main_advances else SHA]
+        if not main_advances:
+            revisions.append(SHA)
+        patches = [patch.object(deploy_native, "main_sha", side_effect=revisions),
                    patch.object(deploy_native, "download", side_effect=download),
                    patch.object(deploy_native, "run", side_effect=fake_run),
-                   patch.object(deploy_native, "wait_healthy", return_value=succeed)]
+                   patch.object(deploy_native, "wait_api_healthy", side_effect=lambda: events.append("api-healthy") or succeed),
+                   patch.object(deploy_native, "wait_healthy", side_effect=lambda _values: events.append("web-healthy") or succeed)]
         for item in patches:
             item.start()
         try:
@@ -160,6 +177,12 @@ class DeployNativeTests(unittest.TestCase):
             self.assertTrue((root / ".data/native.env").is_file())
             self.assertEqual((root / ".deploy/current/REVISION").read_text().strip(), SHA)
             self.assertLess(events.index("backup"), events.index("stop"))
+            self.assertLess(events.index("backup"), events.index("stop"))
+            self.assertLess(events.index("stop"), events.index("migration"))
+            self.assertLess(events.index("migration"), events.index("start-api"))
+            self.assertLess(events.index("start-api"), events.index("api-healthy"))
+            self.assertLess(events.index("api-healthy"), events.index("start-web"))
+            self.assertLess(events.index("start-web"), events.index("web-healthy"))
             self.assertTrue(list((root / ".data/backups").glob("*.dump")))
         finally:
             temp.cleanup()
@@ -179,6 +202,27 @@ class DeployNativeTests(unittest.TestCase):
             self.assertNotIn("stop", events)
             self.assertFalse((root / ".deploy/current").exists())
             self.assertFalse(list((root / ".data/backups").glob("*.dump")))
+        finally:
+            temp.cleanup()
+
+    def test_migration_failure_keeps_the_running_app_untouched(self):
+        temp, root, events = self.run_deployment(False, migration_fails=True)
+        try:
+            self.assertIn("backup", events)
+            self.assertIn("migration", events)
+            self.assertIn("stop", events)
+            self.assertIn("start-api", events)
+            self.assertEqual((root / ".deploy/current").resolve(), root.resolve())
+        finally:
+            temp.cleanup()
+
+    def test_legacy_database_requires_operator_adoption_before_deployment(self):
+        temp, root, events = self.run_deployment(False, adoption_required=True)
+        try:
+            self.assertNotIn("backup", events)
+            self.assertNotIn("stop", events)
+            self.assertFalse((root / ".deploy/current").exists())
+            self.assertTrue((root / ".deploy/releases" / SHA / "node_modules").is_dir())
         finally:
             temp.cleanup()
 

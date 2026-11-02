@@ -14,10 +14,20 @@ wait_db() {
   for attempt in $(seq 1 50); do if "$PGBIN/pg_isready" -h 127.0.0.1 -p 55432 -q; then return 0; fi; sleep .2; done
   printf '%s\n' 'PostgreSQL did not become ready.' >&2; return 1
 }
+ensure_db() {
+  DB_STARTED_BY_COMMAND=0
+  if ! "$PGBIN/pg_ctl" -D "$DATA/postgres" status >/dev/null 2>&1; then
+    "$PGBIN/pg_ctl" -D "$DATA/postgres" -l "$DATA/postgres.log" -o '-h 127.0.0.1 -p 55432' -w start
+    DB_STARTED_BY_COMMAND=1
+  fi
+}
+stop_command_db() {
+  if [ "${DB_STARTED_BY_COMMAND:-0}" = 1 ]; then "$PGBIN/pg_ctl" -D "$DATA/postgres" -m fast -w stop; fi
+}
 case "${1:-status}" in
   prepare)
     umask 077
-    mkdir -p "$DATA" "$DATA/socket" "$ROOT/bin"
+    mkdir -p "$DATA" "$DATA/socket"
     chmod 700 "$DATA" "$DATA/socket"
     export INPACARE_ROOT="$ROOT"
     python3 - <<'PY'
@@ -26,7 +36,7 @@ root=pathlib.Path(os.environ['INPACARE_ROOT']);data=root/'.data';env=data/'nativ
 if not env.exists():
     if (data/'postgres/PG_VERSION').exists():raise SystemExit('Existing database has no environment file; restore its original credentials.')
     admin=secrets.token_hex(32);app=secrets.token_hex(32)
-    for path,contents in [(data/'admin-password',admin+'\n'),(env,'\n'.join(['DATABASE_URL=postgres://inpacare:'+app+'@127.0.0.1:55432/inpacare','API_BIND=127.0.0.1:8080','API_ORIGIN=http://127.0.0.1:8080','HOST=0.0.0.0','PORT=8088','SEED_DEMO=1','NODE_OPTIONS=--max-old-space-size=192'])+'\n')]:
+    for path,contents in [(data/'admin-password',admin+'\n'),(env,'\n'.join(['DATABASE_URL=postgres://inpacare:'+app+'@127.0.0.1:55432/inpacare','API_BIND=127.0.0.1:8080','TRUSTED_ORIGINS=http://127.0.0.1:8088','HOST=0.0.0.0','PORT=8088','NODE_OPTIONS=--max-old-space-size=192'])+'\n')]:
         fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
         with os.fdopen(fd,'w') as stream:stream.write(contents)
 PY
@@ -67,7 +77,7 @@ PY
     ;;
   install)
     bash "$0" prepare
-    test -x "$ROOT/bin/inpacare-api"
+    test -f "$ROOT/apps/api/dist/main.js"
     test -f "$ROOT/apps/web/build/index.js"
     test -f "$ROOT/scripts/native-web.mjs"
     mkdir -p "$HOME/.config/systemd/user"
@@ -85,10 +95,34 @@ PY
     ;;
   run-db) exec "$PGBIN/postgres" -D "$DATA/postgres" ;;
   wait-db) wait_db ;;
-  run-api) load_env; exec "$ROOT/bin/inpacare-api" ;;
+  run-api) load_env; exec "$RUNTIME/node/bin/node" "$ROOT/apps/api/dist/main.js" ;;
   run-web) load_env; exec "$RUNTIME/node/bin/node" "$ROOT/scripts/native-web.mjs" ;;
+  migrate)
+    load_env
+    ensure_db
+    if "$RUNTIME/node/bin/npm" run migration:run --workspace @inpacare/api; then result=0; else result=$?; fi
+    stop_command_db
+    exit "$result"
+    ;;
+  adopt)
+    load_env
+    ensure_db
+    if "$RUNTIME/node/bin/npm" run migration:adopt --workspace @inpacare/api; then result=0; else result=$?; fi
+    stop_command_db
+    exit "$result"
+    ;;
+  seed-demo)
+    if [ "${SEED_DEMO_PASSWORD:-}" = "" ] || [ "${#SEED_DEMO_PASSWORD}" -lt 12 ]; then
+      printf '%s\n' 'Set SEED_DEMO_PASSWORD to a demo-only password of at least 12 characters.' >&2; exit 2
+    fi
+    load_env
+    ensure_db
+    if "$RUNTIME/node/bin/npm" run seed --workspace @inpacare/api; then result=0; else result=$?; fi
+    stop_command_db
+    exit "$result"
+    ;;
   stop) systemctl --user stop inpacare-web inpacare-api inpacare-db ;;
   start) systemctl --user start inpacare-db inpacare-api inpacare-web ;;
   status) systemctl --user status inpacare-db inpacare-api inpacare-web --no-pager ;;
-  *) printf '%s\n' 'Usage: native-host.sh prepare|install|start|stop|status' >&2; exit 2 ;;
+  *) printf '%s\n' 'Usage: native-host.sh prepare|install|migrate|adopt|seed-demo|start|stop|status' >&2; exit 2 ;;
 esac

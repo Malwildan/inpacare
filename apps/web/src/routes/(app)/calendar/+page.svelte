@@ -6,6 +6,7 @@
 	let { data } = $props();
 	let roomFilter = $state('');
 	let placing = $state(false);
+	let editingPlacement = $state<any>(null);
 	let busy = $state(false);
 	let error = $state('');
 	let success = $state('');
@@ -39,6 +40,9 @@
 		} catch(e) { error=e instanceof Error?e.message:'Penempatan gagal disimpan.'; }
 		finally { busy=false; }
 	}
+	async function mutatePlacement(path:string,method:string,payload:object){busy=true;error='';success='';try{await api(path,{method,body:JSON.stringify(payload)});await invalidateAll();editingPlacement=null;success='Perubahan penempatan berhasil disimpan.';}catch(e){error=e instanceof Error?e.message:'Perubahan penempatan gagal.';}finally{busy=false;}}
+	async function cancelPlacement(p:any){if(!confirm(`Batalkan penempatan ${p.patientName} di ${p.roomName}?`))return;await mutatePlacement(`/placements/${p.id}`,'DELETE',{expectedVersion:p.version});}
+	async function reschedule(event:SubmitEvent,p:any){event.preventDefault();const f=new FormData(event.currentTarget as HTMLFormElement);await mutatePlacement(`/placements/${p.id}`,'PATCH',{patientId:p.patientId,roomId:p.roomId,startsOn:f.get('startsOn'),endsOn:f.get('endsOn'),expectedVersion:p.version});}
 </script>
 
 <svelte:head><title>Kalender Ruangan | InpaCare</title></svelte:head>
@@ -87,11 +91,13 @@
 	<div class="legend"><span><i class="dot available-dot"></i>Tersedia</span><span><i class="dot occupied-dot"></i>Occupied</span><span><i class="dot maintenance-dot"></i>Maintenance</span></div>
 	<p class="footnote">Rentang tanggal bersifat inklusif. Penempatan baru divalidasi kembali terhadap kapasitas dan jadwal pasien ketika disimpan.</p>
 </section>
+{#if data.user?.role==='PERAWAT'}<section class="panel placement-list"><div class="panel-header"><div><h2>Kelola penempatan</h2><p class="muted">Jadwal aktif dapat diubah atau dibatalkan. Pembatalan ditolak bila masih memiliki dependensi.</p></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Pasien</th><th>Ruangan</th><th>Periode</th><th>Aksi</th></tr></thead><tbody>{#each data.placements as placement (placement.id)}<tr><td><strong>{placement.patientName}</strong><span class="cell-meta">{placement.medicalRecordNo}</span></td><td>{placement.roomName}</td><td>{placement.startsOn} – {placement.endsOn}</td><td><div class="actions"><button class="button secondary small" aria-expanded={editingPlacement?.id===placement.id} onclick={()=>editingPlacement=editingPlacement?.id===placement.id?null:placement}>Ubah tanggal</button><button class="button danger small" disabled={busy||placement.status!=='active'} onclick={()=>void cancelPlacement(placement)}>Batalkan</button></div></td></tr>{#if editingPlacement?.id===placement.id}<tr><td colspan="4"><form class="form-grid" onsubmit={(event)=>reschedule(event,placement)}><label class="field">Pasien<input value={placement.patientName} disabled/></label><label class="field">Ruangan<input value={placement.roomName} disabled/></label><label class="field">Tanggal masuk<input name="startsOn" type="date" value={placement.startsOn} required/></label><label class="field">Tanggal keluar<input name="endsOn" type="date" value={placement.endsOn} required/></label><div class="form-actions"><button class="button primary" disabled={busy}>Simpan jadwal</button><button class="button secondary" type="button" onclick={()=>editingPlacement=null}>Batal</button></div></form></td></tr>{/if}{:else}<tr><td colspan="4" class="empty">Tidak ada penempatan di rentang minggu ini.</td></tr>{/each}</tbody></table></div></section>{/if}
 <style>
 	.form-panel h2{margin-bottom:8px}
 	.form-panel p{margin-bottom:20px;font-size:13px}
 	.filters{justify-content:space-between;gap:20px}
 	.room-filter{min-width:180px;max-width:300px}
+	.actions{display:flex;gap:8px;flex-wrap:wrap}.cell-meta{display:block;color:var(--muted);font-size:12px;margin-top:4px}.placement-list{margin-top:24px}
 	.week-navigation{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 	.week-navigation strong{font-size:14px;white-space:nowrap}
 	.calendar{width:100%;border-collapse:separate;border-spacing:0;min-width:1120px;table-layout:fixed}

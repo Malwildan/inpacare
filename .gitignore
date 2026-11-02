@@ -2,11 +2,11 @@ node_modules/
 apps/web/.svelte-kit/
 apps/web/build/
 apps/api/target/
+apps/api/dist/
 .local/
 .runtime/
 .data/
 .deploy/
-bin/inpacare-api
 .env
 .env.local
 .env.*.local

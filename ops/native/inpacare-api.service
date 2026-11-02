@@ -1,5 +1,5 @@
 [Unit]
-Description=InpaCare Rust API
+Description=InpaCare NestJS API
 Requires=inpacare-db.service
 After=inpacare-db.service
 

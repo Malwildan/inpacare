@@ -1,7 +1,8 @@
 """API-level InpaCare checks against a fresh, isolated PostgreSQL demo database.
 
-Start the API with DATABASE_URL pointing at inpacare_test and SEED_DEMO=1,
-then run: python -m unittest discover -s tests/api -v
+Explicitly run the NestJS migration and seed on a disposable database, then
+start the API with DATABASE_URL pointing at that database and run:
+python -m unittest discover -s tests/api -v
 """
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ from decimal import Decimal
 
 API = os.environ.get("INPACARE_TEST_URL", "http://127.0.0.1:8081/api/v1").rstrip("/")
 ORIGIN = urllib.parse.urlsplit(API).scheme + "://" + urllib.parse.urlsplit(API).netloc
-PASSWORD = "InpaCareDemo!2026"
+PASSWORD = os.environ.get("SEED_DEMO_PASSWORD", "InpaCareDemo!2026")
 
 
 class Api:
@@ -122,7 +123,13 @@ class Workflows(unittest.TestCase):
             "title": "Spoofed role", "priority": "normal", "startsAt": self.later(), "endsAt": self.later(1),
             "role": "PERAWAT", "coordinator": True,
         })
-        self.assert_error(denied, 422, "VALIDATION_FAILED")
+        self.assert_error(denied, 403, "FORBIDDEN")
+        spoofed = self.rina.request("POST", "/tasks", {
+            "patientId": "PT-001", "placementId": "PL-001", "picId": "USR-NURSE-1",
+            "title": "Unknown authority field", "priority": "normal", "startsAt": self.later(), "endsAt": self.later(1),
+            "role": "PERAWAT", "coordinator": True,
+        })
+        self.assert_error(spoofed, 422, "VALIDATION_FAILED")
         self.assert_error(anonymous.request("POST", "/session", {"username":"rina","password":PASSWORD}, same_origin=False), 403, "FORBIDDEN")
         self.assert_error(self.admisi.request("GET", "/cycles"), 403, "FORBIDDEN")
 
@@ -230,7 +237,10 @@ class Workflows(unittest.TestCase):
         self.assertTrue(any(row["action"] == "deleted" and row["reason"] == "Data demo ditutup" for row in history[1]["items"]))
 
     def test_medical_record_author_scope_nurse_observation_and_admisi_privacy(self) -> None:
-        self.assert_error(self.admisi.request("GET", "/medical-records"), 403, "FORBIDDEN")
+        status, projection_page = self.admisi.request("GET", "/medical-records")
+        self.assertEqual(status, 200, projection_page)
+        for projection in projection_page["items"]:
+            self.assertEqual(set(projection), {"id", "patientId", "doctorId", "recordDate"})
         self.assert_error(self.hendra.request("GET", "/patients/PT-002/context"), 404, "NOT_FOUND")
         create = {
             "patientId": "PT-001", "complaint": f"Keluhan tes {self.tag}", "diagnosis": "Catatan sintetik",
@@ -258,7 +268,10 @@ class Workflows(unittest.TestCase):
         status, edited = self.hendra.request("PATCH", f"/medical-records/{record['id']}", updated)
         self.assertEqual(status, 200, edited)
         self.assert_error(self.hendra.request("PATCH", f"/medical-records/{record['id']}", updated), 409, "CONFLICT")
-        self.assert_error(self.admisi.request("GET", f"/medical-records/{record['id']}"), 403, "FORBIDDEN")
+        status, projection = self.admisi.request("GET", f"/medical-records/{record['id']}")
+        self.assertEqual(status, 200, projection)
+        self.assertEqual(set(projection), {"id", "patientId", "doctorId", "recordDate"})
+        self.assertEqual(projection["id"], record["id"])
 
     def test_room_item_cost_is_computed_from_server_prices(self) -> None:
         name = f"QA-{self.tag}"

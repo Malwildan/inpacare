@@ -21,13 +21,15 @@ Thank you for helping improve InpaCare. Small, focused changes are easiest to re
 | Change | Location |
 | --- | --- |
 | API handlers and domain permissions | `apps/api/src/` |
-| Schema changes | A new versioned SQL file in `apps/api/migrations/` |
+| Schema changes | A new versioned SQL file in `apps/api/src/database/migrations/` |
 | Pages and shared UI | `apps/web/src/routes/` and `apps/web/src/lib/` |
 | API contract | `contracts/openapi.json` |
 | API and browser workflows | `tests/api/` and `tests/e2e/` |
 | Setup and operating instructions | `docs/development/` and `docs/deployment/` |
 
 Keep existing startup-script paths stable unless the change also updates every caller and operating guide. The backend and frontend remain separate applications; avoid moving domain modules merely to rename folders.
+
+Run database migrations as an explicit command before starting the API; application start must not migrate automatically. Demo seeding is a separate explicit command that requires `SEED_DEMO_PASSWORD` and an empty users table.
 
 ## Implementation expectations
 
@@ -53,14 +55,17 @@ npm run check
 npm run build
 npm run types:api
 git diff --exit-code -- apps/web/src/lib/generated/api.d.ts
-cargo test --locked --manifest-path apps/api/Cargo.toml
+npm run check:api
+npm run build:api
+npm run test:api:unit
+npm run test:api:integration
 ```
 
 Run checks appropriate to your change. For API behavior, run the [PostgreSQL workflow tests](docs/development/API_TESTS.md) against a fresh disposable database. For frontend behavior, run the [Playwright workflows](docs/development/BROWSER_TESTS.md) against a local synthetic instance. Documentation-only changes need working links and accurate commands; they do not require a full application rebuild.
 
-CI runs frontend checks, builds, generated-type drift detection, Rust unit tests, and the API workflow suite. Independent checks run in parallel. Pull requests select checks by changed paths; recognized documentation-only changes skip application checks, and unknown paths run everything. Main pushes, nightly runs, and manual runs validate everything and seed caches for subsequent PRs. The two existing required check names remain stable and reject failures or unexpected skips. Run `npm run test:ci` to verify the selection logic.
+CI runs frontend checks, builds, generated-type drift detection, NestJS unit/integration tests, and the API workflow suite. Independent checks run in parallel. Pull requests select checks by changed paths; recognized documentation-only changes skip application checks, and unknown paths run everything. Main pushes, nightly runs, and manual runs validate everything and seed caches for subsequent PRs. The API gate display context changed from Rust to NestJS. Maintainers with branch protection pinned to the old display name must update that rule when adopting this workflow; the API gate continues to reject failures and unexpected skips. Run `npm run test:ci` to verify the selection logic.
 
-`npm run hooks:install` enables the committed pre-push hook in this checkout (Git hooks require a local install). For changed code it checks whitespace, Svelte/TypeScript, generated API types, and Rust compilation as applicable. Keep Node/npm and Cargo on PATH, and commit or stash tracked changes before pushing so checks see the code being pushed. New branches compare against `origin/main`, or the whole tree when that ref is unavailable. The hook uses existing project checkers; the project has no ESLint or formatter configuration to replace. Browser tests remain a separate local check. Never run mutation tests against the shared public demo or a real-data database.
+`npm run hooks:install` enables the committed pre-push hook in this checkout (Git hooks require a local install). For changed code it checks whitespace, Svelte/TypeScript, generated API types, and API type/build/unit checks as applicable. Keep Node.js 24.18+ and npm available, and commit or stash tracked changes before pushing so checks see the code being pushed. New branches compare against `origin/main`, or the whole tree when that ref is unavailable. The hook uses existing project checkers; the project has no ESLint or formatter configuration to replace. Browser tests remain a separate local check. Never run mutation tests against the shared public demo or a real-data database.
 
 The hook validates the checked-out branch. Push branches separately after checking each one out; a multi-branch push with different tips is rejected. Tag updates and branch deletions do not run application checks.
 

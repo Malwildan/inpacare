@@ -37,6 +37,7 @@ if [ ! -f "$ENV_FILE" ]; then
 	{
 		printf 'POSTGRES_PASSWORD='
 		openssl rand -hex 32
+		printf '%s\n' 'TRUSTED_ORIGINS=http://127.0.0.1:8088,http://localhost:8088'
 	} > "$tmp_file"
 	mv "$tmp_file" "$ENV_FILE"
 	trap - 0 HUP INT TERM
@@ -53,7 +54,32 @@ compose() {
 }
 
 compose config --quiet
-compose up --detach --build
+case "${1:-start}" in
+	start) compose up --detach --build ;;
+	migrate)
+		compose up --detach db
+		compose run --rm --entrypoint npm api run migration:run --workspace @inpacare/api
+		exit 0
+		;;
+	adopt)
+		compose stop web api
+		if compose run --rm --entrypoint npm api run migration:adopt --workspace @inpacare/api; then
+			compose start api web
+		else
+			compose start api web
+			exit 1
+		fi
+		exit 0
+		;;
+	seed-demo)
+		: "${SEED_DEMO_PASSWORD:?Set SEED_DEMO_PASSWORD to a demo-only password of at least 12 characters}"
+		[ "${#SEED_DEMO_PASSWORD}" -ge 12 ] || { echo 'SEED_DEMO_PASSWORD must be at least 12 characters.' >&2; exit 2; }
+		compose up --detach db
+		compose run --rm -e "SEED_DEMO_PASSWORD=$SEED_DEMO_PASSWORD" --entrypoint npm api run seed --workspace @inpacare/api
+		exit 0
+		;;
+	*) echo 'Usage: scripts/host.sh [start|migrate|adopt|seed-demo]' >&2; exit 2 ;;
+esac
 
 attempt=0
 while [ "$attempt" -lt 180 ]; do

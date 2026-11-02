@@ -35,17 +35,18 @@ export function classifyPaths(paths) {
     if (
       path.startsWith('apps/api/') ||
       path.startsWith('tests/api/') ||
-      path === 'Cargo.toml' ||
-      path === 'Cargo.lock'
+      path === 'apps/api/package.json'
     ) {
       result.api = true;
       continue;
     }
-    if (
-      path === 'package.json' ||
-      path === 'package-lock.json' ||
-      path === 'apps/web/package.json'
-    ) {
+    if (path === 'package.json' || path === 'package-lock.json') {
+      result.web = true;
+      result.api = true;
+      result.contracts = true;
+      continue;
+    }
+    if (path === 'apps/web/package.json') {
       result.web = true;
       result.contracts = true;
       continue;
