@@ -3,6 +3,7 @@ FROM node:24-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/web/package.json ./apps/web/package.json
+COPY apps/api/package.json ./apps/api/package.json
 RUN npm ci --no-audit --no-fund --workspace apps/web --include-workspace-root=false
 COPY apps/web/ ./apps/web/
 RUN npm run build --workspace apps/web
@@ -18,6 +19,7 @@ ENV NODE_ENV=production \
     PROTOCOL_HEADER=x-forwarded-proto
 COPY package.json package-lock.json ./
 COPY apps/web/package.json ./apps/web/package.json
+COPY apps/api/package.json ./apps/api/package.json
 RUN npm ci --omit=dev --no-audit --no-fund --ignore-scripts --workspace apps/web --include-workspace-root=false
 COPY --from=build --chown=node:node /app/apps/web/build ./build
 COPY --from=build --chown=node:node /app/apps/web/static ./static

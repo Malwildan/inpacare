@@ -15,6 +15,7 @@ export function classifyPaths(paths) {
       continue;
     }
 
+    if (path === 'docs/planning/NESTJS_TRACEABILITY.json') { result.api = true; continue; }
     if (path.startsWith('docs/') || (path.split('/').length === 1 && isMarkdown(path))) continue;
     if (
       path.startsWith('.github/') ||

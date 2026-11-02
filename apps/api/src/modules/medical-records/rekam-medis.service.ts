@@ -22,6 +22,7 @@ export class RekamMedisService {
   constructor(@InjectDataSource() private readonly db: DataSource) {}
 
   async list(actor: Actor, search = "", limit = 50, patientId?: string) {
+    if (patientId) await canReadPatient(this.db.manager, actor, patientId);
     if (actor.role === "ADMISI") {
       const rows = await this.db.query(
         `SELECT jsonb_build_object('id',m.id,'patientId',m.patient_id,'doctorId',m.doctor_id,'recordDate',m.record_date) AS item FROM medical_records m WHERE m.deleted_at IS NULL AND ($1::text IS NULL OR m.patient_id=$1) ORDER BY m.record_date DESC,m.id LIMIT $2`,
@@ -60,6 +61,7 @@ export class RekamMedisService {
         [recordId],
       );
       if (!rows.length) throw AppError.notFound();
+      await canReadPatient(manager, actor, rows[0].item.patientId);
       return rows[0].item;
     }
     requireClinical(actor);

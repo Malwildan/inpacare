@@ -70,6 +70,8 @@ jobs:
       - if: steps.npm-cache.outputs.cache-hit != 'true'
         run: npm ci
       - run: npm run check
+      - run: npm run build:api
+      - run: npm run check:traceability
 
   web-build:
     runs-on: ubuntu-latest
@@ -159,6 +161,7 @@ jobs:
       - run: npm run check:api
       - run: npm run build:api
       - run: npm run test:api:unit
+      - run: npm run check:traceability
 
   api-workflows:
     runs-on: ubuntu-latest
@@ -217,6 +220,7 @@ jobs:
           done
           if [ "$ready" != 1 ]; then tail -c 6000 "$RUNNER_TEMP/inpacare-api.log"; exit 1; fi
           python3 -m unittest discover -s tests/api -v
+          npm run test:api:http-contract
 
   api:
     name: NestJS and PostgreSQL workflows
@@ -274,10 +278,11 @@ jobs:
         env:
           DATABASE_URL: postgres://nest_test:nest_test@127.0.0.1:5432/inpacare_release_test
           API_BIND: 127.0.0.1:8081
+          API_ORIGIN: http://127.0.0.1:8081
           SEED_DEMO_PASSWORD: InpaCareDemo!2026
           INPACARE_TEST_DATABASE_ADMIN_URL: postgres://nest_test:nest_test@127.0.0.1:5432/postgres
           INPACARE_TEST_URL: http://127.0.0.1:8081/api/v1
-          TRUSTED_ORIGINS: http://127.0.0.1:8081
+          TRUSTED_ORIGINS: http://127.0.0.1:8081,http://127.0.0.1:8088,https://127.0.0.1:8089
           HOST: 127.0.0.1
           PORT: '8088'
           HTTPS_PROXY_PORT: '8089'
@@ -311,6 +316,21 @@ jobs:
             tail -c 6000 "$RUNNER_TEMP/native-api.log" "$RUNNER_TEMP/native-web.log"
             exit 1
           fi
+          python3 - <<'PY'
+          import json, os, urllib.request
+          for port, scheme in [(8088, 'http'), (8089, 'https')]:
+              origin = f'{scheme}://127.0.0.1:{port}'
+              request = urllib.request.Request(f'http://127.0.0.1:{port}/api/v1/session',
+                  data=json.dumps({'username':'rina','password':os.environ['SEED_DEMO_PASSWORD']}).encode(),
+                  headers={'Content-Type':'application/json','Origin':origin}, method='POST')
+              with urllib.request.urlopen(request, timeout=10) as response:
+                  assert response.status == 200
+                  assert json.load(response)['user']['username'] == 'rina'
+                  cookies = response.headers.get_all('Set-Cookie')
+                  assert any('HttpOnly' in value for value in cookies)
+                  assert (any('; Secure' in value for value in cookies)) == (scheme == 'https')
+          print('Packaged HTTP and HTTPS-origin session proxy smoke passed')
+          PY
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/tests/api" -v
       - uses: actions/upload-artifact@v4
         with:

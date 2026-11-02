@@ -10,6 +10,23 @@ const {
 } = require("../dist/common/auth");
 const { AppError } = require("../dist/common/errors");
 const { today } = require("../dist/common/domain");
+const { LoginAttempts } = require("../dist/modules/auth/login-attempts");
+
+test("login attempts throttle the source without locking other users or sources", () => {
+  const limiter = new LoginAttempts();
+  for (let i = 0; i < 10; i++) limiter.consume("attacker", "rina", 0);
+  assert.throws(
+    () => limiter.consume("attacker", "rina", 0),
+    (e) => e.getStatus() === 429,
+  );
+  assert.doesNotThrow(() => limiter.consume("legitimate", "rina", 0));
+  for (let i = 0; i < 1100; i++)
+    limiter.consume(`source-${i}`, `unknown-${i}`, 0);
+  assert.doesNotThrow(() =>
+    limiter.consume("another-legitimate-source", "rina", 0),
+  );
+  assert.doesNotThrow(() => limiter.consume("attacker", "rina", 900_001));
+});
 
 test("CSRF only trusts explicit HTTP origins and ignores forwarded host", () => {
   const prior = process.env.TRUSTED_ORIGINS;

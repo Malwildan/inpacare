@@ -883,7 +883,7 @@ export interface components {
             version: number;
             /** Format: date-time */
             createdAt: string;
-            requests: components["schemas"]["CycleRequest"][];
+            requests: components["schemas"]["NestedCycleRequest"][];
             roomId?: string | null;
             pendingApproval?: boolean;
         };
@@ -896,7 +896,8 @@ export interface components {
             /** @description Decimal string */
             lineTotal: string;
             roomItemId: string | null;
-            kind: string;
+            /** @description Legacy invoice lines may have no recorded kind. */
+            kind: string | null;
         };
         Invoice: {
             id: string;
@@ -1240,6 +1241,8 @@ export interface components {
             requests: components["schemas"]["CycleRequestSummary"][];
             roomId?: string | null;
             pendingApproval?: boolean;
+            doctorId?: string;
+            nurseId?: string;
         };
         UpdateRoomItem: {
             name: string;
@@ -1430,6 +1433,33 @@ export interface components {
         DeleteCycle: {
             expectedVersion: number;
             reason: string;
+        };
+        NestedCycleRequest: {
+            id: string;
+            /** @enum {string} */
+            kind: "extend" | "release";
+            /** Format: date */
+            requestedEnd: string | null;
+            reason: string;
+            requestedBy: string;
+            status: string;
+            decidedBy: string | null;
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+        };
+        AdmissionMedicalRecord: {
+            id: string;
+            patientId: string;
+            doctorId: string;
+            /** Format: date */
+            recordDate: string;
+        };
+        AdmissionMedicalPage: {
+            items: components["schemas"]["AdmissionMedicalRecord"][];
+            total: number;
         };
     };
     responses: never;
@@ -3180,6 +3210,7 @@ export interface operations {
             query?: {
                 search?: string;
                 limit?: number;
+                patientId?: string;
             };
             header?: never;
             path?: never;
@@ -3193,7 +3224,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MedicalSummaryPage"];
+                    "application/json": components["schemas"]["MedicalSummaryPage"] | components["schemas"]["AdmissionMedicalPage"];
                 };
             };
             /** @description Unauthenticated. */

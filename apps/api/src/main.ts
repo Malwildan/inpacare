@@ -17,6 +17,10 @@ export async function createApp() {
     { bodyParser: false, logger: ["error", "warn"] },
   );
   app.disable("x-powered-by");
+  const trustProxy = process.env.TRUST_PROXY || "loopback";
+  if (!["loopback", "uniquelocal", "false"].includes(trustProxy))
+    throw new Error("TRUST_PROXY must be loopback, uniquelocal or false");
+  app.set("trust proxy", trustProxy === "false" ? false : trustProxy);
   app.use(
     (
       _req: unknown,

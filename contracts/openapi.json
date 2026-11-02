@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "InpaCare API",
-    "version": "0.1.0",
-    "description": "Contract for the synthetic local demo. Type generation does not generate or verify Rust handlers.\n\nRuntime route inventory: the legacy API operations plus room/item soft-delete and item edit, placement edit/cancel, medical-record delete and observation correction, cycle dashboard/request detail/delete, invoice patient context/line edit-delete/claim verification, and public health. Mutations require Origin; authenticated mutations also require the session cookie and X-CSRF-Token."
+    "version": "1.0.0",
+    "description": "Contract for the synthetic local demo. Compiled Nest metadata and live JSON-response checks verify the contract. See docs/planning/NESTJS_DECISIONS.md for source-model adaptations.\n\nRuntime route inventory: the legacy API operations plus room/item soft-delete and item edit, placement edit/cancel, medical-record delete and observation correction, cycle dashboard/request detail/delete, invoice patient context/line edit-delete/claim verification, and public health. Mutations require Origin; authenticated mutations also require the session cookie and X-CSRF-Token."
   },
   "servers": [
     {
@@ -2466,6 +2466,15 @@
               "minimum": 1,
               "maximum": 100
             }
+          },
+          {
+            "name": "patientId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
           }
         ],
         "responses": {
@@ -2474,7 +2483,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MedicalSummaryPage"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/MedicalSummaryPage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AdmissionMedicalPage"
+                    }
+                  ]
                 }
               }
             }
@@ -7068,7 +7084,7 @@
           "requests": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CycleRequest"
+              "$ref": "#/components/schemas/NestedCycleRequest"
             }
           },
           "roomId": {
@@ -7129,7 +7145,11 @@
             "maxLength": 36
           },
           "kind": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Legacy invoice lines may have no recorded kind."
           }
         },
         "required": [
@@ -8551,6 +8571,14 @@
           },
           "pendingApproval": {
             "type": "boolean"
+          },
+          "doctorId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "nurseId": {
+            "type": "string",
+            "maxLength": 36
           }
         },
         "required": [
@@ -9333,6 +9361,121 @@
         "required": [
           "expectedVersion",
           "reason"
+        ],
+        "additionalProperties": false
+      },
+      "NestedCycleRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "extend",
+              "release"
+            ]
+          },
+          "requestedEnd": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "requestedBy": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "decidedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decidedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "requestedEnd",
+          "reason",
+          "requestedBy",
+          "status",
+          "decidedBy",
+          "note",
+          "createdAt",
+          "decidedAt"
+        ],
+        "additionalProperties": false
+      },
+      "AdmissionMedicalRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "patientId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "doctorId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "recordDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "id",
+          "patientId",
+          "doctorId",
+          "recordDate"
+        ],
+        "additionalProperties": false
+      },
+      "AdmissionMedicalPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdmissionMedicalRecord"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
         ],
         "additionalProperties": false
       }

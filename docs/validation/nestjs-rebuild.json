@@ -1,0 +1,73 @@
+{
+  "verifiedAt": "2026-11-02T15:34:06.141910+00:00",
+  "branch": "feat/nestjs-rebuild",
+  "targetBranch": "rebuild/nestjs",
+  "baselineMain": "ccb463823f03952e86b3099f9213ad0e09ed0cd5",
+  "source": {
+    "tab": "t.35pzydmpv5ma",
+    "sha256": "9a1023bbe4c391d5baf20aa865da0923fe5fb2462c9c7d01ebd8656a963716ad",
+    "refreshed": "2026-11-02"
+  },
+  "environment": {
+    "node": "v24.18.1",
+    "postgres": "pg_ctl (PostgreSQL) 17.11",
+    "browser": "installed Microsoft Edge (Playwright Chromium engine)",
+    "dataset": "isolated synthetic fixtures, 12 patients, 200 tasks"
+  },
+  "checks": {
+    "npmCi": "passed after closing test processes holding Windows native modules",
+    "typeCheck": "API and Svelte passed; zero Svelte errors/warnings",
+    "productionBuilds": "NestJS and SvelteKit passed",
+    "unitAndMetadataContract": {
+      "passed": 10,
+      "failed": 0
+    },
+    "postgresIntegration": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    "httpWorkflows": {
+      "passed": 16,
+      "failed": 0
+    },
+    "liveResponseContract": {
+      "passed": 1,
+      "failed": 0
+    },
+    "playwright": {
+      "passed": 10,
+      "failed": 0,
+      "freshDatabase": true
+    },
+    "ciSelectionAndHooks": {
+      "passed": 10,
+      "failed": 0
+    },
+    "updaterTests": {
+      "passed": 11,
+      "failed": 0
+    },
+    "traceability": {
+      "entities": 17,
+      "attributes": 122,
+      "methods": 53,
+      "relationships": 30,
+      "status": "source mappings validated; grouped behavior evidence is not individual row certification"
+    },
+    "sessionAcrossProcessRestart": "passed",
+    "pgDumpPgRestore": "counts, sessions, audit and exact invoice aggregates preserved",
+    "productionDependencyAudit": {
+      "vulnerabilities": 0
+    }
+  },
+  "review": {
+    "standards": "global username lockout replaced by source/account limits; regression test added",
+    "spec": "single-facility patient scope and optional vital cardinality frozen in NESTJS_DECISIONS.md"
+  },
+  "limits": [
+    "No live deployment, merge or shared database migration.",
+    "Linux release and Compose execution not verified locally on Windows; Ubuntu packaging and proxy smoke configured in CI.",
+    "Source-model adaptations are explicit; no claim of literal UML equality."
+  ]
+}

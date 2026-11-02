@@ -1,19 +1,19 @@
 {
-  "measuredAt": "2026-10-29T11:25:49.420183+00:00",
+  "measuredAt": "2026-11-02T15:12:40.105573+00:00",
   "scope": "Synthetic local read smoke: 60 requests, 5 concurrent workers; no hospital load/field UX claim.",
   "apiBuildMode": "release",
-  "baseUrl": "http://127.0.0.1:3000",
+  "baseUrl": "http://127.0.0.1:3019",
   "requests": 60,
   "concurrency": 5,
   "unexpectedFailures": 0,
   "latencyMs": {
-    "median": 9.92,
-    "p95": 28.35,
-    "max": 90.43
+    "median": 11.43,
+    "p95": 31.29,
+    "max": 176.22
   },
-  "meanJsonResponseBytes": 9469,
+  "meanJsonResponseBytes": 10412,
   "clientJavaScript": {
-    "allRoutesGzipBytes": 80691,
+    "allRoutesGzipBytes": 89103,
     "note": "Sum of all lazy route chunks; initial-route payload differs."
   },
   "limitations": [

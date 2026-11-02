@@ -24,6 +24,7 @@ import {
   Public,
 } from "../../common/auth";
 import { AppError } from "../../common/errors";
+import { LoginAttempts } from "./login-attempts";
 
 class LoginDto {
   @IsString() @MinLength(1) @MaxLength(100) username: string;
@@ -31,28 +32,14 @@ class LoginDto {
 }
 @Injectable()
 export class AuthService {
-  private readonly attempts = new Map<string, { count: number; at: number }>();
+  private readonly attempts = new LoginAttempts();
   constructor(private readonly db: DataSource) {}
   async login(dto: LoginDto, req: Request, res: Response) {
     checkOrigin(req);
     const username = dto.username.trim().toLowerCase();
     if (!username) throw AppError.validation("ID petugas wajib diisi.");
-    const now = Date.now();
-    for (const [key, value] of this.attempts)
-      if (now - value.at >= 900_000) this.attempts.delete(key);
-    if (
-      (this.attempts.get(username)?.count || 0) >= 10 ||
-      this.attempts.size >= 1000
-    )
-      throw new AppError(
-        429,
-        "RATE_LIMITED",
-        "Terlalu banyak percobaan. Coba lagi dalam 15 menit.",
-      );
-    // Count before asynchronous verification so concurrent failures cannot bypass the limit.
-    const attempt = this.attempts.get(username) || { count: 0, at: now };
-    attempt.count++;
-    this.attempts.set(username, attempt);
+    const source = req.ip || req.socket.remoteAddress || "unknown";
+    this.attempts.consume(source, username);
     const [row] = await this.db.query(
       `SELECT u.id,u.username,u.name,u.role,u.coordinator,u.password_hash FROM users u WHERE lower(u.username)=$1 AND u.active AND (u.role<>'PERAWAT' OR EXISTS(SELECT 1 FROM nurses n WHERE n.user_id=u.id AND n.active))`,
       [username],
@@ -68,7 +55,7 @@ export class AuthService {
         "INVALID_CREDENTIALS",
         "ID petugas atau kata sandi tidak sesuai.",
       );
-    this.attempts.delete(username);
+    this.attempts.success(source, username);
     const token = randomBytes(32).toString("hex"),
       csrfToken = randomBytes(32).toString("hex");
     const maxAge = 30 * 24 * 60 * 60;
