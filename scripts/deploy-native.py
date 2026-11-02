@@ -308,7 +308,8 @@ def deploy(root: Path, sha: str, release: dict, values: dict[str, str]) -> None:
         atomic_pointer(current, root)
     switched = False
     try:
-        run(["systemctl", "--user", "stop", "inpacare-web", "inpacare-api"], timeout=30)
+        # Keep dependent tunnel units running during the brief API/web restart.
+        run(["systemctl", "--user", "stop", "inpacare-web", "inpacare-api", "--job-mode=ignore-dependencies"], timeout=30)
         migration_env = os.environ.copy()
         migration_env.update(values)
         migration_env["PATH"] = node_bin + os.pathsep + migration_env.get("PATH", "")
@@ -326,7 +327,7 @@ def deploy(root: Path, sha: str, release: dict, values: dict[str, str]) -> None:
     except Exception:
         if switched:
             with contextlib.suppress(Exception):
-                run(["systemctl", "--user", "stop", "inpacare-web", "inpacare-api"], timeout=30)
+                run(["systemctl", "--user", "stop", "inpacare-web", "inpacare-api", "--job-mode=ignore-dependencies"], timeout=30)
             atomic_pointer(current, old_target)
             with contextlib.suppress(Exception):
                 run(["systemctl", "--user", "daemon-reload"], timeout=30)
