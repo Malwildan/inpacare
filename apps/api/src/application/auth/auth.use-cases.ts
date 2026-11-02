@@ -63,7 +63,13 @@ export class AuthUseCases {
         replaceTokenHash: this.tokens.digest(input.currentToken ?? ""),
       }),
     );
-    const { passwordHash: _passwordHash, ...actor } = user;
+    const actor: Actor = {
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      role: user.role,
+      coordinator: user.coordinator,
+    };
     return { user: { ...actor, csrfToken }, token, maxAge };
   }
   async logout(token?: string): Promise<void> {

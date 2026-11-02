@@ -1,4 +1,3 @@
-import { Actor } from "../../domain/auth/actor";
 export interface InvoiceListFilters {
   search?: string;
   status?: string;

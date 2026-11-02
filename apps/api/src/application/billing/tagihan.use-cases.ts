@@ -11,7 +11,7 @@ import {
 } from "../../domain/billing/invoice-total";
 import { id } from "../shared/runtime";
 import { UnitOfWork } from "../shared/unit-of-work.port";
-import { InvoiceListFilters, InvoiceStore } from "./invoice-store.port";
+import { InvoiceStore } from "./invoice-store.port";
 export interface CreateInvoiceInput {
   patientId: string;
   placementId?: string | null;
