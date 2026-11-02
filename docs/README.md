@@ -38,3 +38,5 @@ Start with the [project README](../README.md), then choose the guide for your ta
 Planning captures describe the source and decisions at the time of implementation. The original requirements export, student IDs, machine-specific deployment records, and authentication diagnostics are excluded from this public repository. Referenced third-party source material retains its original authorship and access settings.
 
 - [Backend architecture and layer responsibilities](development/ARCHITECTURE.md)
+
+Frontend contributors: see [feature-first architecture](development/FRONTEND_ARCHITECTURE.md) for module ownership, dependency rules and validation.

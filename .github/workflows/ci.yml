@@ -71,6 +71,8 @@ jobs:
       - if: steps.npm-cache.outputs.cache-hit != 'true'
         run: npm ci
       - run: npm run check
+      - run: npm run check:web:architecture
+      - run: npm run test:web
       - run: npm run build:api
       - run: npm run check:traceability
 
@@ -123,10 +125,76 @@ jobs:
           npm run types:api
           git diff --exit-code -- apps/web/src/lib/generated/api.d.ts
 
+  web-e2e:
+    name: Frontend browser workflows
+    runs-on: ubuntu-latest
+    needs: classify
+    if: needs.classify.outputs.full == 'true' || needs.classify.outputs.web == 'true'
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: web_test
+          POSTGRES_PASSWORD: web_test
+          POSTGRES_DB: inpacare_web_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U web_test -d inpacare_web_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://web_test:web_test@127.0.0.1:5432/inpacare_web_test
+      API_BIND: 127.0.0.1:8081
+      API_ORIGIN: http://127.0.0.1:8081
+      TRUSTED_ORIGINS: http://127.0.0.1:3000,http://127.0.0.1:8081
+      INPACARE_TEST_URL: http://127.0.0.1:3000
+      SEED_DEMO_PASSWORD: InpaCareDemo!2026
+      HOST: 127.0.0.1
+      PORT: '3000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build:api
+      - run: npm run build --workspace apps/web
+      - run: npm run migration:run --workspace apps/api
+      - run: npm run seed --workspace apps/api
+      - run: npx playwright install --with-deps chromium
+      - name: Test production frontend with disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          node apps/api/dist/main.js > "$RUNNER_TEMP/web-e2e-api.log" 2>&1 &
+          api_pid=$!
+          node apps/web/build/index.js > "$RUNNER_TEMP/web-e2e-web.log" 2>&1 &
+          web_pid=$!
+          trap 'kill "$api_pid" "$web_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8081/health > /dev/null && curl --fail --silent http://127.0.0.1:3000/login > /dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then tail -c 6000 "$RUNNER_TEMP/web-e2e-api.log" "$RUNNER_TEMP/web-e2e-web.log"; exit 1; fi
+          npm run test:e2e -- --workers=1
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: frontend-browser-failures
+          path: test-results/
+
   web:
     name: Frontend and API types
     runs-on: ubuntu-latest
-    needs: [classify, web-check, web-build, api-contract-drift]
+    needs: [classify, web-check, web-build, web-e2e, api-contract-drift]
     if: always()
     steps:
       - name: Require all applicable web checks to pass
@@ -137,6 +205,7 @@ jobs:
           CONTRACTS: ${{ needs.classify.outputs.contracts }}
           WEB_CHECK_RESULT: ${{ needs.web-check.result }}
           WEB_BUILD_RESULT: ${{ needs.web-build.result }}
+          WEB_E2E_RESULT: ${{ needs.web-e2e.result }}
           CONTRACT_RESULT: ${{ needs.api-contract-drift.result }}
         run: |
           set -eu
@@ -144,6 +213,7 @@ jobs:
           if [ "$FULL" = true ] || [ "$WEB" = true ]; then
             test "$WEB_CHECK_RESULT" = success
             test "$WEB_BUILD_RESULT" = success
+            test "$WEB_E2E_RESULT" = success
           fi
           if [ "$FULL" = true ] || [ "$CONTRACTS" = true ]; then
             test "$CONTRACT_RESULT" = success

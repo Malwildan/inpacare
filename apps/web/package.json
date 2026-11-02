@@ -6,9 +6,12 @@
     "dev": "vite --host 127.0.0.1",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "build": "vite build",
-    "start": "node build"
+    "start": "node build",
+    "test": "vitest run"
   },
-  "dependencies": { "lucide-svelte": "npm:@lucide/svelte@^1.64.0" },
+  "dependencies": {
+    "lucide-svelte": "npm:@lucide/svelte@^1.64.0"
+  },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.5.0",
     "@sveltejs/kit": "^2.48.0",
@@ -17,6 +20,7 @@
     "svelte": "^5.45.0",
     "svelte-check": "^4.3.0",
     "typescript": "^5.9.0",
-    "vite": "^7.2.0"
+    "vite": "^7.2.0",
+    "vitest": "4.1.0"
   }
 }
