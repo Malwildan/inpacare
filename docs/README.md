@@ -14,6 +14,7 @@ Start with the [project README](../README.md), then choose the guide for your ta
 
 ## Deployment
 
+- [CI and continuous delivery](deployment/CONTINUOUS_DELIVERY.md): verified main builds and automatic native demo updates.
 - [Docker Compose](deployment/HOSTING.md): alternative container stack and data backup commands.
 - [Native Linux](deployment/NATIVE_HOSTING.md): project-local runtimes and user services.
 - [Linux API cross-build](deployment/LINUX_BUILD.md): build a static Linux executable from Windows.

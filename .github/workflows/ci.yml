@@ -34,7 +34,9 @@ jobs:
         with:
           node-version-file: .nvmrc
       - name: Test CI selection and push checks
-        run: node --test tests/ci/*.test.mjs
+        run: |
+          node --test tests/ci/*.test.mjs
+          python3 -m unittest discover -s tests/ci -p 'test_*.py' -v
       - name: Classify changed paths
         id: paths
         env:
@@ -227,3 +229,143 @@ jobs:
             test "$RUST_RESULT" = success
             test "$WORKFLOW_RESULT" = success
           fi
+
+  native-package:
+    name: Build and verify native Linux release
+    runs-on: ubuntu-24.04
+    needs: [classify, web, api]
+    if: needs.classify.outputs.full == 'true'
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: inpacare
+          POSTGRES_PASSWORD: inpacare
+          POSTGRES_DB: inpacare_release_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U inpacare -d inpacare_release_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/api
+          key: native-musl-release
+      - name: Install static Linux linker
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools
+      - run: npm ci
+      - run: npm run build
+      - name: Build static Linux API
+        run: cargo build --locked --release --target x86_64-unknown-linux-musl --manifest-path apps/api/Cargo.toml
+      - name: Package native release
+        run: bash scripts/package-native.sh "$GITHUB_SHA" "$RUNNER_TEMP/native-release"
+      - name: Verify packaged API and frontend with disposable PostgreSQL
+        env:
+          DATABASE_URL: postgres://inpacare:inpacare@127.0.0.1:5432/inpacare_release_test
+          API_BIND: 127.0.0.1:8081
+          API_ORIGIN: http://127.0.0.1:8081
+          INPACARE_TEST_URL: http://127.0.0.1:8081/api/v1
+          SEED_DEMO: '1'
+          HOST: 127.0.0.1
+          PORT: '8088'
+          HTTPS_PROXY_PORT: '8089'
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/native-release"
+          sha256sum --check SHA256SUMS
+          mkdir smoke
+          tar -xzf inpacare-linux-x86_64.tar.gz -C smoke
+          cd smoke
+          npm ci --omit=dev --ignore-scripts --workspace apps/web --include-workspace-root=false
+          bin/inpacare-api > "$RUNNER_TEMP/native-api.log" 2>&1 &
+          api_pid=$!
+          node scripts/native-web.mjs > "$RUNNER_TEMP/native-web.log" 2>&1 &
+          web_pid=$!
+          trap 'kill "$api_pid" "$web_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8081/health > /dev/null &&
+               curl --fail --silent http://127.0.0.1:8088/login > /dev/null &&
+               curl --fail --silent http://127.0.0.1:8089/login > /dev/null; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$api_pid" 2>/dev/null || ! kill -0 "$web_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then
+            tail -c 6000 "$RUNNER_TEMP/native-api.log" "$RUNNER_TEMP/native-web.log"
+            exit 1
+          fi
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/tests/api" -v
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-linux-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/native-release/inpacare-linux-x86_64.tar.gz
+            ${{ runner.temp }}/native-release/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-native:
+    name: Publish native demo update
+    runs-on: ubuntu-latest
+    needs: [web, api, native-package]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-native-demo
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-linux-${{ github.sha }}
+          path: release
+      - name: Publish only a verified current main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS
+          main_sha=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq .object.sha)
+          if [ "$main_sha" != "$GITHUB_SHA" ]; then
+            echo 'A newer main commit exists; skipping the obsolete release.'
+            exit 0
+          fi
+          tag="native-$GITHUB_SHA"
+          if gh release view "$tag" --json isDraft > release.json 2>/dev/null; then
+            if [ "$(jq -r .isDraft release.json)" != true ]; then
+              echo 'This commit already has a published release.'
+              exit 0
+            fi
+          else
+            printf 'Verified native Linux demo build from %s.\nCI: %s/%s/actions/runs/%s\n' \
+              "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GH_REPO" "$GITHUB_RUN_ID" > notes.md
+            gh release create "$tag" --target "$GITHUB_SHA" --draft \
+              --title "Native demo ${GITHUB_SHA:0:12}" --notes-file notes.md
+          fi
+          gh release upload "$tag" inpacare-linux-x86_64.tar.gz SHA256SUMS --clobber
+          main_sha=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq .object.sha)
+          if [ "$main_sha" != "$GITHUB_SHA" ]; then
+            echo 'Main advanced while uploading; leaving this release unpublished.'
+            exit 0
+          fi
+          gh release edit "$tag" --draft=false --latest
