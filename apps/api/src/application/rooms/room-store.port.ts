@@ -1,6 +1,26 @@
+export interface RoomItemRecord {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  unitPrice: string;
+}
+export interface RoomRecord {
+  id: string;
+  name: string;
+  roomClass: string;
+  capacity: number;
+  status: string;
+  picId: string | null;
+  picName: string | null;
+  dailyRate: string;
+  version: number;
+  items: RoomItemRecord[];
+  occupants: number;
+}
 export interface RoomStore {
-  list(): Promise<unknown[]>;
-  detail(roomId: string): Promise<unknown>;
+  list(): Promise<RoomRecord[]>;
+  detail(roomId: string): Promise<RoomRecord>;
   validatePic(picId?: string | null): Promise<void>;
   create(input: {
     id: string;

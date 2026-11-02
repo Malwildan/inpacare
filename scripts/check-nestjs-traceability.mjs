@@ -190,7 +190,7 @@ for (const controller of trace.controllers) for (const row of controller.methods
     const actual = targetInfo(target.targetFile, target.targetSymbol);
     if (!actual) fail(`${at}: TypeScript target symbol not found: ${target.targetFile}#${target.targetSymbol}`);
     else {
-      if (target.targetSignature !== actual.signature) fail(`${at}: recorded target signature drift for ${target.targetSymbol}; expected ${actual.signature}`);
+      if (target.targetSignature.replaceAll('\r\n', '\n') !== actual.signature.replaceAll('\r\n', '\n')) fail(`${at}: recorded target signature drift for ${target.targetSymbol}; expected ${actual.signature}`);
       if (target.targetVisibility !== actual.visibility) fail(`${at}: recorded target visibility drift for ${target.targetSymbol}; expected ${actual.visibility}`);
     }
   }

@@ -1,13 +1,14 @@
 import { DomainError } from "../../domain/shared/domain-error";
 import { Actor } from "../../domain/auth/actor";
 import {
+  calculateRoomCost,
   validateRoomCost,
   validateRoomItem,
   validateRoomText,
 } from "../../domain/rooms/room-cost";
 import { id } from "../shared/runtime";
 import { UnitOfWork } from "../shared/unit-of-work.port";
-import { RoomStore } from "./room-store.port";
+import { RoomRecord, RoomStore } from "./room-store.port";
 export interface CreateRoomInput {
   name: string;
   roomClass: string;
@@ -37,10 +38,15 @@ export class RuangInapUseCases {
     private readonly uow: UnitOfWork,
   ) {}
   async list() {
-    return { items: await this.store.list() };
+    return {
+      items: (await this.store.list()).map((room) => this.present(room)),
+    };
   }
-  detail(roomId: string) {
-    return this.store.detail(roomId);
+  async detail(roomId: string) {
+    return this.present(await this.store.detail(roomId));
+  }
+  private present(room: RoomRecord) {
+    return { ...room, totalCost: calculateRoomCost(room.items) };
   }
   async create(_actor: Actor, dto: CreateRoomInput) {
     const name = dto.name.trim(),
@@ -85,7 +91,7 @@ export class RuangInapUseCases {
         picId: dto.picId ?? null,
         dailyRate: dto.dailyRate,
       });
-      return tx.rooms.detail(roomId);
+      return this.present(await tx.rooms.detail(roomId));
     });
   }
   async addItem(roomId: string, dto: RoomItemInput) {
@@ -126,7 +132,7 @@ export class RuangInapUseCases {
       });
       if (!updated) throw DomainError.notFound();
       await tx.rooms.bumpVersion(roomId);
-      return tx.rooms.detail(roomId);
+      return this.present(await tx.rooms.detail(roomId));
     });
   }
   async deleteItem(
@@ -146,7 +152,7 @@ export class RuangInapUseCases {
       if (!(await tx.rooms.deleteItem(roomId, itemId)))
         throw DomainError.notFound();
       await tx.rooms.bumpVersion(roomId);
-      return tx.rooms.detail(roomId);
+      return this.present(await tx.rooms.detail(roomId));
     });
   }
   async deleteRoom(

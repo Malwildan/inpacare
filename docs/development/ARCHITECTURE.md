@@ -22,6 +22,24 @@ For a task update, start with `presentation/http/tasks/tugas.controller.ts`, the
 
 The task model is a behavior model with a private state snapshot and public revision methods. Its ORM counterpart is `infrastructure/database/entities/tasks/tugas-perawatan.orm-entity.ts`. Other domain files hold focused rules such as invoice arithmetic or inclusive placement dates. Reference and audit tables do not receive duplicate domain classes without behavior to justify them.
 
+## Domain models and ORM entities
+
+Paths below are relative to `src/domain/` and `src/infrastructure/database/entities/` respectively. ORM entities preserve the existing columns and relationships; the domain files express behavior independently of those mappings.
+
+| Business concern | Domain model or rule | Persistence entities |
+| --- | --- | --- |
+| Actor and permissions | `auth/actor.ts`, `auth/permissions.ts` | `auth/pengguna.orm-entity.ts`, `dokter`, `perawat`, `sesi` |
+| Care tasks | `tasks/tugas-perawatan.ts`, `tasks/tugas.policy.ts` | `tasks/tugas-perawatan.orm-entity.ts`, `riwayat-tugas` |
+| Room costs | `rooms/room-cost.ts` | `rooms/ruang-inap.orm-entity.ts`, `item-ruangan` |
+| Placement dates | `placements/placement-period.ts` | `placements/penempatan-pasien.orm-entity.ts` |
+| Care-cycle transitions | `cycles/cycle-transition.ts` | `cycles/rekap-pasien.orm-entity.ts`, `permintaan-siklus`, `audit-siklus` |
+| Vital signs | `medical-records/vital-signs.ts` | `medical-records/rekam-medis.orm-entity.ts`, `kondisi-pasien`, `tanda-vital`, `audit-medis` |
+| Invoice arithmetic | `billing/invoice-total.ts` | `billing/tagihan.orm-entity.ts`, `detail-tagihan`, `riwayat-tagihan` |
+| Patient/reference projections | Application types and patient-access port | `patients/pasien.orm-entity.ts` and reference projections over the entities above |
+| Notifications | Application types and notification-store port | `notifications/notifikasi.orm-entity.ts` |
+
+Short persistence names in the table share their row's directory and `.orm-entity.ts` suffix. Reference projections are queries, not additional tables or domain entities.
+
 ## Dependency direction
 
 - Domain imports domain code and its existing arithmetic dependency; it imports no NestJS, TypeORM or HTTP code.

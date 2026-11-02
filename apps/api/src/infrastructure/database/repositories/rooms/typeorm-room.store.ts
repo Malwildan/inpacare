@@ -1,16 +1,19 @@
 import { EntityManager } from "typeorm";
 import { DomainError } from "../../../../domain/shared/domain-error";
-import { RoomStore } from "../../../../application/rooms/room-store.port";
-const ROOM_SELECT = `SELECT jsonb_build_object('id',r.id,'name',r.name,'roomClass',r.room_class,'capacity',r.capacity,'status',r.status,'picId',r.pic_id,'picName',u.name,'dailyRate',r.daily_rate::text,'version',r.version,'items',COALESCE(i.items,'[]'::jsonb),'totalCost',COALESCE(i.total_cost,0)::text,'occupants',COALESCE(o.occupants,0)) AS value FROM rooms r LEFT JOIN users u ON u.id=r.pic_id LEFT JOIN LATERAL (SELECT jsonb_agg(jsonb_build_object('id',ri.id,'name',ri.name,'category',ri.category,'quantity',ri.quantity,'unitPrice',ri.unit_price::text) ORDER BY ri.name) items,sum(ri.quantity*ri.unit_price) total_cost FROM room_items ri WHERE ri.room_id=r.id AND ri.deleted_at IS NULL) i ON true LEFT JOIN LATERAL (SELECT count(*) occupants FROM placements p WHERE p.room_id=r.id AND p.status='active' AND p.starts_on<=timezone('Asia/Jakarta',now())::date AND p.ends_on>=timezone('Asia/Jakarta',now())::date) o ON true`;
+import {
+  RoomRecord,
+  RoomStore,
+} from "../../../../application/rooms/room-store.port";
+const ROOM_SELECT = `SELECT jsonb_build_object('id',r.id,'name',r.name,'roomClass',r.room_class,'capacity',r.capacity,'status',r.status,'picId',r.pic_id,'picName',u.name,'dailyRate',r.daily_rate::text,'version',r.version,'items',COALESCE(i.items,'[]'::jsonb),'occupants',COALESCE(o.occupants,0)) AS value FROM rooms r LEFT JOIN users u ON u.id=r.pic_id LEFT JOIN LATERAL (SELECT jsonb_agg(jsonb_build_object('id',ri.id,'name',ri.name,'category',ri.category,'quantity',ri.quantity,'unitPrice',ri.unit_price::text) ORDER BY ri.name) items FROM room_items ri WHERE ri.room_id=r.id AND ri.deleted_at IS NULL) i ON true LEFT JOIN LATERAL (SELECT count(*) occupants FROM placements p WHERE p.room_id=r.id AND p.status='active' AND p.starts_on<=timezone('Asia/Jakarta',now())::date AND p.ends_on>=timezone('Asia/Jakarta',now())::date) o ON true`;
 export class TypeOrmRoomStore implements RoomStore {
   constructor(private readonly manager: EntityManager) {}
   async list() {
     const rows = await this.manager.query(
       `${ROOM_SELECT} WHERE r.deleted_at IS NULL ORDER BY r.name LIMIT 100`,
     );
-    return rows.map((r: { value: unknown }) => r.value);
+    return rows.map((r: { value: RoomRecord }) => r.value);
   }
-  async detail(roomId: string) {
+  async detail(roomId: string): Promise<RoomRecord> {
     const rows = await this.manager.query(
       `${ROOM_SELECT} WHERE r.id=$1 AND r.deleted_at IS NULL`,
       [roomId],

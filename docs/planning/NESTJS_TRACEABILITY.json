@@ -5576,14 +5576,14 @@
           ],
           "actualRouteOperations": [],
           "methodMapping": {
-            "targetFile": "apps/api/src/application/rooms/ruang-inap.use-cases.ts",
-            "targetSymbol": "RuangInapUseCases.detail",
-            "targetSignature": "RuangInapUseCases.detail(roomId: string): inferred",
-            "targetVisibility": "public",
+            "targetFile": "apps/api/src/domain/rooms/room-cost.ts",
+            "targetSymbol": "calculateRoomCost",
+            "targetSignature": "calculateRoomCost(items: ReadonlyArray<{ quantity: number; unitPrice: string }>): string",
+            "targetVisibility": "exported",
             "sourceVisibility": "public (UML methods)",
             "routeOperations": [],
             "roleMetadata": [],
-            "adaptation": "Room detail returns the projected total and subtotals through the application use case and repository read model."
+            "adaptation": "Application room read models calculate totals from persisted item prices through the pure exact-decimal domain rule."
           },
           "uiMapping": {
             "routeFamily": [
@@ -5627,14 +5627,14 @@
           ],
           "actualRouteOperations": [],
           "methodMapping": {
-            "targetFile": "apps/api/src/application/rooms/ruang-inap.use-cases.ts",
-            "targetSymbol": "RuangInapUseCases.detail",
-            "targetSignature": "RuangInapUseCases.detail(roomId: string): inferred",
-            "targetVisibility": "public",
+            "targetFile": "apps/api/src/domain/rooms/room-cost.ts",
+            "targetSymbol": "calculateRoomCost",
+            "targetSignature": "calculateRoomCost(items: ReadonlyArray<{ quantity: number; unitPrice: string }>): string",
+            "targetVisibility": "exported",
             "sourceVisibility": "public (UML methods)",
             "routeOperations": [],
             "roleMetadata": [],
-            "adaptation": "Room detail returns the projected total and subtotals through the application use case and repository read model."
+            "adaptation": "Application room read models calculate totals from persisted item prices through the pure exact-decimal domain rule."
           },
           "uiMapping": {
             "routeFamily": [
