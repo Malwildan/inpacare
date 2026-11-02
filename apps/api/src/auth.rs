@@ -23,6 +23,8 @@ use std::{
     time::{Duration as StdDuration, Instant},
 };
 
+const SESSION_LIFETIME: Duration = Duration::days(30);
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthUser {
@@ -215,7 +217,7 @@ async fn login(
     .bind(digest(&raw))
     .bind(&user.id)
     .bind(&csrf)
-    .bind(Utc::now() + Duration::hours(8))
+    .bind(Utc::now() + SESSION_LIFETIME)
     .execute(&mut *tx)
     .await?;
     tx.commit().await?;
@@ -224,18 +226,19 @@ async fn login(
         .and_then(|v| v.to_str().ok())
         == Some("https");
     let suffix = if secure { "; Secure" } else { "" };
+    let max_age = SESSION_LIFETIME.num_seconds();
     let mut response = Json(json!({"user":user})).into_response();
     response.headers_mut().append(
         header::SET_COOKIE,
         HeaderValue::from_str(&format!(
-            "session={raw}; Path=/; HttpOnly; SameSite=Lax; Max-Age=28800{suffix}"
+            "session={raw}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age}{suffix}"
         ))
         .unwrap(),
     );
     response.headers_mut().append(
         header::SET_COOKIE,
         HeaderValue::from_str(&format!(
-            "csrf_token={csrf}; Path=/; SameSite=Lax; Max-Age=28800{suffix}"
+            "csrf_token={csrf}; Path=/; SameSite=Lax; Max-Age={max_age}{suffix}"
         ))
         .unwrap(),
     );

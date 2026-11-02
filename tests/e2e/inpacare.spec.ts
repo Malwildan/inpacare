@@ -49,6 +49,37 @@ test('login rejects bad credentials, signs in, and revokes the session on logout
 	expectNoBrowserErrors(page);
 });
 
+for (const [username, destination] of [['rina', '/dashboard'], ['admisi', '/invoices']] as const) {
+	test(`persistent session restores ${username} after reload and a new browser context`, async ({ browser }) => {
+		const initial = await browser.newContext();
+		const page = await initial.newPage();
+		await signIn(page, username);
+		await page.reload();
+		await expect(page).toHaveURL(new RegExp(`${destination}$`));
+		const state = await initial.storageState();
+		for (const name of ['session', 'csrf_token']) {
+			const cookie = state.cookies.find(cookie => cookie.name === name);
+			expect(cookie?.expires).toBeGreaterThan(Date.now() / 1000 + 29 * 24 * 60 * 60);
+		}
+		await initial.close();
+
+		const restored = await browser.newContext({ storageState: state });
+		try {
+			const returning = await restored.newPage();
+			await returning.goto('/login');
+			await expect(returning).toHaveURL(new RegExp(`${destination}$`));
+			expect((await returning.request.get('/api/v1/session')).status()).toBe(200);
+			await returning.getByRole('button', { name: /Keluar/ }).click();
+			await expect(returning).toHaveURL(/\/login$/);
+			expect((await returning.request.get('/api/v1/session')).status()).toBe(401);
+			const protectedPage = await returning.request.get(destination, { maxRedirects: 0 });
+			expect(protectedPage.status()).toBe(303);
+		} finally {
+			await restored.close();
+		}
+	});
+}
+
 test('a signed-in coordinator can open the six core module routes', async ({ page }) => {
 	await signIn(page, 'rina');
 	for (const [route, heading] of [

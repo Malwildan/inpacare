@@ -9,6 +9,8 @@ import concurrent.futures
 import http.cookiejar
 import json
 import os
+import tempfile
+import time
 import unittest
 import urllib.error
 import urllib.parse
@@ -123,6 +125,42 @@ class Workflows(unittest.TestCase):
         self.assert_error(denied, 422, "VALIDATION_FAILED")
         self.assert_error(anonymous.request("POST", "/session", {"username":"rina","password":PASSWORD}, same_origin=False), 403, "FORBIDDEN")
         self.assert_error(self.admisi.request("GET", "/cycles"), 403, "FORBIDDEN")
+
+    def test_persistent_session_restoration_and_logout_revocation(self) -> None:
+        client = Api()
+        started = time.time()
+        self.assertEqual(client.sign_in("rina")[0], 200)
+        cookies = {cookie.name: cookie for cookie in client.jar}
+        self.assertEqual(set(cookies), {"session", "csrf_token"})
+        for cookie in cookies.values():
+            self.assertFalse(cookie.discard)
+            self.assertGreaterEqual(cookie.expires, started + 30 * 24 * 60 * 60 - 5)
+            self.assertLessEqual(cookie.expires, time.time() + 30 * 24 * 60 * 60)
+            self.assertEqual(cookie.path, "/")
+            self.assertEqual(cookie.get_nonstandard_attr("SameSite"), "Lax")
+        self.assertTrue(cookies["session"].has_nonstandard_attr("HttpOnly"))
+        self.assertFalse(cookies["csrf_token"].has_nonstandard_attr("HttpOnly"))
+
+        with tempfile.TemporaryDirectory() as folder:
+            saved = http.cookiejar.LWPCookieJar(os.path.join(folder, "cookies.txt"))
+            for cookie in client.jar:
+                saved.set_cookie(cookie)
+            saved.save()
+            restored = Api()
+            restored.jar = http.cookiejar.LWPCookieJar(saved.filename)
+            restored.jar.load()
+            restored.http = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(restored.jar))
+            status, result = restored.request("GET", "/session")
+            self.assertEqual(status, 200, result)
+            self.assertEqual(result["user"]["id"], client.user["id"])
+            restored.csrf = "invalid-csrf"
+            self.assert_error(restored.request("DELETE", "/session"), 403, "FORBIDDEN")
+            restored.csrf = result["user"]["csrfToken"]
+            self.assertEqual(restored.request("DELETE", "/session")[0], 204)
+            self.assertEqual(list(restored.jar), [])
+
+        # Replaying the saved cookies must fail after server-side revocation.
+        self.assert_error(client.request("GET", "/session"), 401, "UNAUTHENTICATED")
 
     def test_coordinator_task_pic_scope_audit_and_version_conflict(self) -> None:
         task = self.create_task(f"Tes reassignment {self.tag}")
