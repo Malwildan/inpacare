@@ -11,6 +11,7 @@
 	};
 	const statusLabels: Record<string, string> = { pending: 'Pending', assigned: 'Assigned', in_care: 'In Care', extend: 'Extend', released: 'Pelepasan' };
 	const requestLabels: Record<string, string> = { pending: 'Menunggu keputusan', approved: 'Disetujui', rejected: 'Ditolak' };
+	import Badge from '$lib/components/Badge.svelte';
 
 	let { data } = $props();
 	let search = $state('');
@@ -90,30 +91,31 @@
 </section>
 
 {#if data.user.role === 'PERAWAT'}
-	<section class="panel create-panel">
-		<div class="panel-header"><div><h2>Tambah rekap pasien</h2><p class="muted">Tetapkan dokter penanggung jawab dan, bila sudah ada, penempatan aktif.</p></div></div>
+	<details class="panel create-panel">
+		<summary>Tambah rekap pasien</summary>
+		<p class="create-help">Tetapkan dokter penanggung jawab dan, bila sudah ada, penempatan aktif.</p>
 		<form class="create-form" onsubmit={create}>
 			<label class="field">Pasien<select name="patientId" required><option value="">Pilih pasien</option>{#each data.reference.patients as patient}<option value={patient.id}>{patient.name} · {patient.medicalRecordNo}</option>{/each}</select></label>
 			<label class="field">Dokter<select name="doctorId" required><option value="">Pilih dokter</option>{#each data.reference.staff.filter((s: any) => s.role === 'DOKTER') as doctor}<option value={doctor.id}>{doctor.name}</option>{/each}</select></label>
 			<label class="field">Penempatan aktif<select name="placementId"><option value="">Belum ditempatkan</option>{#each data.reference.placements.filter((p: any) => p.status === 'active') as placement}<option value={placement.id}>{placement.patientName} · {placement.roomName} · {placement.startsOn}–{placement.endsOn}</option>{/each}</select></label>
 			<button class="button primary" disabled={busy}>Tambah rekap</button>
 		</form>
-	</section>
+	</details>
 {/if}
 
-<section class="panel notifications" aria-label="Notifikasi">
-	<div class="panel-header"><div><h2>Notifikasi</h2><span class="muted">{data.notifications.filter((item: any) => !item.readAt).length} belum dibaca</span></div></div>
+<details class="notification-inbox">
+	<summary>Notifikasi <span class="muted">{data.notifications.filter((item: any) => !item.readAt).length} belum dibaca</span></summary>
 	{#if data.notifications.length === 0}<p class="empty">Belum ada notifikasi.</p>{:else}<ul>{#each data.notifications as item (item.id)}<li><span>{item.message}</span>{#if !item.readAt}<button class="button secondary small" disabled={busy} onclick={() => void send(`/notifications/${item.id}/read`, 'POST')}>Tandai dibaca</button>{/if}</li>{/each}</ul>{/if}
-</section>
+</details>
 
 <section class="panel">
 	<div class="panel-header"><div><h2>Daftar rekap pasien</h2><span class="muted">{cycles.length} dari {data.cycles.length} pasien</span></div></div>
-	<div class="filters"><label class="field search-field">Cari nama atau nomor rekam medis<input bind:value={search} placeholder="Cari nama pasien..." /></label><label class="field">Ruangan<select bind:value={roomFilter}><option value="">Semua ruangan</option>{#each rooms as room}<option value={room}>{room}</option>{/each}{#if hasUnplaced}<option value="__unplaced__">Belum ditempatkan</option>{/if}</select></label><label class="field">Status<select bind:value={statusFilter}><option value="">Semua status</option>{#each counts as item}<option value={item.status}>{({pending:'Pending',assigned:'Assigned',in_care:'In Care',extend:'Extend',released:'Pelepasan'} as Record<string,string>)[item.status]}</option>{/each}</select></label></div>
+	<div class="filters"><label class="field search-field">Cari nama atau nomor rekam medis<input type="search" bind:value={search} placeholder="Cari nama pasien..." /></label><label class="field">Ruangan<select bind:value={roomFilter}><option value="">Semua ruangan</option>{#each rooms as room}<option value={room}>{room}</option>{/each}{#if hasUnplaced}<option value="__unplaced__">Belum ditempatkan</option>{/if}</select></label><label class="field">Status<select bind:value={statusFilter}><option value="">Semua status</option>{#each counts as item}<option value={item.status}>{({pending:'Pending',assigned:'Assigned',in_care:'In Care',extend:'Extend',released:'Pelepasan'} as Record<string,string>)[item.status]}</option>{/each}</select></label></div>
 	<div class="table-wrap"><table class="data-table"><thead><tr><th>Pasien</th><th>Ruangan</th><th>Dokter</th><th>Perawat</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
 		{#each cycles as cycle (cycle.id)}<tr>
 			<td><strong>{cycle.patientName}</strong><span class="cell-meta">{cycle.id} · {cycle.medicalRecordNo}</span></td>
 			<td>{cycle.room ?? 'Belum ditempatkan'}</td><td>{cycle.doctorName}</td><td>{cycle.nurseName}</td>
-			<td><span class="badge status-{cycle.status}">{statusLabels[cycle.status] ?? cycle.status}</span></td>
+			<td><Badge value={cycle.status}/></td>
 			<td><button class="button secondary small" onclick={() => void openDetail(cycle.id)}>{data.user.role === 'DOKTER' && cycle.requests.some((item: any) => item.status === 'pending') ? 'Tinjau permintaan' : 'Lihat detail'}</button></td>
 		</tr>
 		{:else}<tr><td colspan="6" class="empty">Tidak ada rekap yang cocok.</td></tr>{/each}
@@ -129,7 +131,7 @@
 				<div class="detail-item"><span>Ruangan</span><strong>{selectedCycle.room ?? 'Belum ditempatkan'}</strong></div>
 				<div class="detail-item"><span>Dokter</span><strong>{selectedCycle.doctorName}</strong></div>
 				<div class="detail-item"><span>Perawat</span><strong>{selectedCycle.nurseName}</strong></div>
-				<div class="detail-item"><span>Status saat ini</span><strong><span class="badge status-{selectedCycle.status}">{statusLabels[selectedCycle.status] ?? selectedCycle.status}</span></strong></div>
+				<div class="detail-item"><span>Status saat ini</span><strong><Badge value={selectedCycle.status}/></strong></div>
 			</div>
 			{#if error}<p class="error" role="alert">{error}</p>{/if}
 			{#if data.user.role === 'PERAWAT' && ['pending', 'assigned'].includes(selectedCycle.status)}
@@ -155,5 +157,28 @@
 <p class="muted workflow-note">Alur: Pending → Assigned → In Care → Extend / Pelepasan. Perpanjangan dan pelepasan berlaku setelah keputusan dokter.</p>
 
 <style>
-	.panel{margin-bottom:16px}.create-panel{padding:16px 18px}.create-form{display:grid;grid-template-columns:1fr 1fr 1.5fr auto;align-items:end;gap:12px}.search-field{flex:1;min-width:220px}.cell-meta{display:block;color:#858b9b;font-size:11px;margin-top:4px}.notifications ul{list-style:none;padding:0;margin:0}.notifications li{padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #eef0f4;font-size:13px}.cycle-summary{padding-bottom:20px}.detail-section{border-top:1px solid #edf0f4;padding:20px 0}.detail-section:last-child{padding-bottom:0}.detail-section h3{margin-bottom:6px}.detail-section>p{font-size:13px;margin-bottom:14px}.detail-section form{margin-top:14px}.request-item{background:#f6f7fa;border-radius:7px;padding:14px;margin-top:10px;font-size:13px}.request-item p{margin-top:8px;color:#3d4659}.request-item small{display:block;color:#626879;margin-top:6px}.request-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}.badge.status-pending{color:#8a5700;background:#fff6e5}.badge.status-assigned{color:#1268a8;background:#e8f4ff}.badge.status-in_care{color:#236b3d;background:#e9f6ec}.badge.status-extend{color:#383fba;background:#eef0ff}.badge.status-released{color:#236b3d;background:#e5f5e9}.workflow-note{margin-top:14px}@media(max-width:900px){.create-form{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.create-form{grid-template-columns:1fr}.notifications li{align-items:flex-start;flex-direction:column}}
+	.create-panel summary{cursor:pointer;color:var(--primary);font-weight:600}
+	.create-help{margin:12px 0 18px;font-size:13px}
+	.create-form{display:grid;grid-template-columns:1fr 1fr 1.5fr auto;align-items:end;gap:16px}
+	.notification-inbox{margin-bottom:24px;border-bottom:1px solid var(--border);padding:0 4px 16px}
+	.notification-inbox summary{cursor:pointer;font-weight:600}
+	.notification-inbox summary span{font-size:12px;font-weight:400;margin-left:12px}
+	.notification-inbox ul{list-style:none;padding:0;margin:12px 0 0}
+	.notification-inbox li{padding:12px 0;display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--border);font-size:13px}
+	.notification-inbox .empty{text-align:left;padding:16px 0 0}
+	.search-field{flex:2;min-width:220px}
+	.cell-meta{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+	.request-item{border-top:1px solid var(--border);padding-top:12px;margin-top:12px;font-size:13px}
+	.request-item small{display:block;color:var(--muted);margin-top:4px}
+	.cycle-summary{padding-bottom:24px}
+	.detail-section{border-top:1px solid var(--border);padding:24px 0}
+	.detail-section:last-child{padding-bottom:0}
+	.detail-section h3{margin-bottom:8px}
+	.detail-section>p{font-size:13px;margin-bottom:16px}
+	.detail-section form{margin-top:16px}
+	.request-item p{margin-top:8px;color:var(--text)}
+	.request-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+	.workflow-note{margin-top:20px;font-size:12px;max-width:80ch}
+	@media(max-width:1000px){.create-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
+	@media(max-width:600px){.create-form{grid-template-columns:1fr}.notification-inbox li{align-items:flex-start;flex-direction:column}}
 </style>
