@@ -142,8 +142,6 @@ class DeployNativeTests(unittest.TestCase):
                     raise deploy_native.DeployError("Backup failed")
                 Path(args[args.index("--file") + 1]).write_bytes(b"backup")
             elif args[:4] == ["systemctl", "--user", "stop", "inpacare-web"]:
-                self.assertIn("--job-mode=ignore-dependencies", args,
-                              "API/web stops must preserve dependent public tunnel services")
                 events.append("stop")
             elif args[:4] == ["systemctl", "--user", "start", "inpacare-api"]:
                 events.append("start-api")

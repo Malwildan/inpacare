@@ -18,6 +18,11 @@ if [ ! -L "$ROOT/.deploy/current" ]; then
   ln -s "$ROOT" "$ROOT/.deploy/current"
 fi
 install -m 700 "$SOURCE/scripts/deploy-native.py" "$ROOT/.deploy/deploy-native.py"
+# Keep the optional tunnel alive while CD intentionally restarts API/web.
+tunnel_unit="$HOME/.config/systemd/user/inpacare-ngrok.service"
+if [ -f "$tunnel_unit" ]; then
+  sed -i 's/^Requires=inpacare-web\.service$/Wants=inpacare-web.service/' "$tunnel_unit"
+fi
 for service in api web; do
   dropin="$HOME/.config/systemd/user/inpacare-$service.service.d"
   mkdir -p "$dropin"
