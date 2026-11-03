@@ -95,7 +95,9 @@ export type NewInvoice = {
     })[];
 };
 export type ChangePayment = {
-    status: string;
+    status?: string;
+    coveredAmount?: string;
+    lines?: ({ roomItemId?: string | null; kind?: string | null; description: string; quantity: number; unitPrice: string })[];
     reason: string;
     expectedVersion: number;
 };

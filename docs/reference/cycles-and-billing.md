@@ -94,13 +94,13 @@ Returns billing-only patient context, line details with subtotal, totals, and au
 
 ### `PATCH /invoices/{id}`
 
-Changes only payment status; requires a nonempty reason (up to 500 characters) and optimistic version:
+Changes payment status, replaces invoice lines and/or changes BPJS coverage. Send at least one change. Existing status-only callers remain compatible. Every request requires a nonempty reason (up to 500 characters) and optimistic version:
 
 ```json
 {"status":"paid","reason":"Bukti pembayaran dicocokkan.","expectedVersion":1}
 ```
 
-Returns the updated status and version. The row lock, version check, edit and history entry commit atomically. Repeated status and stale-version writes are rejected.
+For line or coverage edits, totals are recalculated on the server and returned as decimal strings. Existing `roomItemId` and `kind` metadata are retained when omitted from corresponding replacement lines. The row lock, version check, edit and history entry commit atomically. Paid invoices cannot have financial edits; stale versions and repeated status writes are rejected.
 
 ## Shared error contract
 

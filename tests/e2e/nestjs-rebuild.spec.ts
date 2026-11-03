@@ -64,6 +64,25 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	await line.getByLabel('Alasan').fill('Koreksi rincian pada pengujian rebuild.');
 	await line.getByRole('button', { name: 'Simpan' }).click();
 	await expect(detail).toContainText(updatedDescription);
+	await detail.getByRole('button', { name: 'Ubah tagihan', exact: true }).click();
+	const editor = detail.locator('form').filter({ has: page.getByRole('button', { name: 'Simpan perubahan', exact: true }) });
+	await editor.getByLabel('Deskripsi').fill('Draft yang tidak disimpan');
+	await detail.getByRole('button', { name: 'Tutup', exact: true }).click();
+	await row.getByRole('button', { name: 'Lihat detail' }).click();
+	await expect(editor).toHaveCount(0);
+	await detail.getByRole('button', { name: 'Ubah tagihan', exact: true }).click();
+	await expect(editor.getByLabel('Deskripsi')).toHaveValue(updatedDescription);
+	await editor.getByLabel('Jumlah', { exact: true }).fill('2');
+	await editor.getByLabel('Harga satuan', { exact: true }).fill('1250.25');
+	await editor.getByLabel('Jumlah jaminan BPJS (Rp)').fill('300.25');
+	await editor.getByLabel('Alasan perubahan').fill('Koreksi rincian dan jaminan bersama.');
+	const edited = page.waitForResponse(response => response.request().method() === 'PATCH' && new URL(response.url()).pathname === `/api/v1/invoices/${invoiceId}`);
+	await editor.getByRole('button', { name: 'Simpan perubahan', exact: true }).click();
+	const editResponse = await edited;
+	expect(editResponse.status()).toBe(200);
+	expect(editResponse.request().postDataJSON().coveredAmount).toBe('300.25');
+	expect(await editResponse.json()).toMatchObject({ totalAmount: '2500.50', coveredAmount: '300.25', payableAmount: '2200.25' });
+	await expect(editor).toHaveCount(0);
 
 	await detail.getByLabel('Hasil verifikasi klaim').fill('Ditolak');
 	await detail.getByLabel('Keputusan klaim').selectOption('false');
@@ -77,8 +96,11 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	await mkdir(evidence, { recursive: true });
 	await page.screenshot({ path: path.join(evidence, 'e2e-invoice-detail.png'), fullPage: true, animations: 'disabled' });
 
-	page.on('dialog', dialog => dialog.accept(dialog.type() === 'prompt' ? 'Hapus invoice uji' : undefined));
 	await page.locator('.invoice-detail').getByRole('button', { name: 'Hapus tagihan' }).click();
+	const confirmation = page.getByRole('dialog', { name: 'Hapus tagihan?' });
+	await confirmation.getByLabel('Alasan penghapusan').fill('Hapus invoice uji');
+	await confirmation.getByRole('button', { name: 'Ya, hapus' }).click();
+	await expect(confirmation).toHaveCount(0);
 	await expect(page.getByRole('status')).toContainText(/berhasil/i);
 });
 

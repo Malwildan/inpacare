@@ -392,6 +392,65 @@ class Workflows(unittest.TestCase):
         self.assertTrue(any(row["reason"] == "Bukti pembayaran dicocokkan" for row in detail["history"]))
         self.assertNotIn("diagnosis", detail)
 
+    def test_invoice_edit_lines_and_soft_delete(self) -> None:
+        status, invoice = self.admisi.request("POST", "/invoices", {
+            "patientId": "PT-001", "placementId": "PL-001", "coveredAmount": "100000.00",
+            "lines": [{"description": "Kamar kelas 2", "quantity": 2, "unitPrice": "500000.00"}],
+        })
+        self.assertEqual(status, 201, invoice)
+        invoice_id = invoice["id"]
+        # Edit lines + coverage: totals are recomputed server-side.
+        status, edited = self.admisi.request("PATCH", f"/invoices/{invoice_id}", {
+            "lines": [
+                {"description": "Kamar kelas 2", "quantity": 3, "unitPrice": "500000.00"},
+                {"description": "Obat", "quantity": 1, "unitPrice": "250000.50"},
+            ],
+            "coveredAmount": "200000.00", "reason": "Koreksi tarif", "expectedVersion": 1,
+        })
+        self.assertEqual(status, 200, edited)
+        self.assertEqual(Decimal(edited["totalAmount"]), Decimal("1750000.50"))
+        self.assertEqual(Decimal(edited["payableAmount"]), Decimal("1550000.50"))
+        self.assertEqual(edited["version"], 2)
+        # Invalid edits are rejected and do not change the invoice.
+        self.assert_error(self.admisi.request("PATCH", f"/invoices/{invoice_id}", {
+            "coveredAmount": "99999999.00", "reason": "Terlalu besar", "expectedVersion": 2,
+        }), 422, "VALIDATION_FAILED")
+        self.assert_error(self.admisi.request("PATCH", f"/invoices/{invoice_id}", {
+            "reason": "Tanpa perubahan", "expectedVersion": 2,
+        }), 422, "VALIDATION_FAILED")
+        for field in ("status", "lines", "coveredAmount"):
+            self.assert_error(self.admisi.request("PATCH", f"/invoices/{invoice_id}", {
+                field: None, "reason": "Nilai kosong", "expectedVersion": 2,
+            }), 422, "VALIDATION_FAILED")
+        self.assert_error(self.admisi.request("PATCH", f"/invoices/{invoice_id}", {
+            "coveredAmount": "0", "reason": "Versi lama", "expectedVersion": 1,
+        }), 409, "CONFLICT")
+        _, detail = self.admisi.request("GET", f"/invoices/{invoice_id}")
+        self.assertEqual(len(detail["lines"]), 2)
+        self.assertTrue(any(row["action"] == "updated" for row in detail["history"]))
+        # Delete requires a reason and the current version, then hides the invoice.
+        self.assert_error(self.admisi.request("DELETE", f"/invoices/{invoice_id}", {
+            "reason": "  ", "expectedVersion": 2,
+        }), 422, "VALIDATION_FAILED")
+        self.assert_error(self.admisi.request("DELETE", f"/invoices/{invoice_id}", {
+            "reason": "Salah input", "expectedVersion": 1,
+        }), 409, "CONFLICT")
+        status, deleted = self.admisi.request("DELETE", f"/invoices/{invoice_id}", {
+            "reason": "Salah input", "expectedVersion": 2,
+        })
+        self.assertEqual(status, 200, deleted)
+        self.assertTrue(deleted["deleted"])
+        self.assert_error(self.admisi.request("GET", f"/invoices/{invoice_id}"), 404, "NOT_FOUND")
+        _, listing = self.admisi.request("GET", "/invoices?limit=100")
+        self.assertFalse(any(row["id"] == invoice_id for row in listing["items"]))
+        self.assert_error(self.admisi.request("DELETE", f"/invoices/{invoice_id}", {
+            "reason": "Ulang", "expectedVersion": 3,
+        }), 404, "NOT_FOUND")
+        # Other roles cannot delete.
+        self.assert_error(self.rina.request("DELETE", f"/invoices/{invoice_id}", {
+            "reason": "Tidak berhak", "expectedVersion": 3,
+        }), 403, "FORBIDDEN")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

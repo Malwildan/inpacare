@@ -12,6 +12,7 @@ import {
   Min,
   MinLength,
   ValidateNested,
+  ValidateIf,
 } from "class-validator";
 import type {
   CreateInvoiceInput,
@@ -69,8 +70,20 @@ export class PaymentDto implements PaymentInput {
   @IsInt()
   @Min(1)
   expectedVersion!: number;
+  @ValidateIf((_object, value) => value !== undefined)
   @IsIn(["paid", "unpaid"])
-  status!: string;
+  status?: string;
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsString()
+  @MaxLength(32)
+  coveredAmount?: string;
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(30)
+  @ValidateNested({ each: true })
+  @Type(() => InvoiceLineDto)
+  lines?: InvoiceLineDto[];
 }
 export class EditInvoiceLineDto
   extends InvoiceLineDto

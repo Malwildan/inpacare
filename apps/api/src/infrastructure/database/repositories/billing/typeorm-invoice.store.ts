@@ -140,6 +140,19 @@ export class TypeOrmInvoiceStore implements InvoiceStore {
       [status, id],
     );
   }
+  async updateInvoice(id: string, d: { status: string; total: string; covered: string; payable: string }) {
+    await this.manager.query(
+      `UPDATE invoices SET status=$1,total_amount=$2,covered_amount=$3,payable_amount=$4,version=version+1,updated_at=now() WHERE id=$5 AND deleted_at IS NULL`,
+      [d.status, d.total, d.covered, d.payable, id],
+    );
+  }
+  async invoiceLines(id: string) {
+    return this.manager.query(`SELECT id,room_item_id,kind,description,quantity,unit_price,line_total FROM invoice_lines WHERE invoice_id=$1 ORDER BY id FOR UPDATE`, [id]);
+  }
+  async replaceLines(invoiceId: string, lines: { id: string; roomItemId: string | null; kind: string; description: string; quantity: number; unitPrice: string; lineTotal: string }[]) {
+    await this.manager.query(`DELETE FROM invoice_lines WHERE invoice_id=$1`, [invoiceId]);
+    for (const line of lines) await this.createLine({ ...line, invoiceId });
+  }
   async lockLine(invoiceId: string, lineId: string) {
     const rows = await this.manager.query(
       `SELECT * FROM invoice_lines WHERE id=$1 AND invoice_id=$2 FOR UPDATE`,
