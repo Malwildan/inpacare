@@ -452,7 +452,10 @@ export interface paths {
         delete: operations["DELETE_invoices_id"];
         options?: never;
         head?: never;
-        /** Update payment status */
+        /**
+         * Update invoice status, lines, or coverage
+         * @description ADMISI only. Send status, lines (replaces all lines), and/or coveredAmount with reason and expectedVersion. Totals are recomputed server-side; the edit and history entry commit atomically. Status-only requests remain supported.
+         */
         patch: operations["PATCH_invoices_id"];
         trace?: never;
     };
@@ -1119,9 +1122,12 @@ export interface components {
             lines: components["schemas"]["NewInvoiceLine"][];
         };
         ChangePayment: {
-            status: string;
+            status?: string;
             reason: string;
             expectedVersion: number;
+            /** @description Decimal string */
+            coveredAmount?: string;
+            lines?: components["schemas"]["InvoiceLineInput"][];
         };
         RoomPage: {
             items: components["schemas"]["RoomDetail"][];
@@ -1364,6 +1370,7 @@ export interface components {
             coveredAmount: string;
             /** @description Decimal string */
             payableAmount: string;
+            lines?: components["schemas"]["InvoiceLine"][];
         };
         InvoiceLineMutation: {
             ok: boolean;
@@ -1467,6 +1474,14 @@ export interface components {
         AdmissionMedicalPage: {
             items: components["schemas"]["AdmissionMedicalRecord"][];
             total: number;
+        };
+        InvoiceLineInput: {
+            roomItemId?: string | null;
+            kind?: string | null;
+            description: string;
+            quantity: number;
+            /** @description Decimal string */
+            unitPrice: string;
         };
     };
     responses: never;

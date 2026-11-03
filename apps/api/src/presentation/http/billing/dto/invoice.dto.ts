@@ -69,8 +69,20 @@ export class PaymentDto implements PaymentInput {
   @IsInt()
   @Min(1)
   expectedVersion!: number;
+  @IsOptional()
   @IsIn(["paid", "unpaid"])
-  status!: string;
+  status?: string;
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  coveredAmount?: string;
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(30)
+  @ValidateNested({ each: true })
+  @Type(() => InvoiceLineDto)
+  lines?: InvoiceLineDto[];
 }
 export class EditInvoiceLineDto
   extends InvoiceLineDto

@@ -4342,7 +4342,7 @@
       },
       "patch": {
         "operationId": "PATCH_invoices_id",
-        "summary": "Update payment status",
+        "summary": "Update invoice status, lines, or coverage",
         "tags": [
           "Invoices"
         ],
@@ -4453,7 +4453,8 @@
         },
         "x-controller-roles": [
           "ADMISI"
-        ]
+        ],
+        "description": "ADMISI only. Send status, lines (replaces all lines), and/or coveredAmount with reason and expectedVersion. Totals are recomputed server-side; the edit and history entry commit atomically. Status-only requests remain supported."
       },
       "delete": {
         "operationId": "DELETE_invoices_id",
@@ -8079,10 +8080,22 @@
           },
           "expectedVersion": {
             "type": "integer"
+          },
+          "coveredAmount": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "Decimal string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineInput"
+            },
+            "minItems": 1,
+            "maxItems": 30
           }
         },
         "required": [
-          "status",
           "reason",
           "expectedVersion"
         ],
@@ -9099,6 +9112,12 @@
           "payableAmount": {
             "type": "string",
             "description": "Decimal string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLine"
+            }
           }
         },
         "required": [
@@ -9517,6 +9536,46 @@
         "required": [
           "items",
           "total"
+        ],
+        "additionalProperties": false
+      },
+      "InvoiceLineInput": {
+        "type": "object",
+        "properties": {
+          "roomItemId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 40
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "unitPrice": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "Decimal string"
+          }
+        },
+        "required": [
+          "description",
+          "quantity",
+          "unitPrice"
         ],
         "additionalProperties": false
       }

@@ -21,7 +21,9 @@ export interface CreateInvoiceInput {
 export interface PaymentInput {
   reason: string;
   expectedVersion: number;
-  status: string;
+  status?: string;
+  coveredAmount?: string;
+  lines?: InvoiceLineInput[];
 }
 export interface EditInvoiceLineInput extends InvoiceLineInput {
   expectedVersion: number;
@@ -146,8 +148,11 @@ export class TagihanUseCases {
     this.role(actor);
     if (!input.reason.trim())
       throw DomainError.validation("Alasan wajib diisi.");
-    if (!input.status || !["paid", "unpaid"].includes(input.status))
+    if (input.status && !["paid", "unpaid"].includes(input.status))
       throw DomainError.validation("Status pembayaran tidak valid.");
+    if (!input.status && input.coveredAmount === undefined && !input.lines)
+      throw DomainError.validation("Tidak ada perubahan yang dikirim.");
+    const editingMoney = input.coveredAmount !== undefined || input.lines !== undefined;
     return this.uow.run(async (tx) => {
       const row = await tx.billing.lockInvoice(invoiceId);
       if (!row) throw DomainError.notFound();
@@ -155,26 +160,53 @@ export class TagihanUseCases {
         throw DomainError.conflict(
           "Tagihan telah berubah. Muat ulang lalu coba lagi.",
         );
-      if (row.status === input.status)
+      if (input.status && row.status === input.status && !editingMoney)
         throw DomainError.validation("Tagihan sudah memiliki status tersebut.");
+      if (editingMoney && row.status === "paid")
+        throw DomainError.conflict("Tagihan lunas tidak dapat mengubah rincian keuangan.");
+      if (editingMoney && input.status === "paid")
+        throw DomainError.conflict("Perubahan keuangan harus disimpan sebelum melunasi tagihan.");
+      const oldLines = editingMoney ? await tx.billing.invoiceLines(invoiceId) : [];
+      const lines = input.lines?.map((line, index) => ({
+        ...line,
+        roomItemId: line.roomItemId ?? oldLines[index]?.room_item_id ?? null,
+        kind: line.kind ?? oldLines[index]?.kind ?? "service",
+      }));
+      const calculated = lines ? calculateInvoiceLines(lines, id) : undefined;
+      const total = calculated ? totalInvoiceLines(calculated) : String(row.total_amount);
+      const covered = input.coveredAmount === undefined
+        ? String(row.covered_amount)
+        : parseInvoiceMoney(input.coveredAmount, "Nilai jaminan");
+      if (invoiceAmountGreaterThan(covered, total))
+        throw DomainError.validation("Jumlah jaminan tidak boleh melebihi total tagihan.");
+      if (!row.bpjs_snapshot && invoiceAmountIsPositive(covered))
+        throw DomainError.validation("Pasien tanpa BPJS tidak dapat menggunakan nilai jaminan.");
+      const payable = subtractInvoiceAmounts(total, covered);
       const before = {
         status: row.status,
         version: Number(row.version),
         totalAmount: String(row.total_amount),
         coveredAmount: String(row.covered_amount),
         payableAmount: String(row.payable_amount),
+        ...(calculated ? { lines: oldLines.map((line) => ({ id: line.id, roomItemId: line.room_item_id, kind: line.kind, description: line.description, quantity: line.quantity, unitPrice: String(line.unit_price), lineTotal: String(line.line_total) })) } : {}),
       };
-      await tx.billing.updatePayment(invoiceId, input.status);
+      const status = input.status ?? row.status;
+      if (calculated) await tx.billing.replaceLines(invoiceId, calculated);
+      await tx.billing.updateInvoice(invoiceId, { status, total, covered, payable });
       const after = {
         ...before,
-        status: input.status,
+        status,
         version: Number(row.version) + 1,
+        totalAmount: total,
+        coveredAmount: covered,
+        payableAmount: payable,
+        ...(calculated ? { lines: calculated } : {}),
       };
       await tx.billing.history({
         id: id(),
         invoiceId,
         actorId: actor.id,
-        action: "status_changed",
+        action: editingMoney ? "updated" : "status_changed",
         reason: input.reason.trim(),
         before,
         after,

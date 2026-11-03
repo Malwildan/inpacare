@@ -17,6 +17,8 @@ export interface InvoiceRow extends Record<string, unknown> {
 }
 export interface InvoiceLineRow extends Record<string, unknown> {
   id: string;
+  room_item_id: string | null;
+  kind: string | null;
   description: string;
   quantity: number;
   unit_price: string;
@@ -70,6 +72,9 @@ export interface InvoiceStore {
   }): Promise<void>;
   lockInvoice(invoiceId: string): Promise<InvoiceRow | undefined>;
   updatePayment(invoiceId: string, status: string): Promise<void>;
+  updateInvoice(invoiceId: string, input: { status: string; total: string; covered: string; payable: string }): Promise<void>;
+  invoiceLines(invoiceId: string): Promise<InvoiceLineRow[]>;
+  replaceLines(invoiceId: string, lines: { id: string; roomItemId: string | null; kind: string; description: string; quantity: number; unitPrice: string; lineTotal: string }[]): Promise<void>;
   lockLine(
     invoiceId: string,
     lineId: string,
