@@ -40,26 +40,30 @@ Coordinator or current PIC, and only while the task is active. Returns `{items:[
 
 ## Medical records
 
-Admisi cannot call these endpoints. Doctors can read records for their assigned cycle patients; nurses share the single demo ward context. Only the record's authoring doctor can edit it. Nurses can add observations, never modify doctor-authored text. All command bodies reject unknown properties.
+Admisi cannot call these endpoints. Doctors can read records for their assigned cycle patients and patients they have authored records for; nurses share the single demo ward context. Only the record's authoring doctor can edit or logically delete it. Nurses can add observations, never modify or delete doctor-authored records. All command bodies reject unknown properties.
 
 ### `GET /medical-records`
 
-Optional `search`, `limit`. Response `{items:[{id,patientId,patientName,medicalRecordNo,doctorName,recordDate,diagnosis,treatment,notes,version,createdAt,observationCount}],total}`. Bounded to 100 newest records in the actor's scope.
+Optional `search`, `limit`. Response `{items:[{id,patientId,patientName,medicalRecordNo,doctorId,doctorName,recordDate,diagnosis,treatment,notes,version,createdAt,observationCount}],total}`. `total` reports the full scoped/filter-matched count; `items` is bounded to 100 newest records in the actor's scope.
 
 ### `POST /medical-records`
 
-Assigned doctor only. Body `{patientId,complaint,diagnosis,treatment,notes?,recordDate}`. Required text fields are non-empty; `recordDate` is `YYYY-MM-DD`. Author ID comes from the authenticated session. Returns full record details.
+Doctor only. Body `{patientId?,newPatient?:{name,medicalRecordNo?,birthDate,gender,bpjs?,bpjsNumber?},complaint,diagnosis,treatment,notes?,recordDate}`. Exactly one of `patientId` (existing assigned patient) or `newPatient` (registers a new patient atomically in the same transaction; generates `RM-XXXXX` automatically when `medicalRecordNo` is omitted and returns 409 on duplicate MR numbers) must be supplied. Required text fields are non-empty (up to 5000 characters, optional `notes` up to 5000 characters); `recordDate` is `YYYY-MM-DD`. Author ID comes from the authenticated session. Returns full record details.
 
 ### `GET /medical-records/{id}`
 
-Doctor assigned to the patient or a nurse; returns the medical record with `observations:[{id,nurseId,nurseName,symptoms,nursingNote,observedAt,temperature,bloodPressure,pulse,respiratoryRate,spo2}]`. `bloodPressure` formats the source blood-pressure string from structured systolic/diastolic values as `"120/80"`; null means no paired value was supplied.
+Doctor in patient scope or a nurse; returns the medical record with `observations:[{id,nurseId,nurseName,symptoms,nursingNote,observedAt,temperature,bloodPressure,pulse,respiratoryRate,spo2}]`. `bloodPressure` formats the source blood-pressure string from structured systolic/diastolic values as `"120/80"`; null means no paired value was supplied.
 
 ### `PATCH /medical-records/{id}`
 
 The record's authoring doctor only. Body `{expectedVersion,complaint,diagnosis,treatment,notes?,recordDate}`. Uses a row lock and optimistic version. Conflict is 409; non-authoring doctor is 403. Returns the updated record with observations.
 
+### `DELETE /medical-records/{id}`
+
+The record's authoring doctor only. Body `{expectedVersion}`. Uses a row lock and optimistic version, sets `deleted_at`, and increments `version` without deleting underlying observation rows. Conflict is 409; non-authoring doctor or nurse is 403; missing or already deleted record is 404. Returns `{"deleted": true}`.
+
 ### `POST /medical-records/{id}/observations`
 
-Nurse only. Body `{symptoms,nursingNote?,observedAt,temperature?,systolic?,diastolic?,pulse?,respiratoryRate?,spo2?}`. `observedAt` is RFC3339 with timezone. Systolic/diastolic must be both supplied or both absent. Numeric measurements cannot be negative; oxygen saturation is 0–100. These checks only validate stored values; the system does not interpret measurements clinically. The observation and optional vital signs are inserted in one transaction. Returns the full updated record.
+Nurse only. Body `{symptoms,nursingNote?,observedAt,temperature?,systolic?,diastolic?,pulse?,respiratoryRate?,spo2?}`. `symptoms` is required (up to 3000 characters) and optional `nursingNote` is capped at 3000 characters. `observedAt` is RFC3339 with timezone. Systolic/diastolic must be both supplied or both absent. Numeric measurements cannot be negative; oxygen saturation is 0–100. These checks only validate stored values; the system does not interpret measurements clinically. The observation and optional vital signs are inserted in one transaction. Returns the full updated record.
 
 Clinical form failures return a localized 422; missing/expired sessions 401; prohibited roles 403; out-of-scope record IDs 404. These workflows do not imply real hospital deployment or clinical decision support.

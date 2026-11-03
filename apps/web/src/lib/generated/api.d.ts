@@ -296,7 +296,11 @@ export interface paths {
         get: operations["GET_medical_records_id"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Logically delete authored record
+         * @description Authoring doctor only; requires expectedVersion.
+         */
+        delete: operations["DELETE_medical_records_id"];
         options?: never;
         head?: never;
         /** Update authored record */
@@ -640,6 +644,7 @@ export interface components {
             patientId: string;
             patientName: string;
             medicalRecordNo: string;
+            doctorId: string;
             doctorName: string;
             /** Format: date */
             recordDate: string;
@@ -859,7 +864,8 @@ export interface components {
             reason: string;
         };
         NewMedicalRecord: {
-            patientId: string;
+            patientId?: string | null;
+            newPatient?: components["schemas"]["NewPatientInput"];
             complaint: string;
             diagnosis: string;
             treatment: string;
@@ -876,16 +882,19 @@ export interface components {
             /** Format: date */
             recordDate: string;
         };
+        DeleteMedicalRecord: {
+            expectedVersion: number;
+        };
         NewObservation: {
             symptoms: string;
-            nursingNote?: string;
+            nursingNote?: string | null;
             /** Format: date-time */
             observedAt: string;
             temperature?: number | null;
-            systolic?: number;
-            diastolic?: number;
-            pulse?: number;
-            respiratoryRate?: number;
+            systolic?: number | null;
+            diastolic?: number | null;
+            pulse?: number | null;
+            respiratoryRate?: number | null;
             spo2?: number | null;
         };
         NewCycle: {
@@ -1046,6 +1055,16 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             requests: components["schemas"]["CycleRequestSummary"][];
+        };
+        NewPatientInput: {
+            name: string;
+            medicalRecordNo?: string | null;
+            /** Format: date */
+            birthDate: string;
+            /** @enum {string} */
+            gender: "L" | "P";
+            bpjs?: boolean;
+            bpjsNumber?: string | null;
         };
     };
     responses: never;
@@ -2871,6 +2890,89 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MedicalRecord"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    DELETE_medical_records_id: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteMedicalRecord"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deleted"];
                 };
             };
             /** @description Unauthenticated. */

@@ -185,3 +185,75 @@ test('role navigation only exposes the signed-in role’s screens and small scre
 	expectNoBrowserErrors(admission);
 	await admission.close();
 });
+
+test('doctor and nurse complete medical record view, create, observation, update, and logical delete workflows', async ({ browser }) => {
+	const doctor = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+	const diagnosis = `Diagnosis E2E ${Date.now()}`;
+	await signIn(doctor, 'hendra');
+
+	// Out-of-scope record returns 404, not 500
+	const outOfScope = await doctor.request.get('/medical-records/MR-002');
+	expect(outOfScope.status()).toBe(404);
+
+	// UC-DR-01 & UC-DR-02: View list and create medical record while registering a new patient
+	const newPatientName = `Pasien E2E ${Date.now()}`;
+	await doctor.goto('/medical-records');
+	await expect(doctor.getByRole('heading', { name: 'Daftar Rekam Medis' })).toBeVisible();
+	await doctor.getByRole('button', { name: /Tambah rekam medis/ }).click();
+	await doctor.getByRole('button', { name: /Pasien baru/ }).click();
+	await doctor.getByLabel('Nama pasien baru').fill(newPatientName);
+	await doctor.getByLabel('Tanggal lahir').fill('1994-06-15');
+	await doctor.getByLabel('Jenis kelamin').selectOption('P');
+	await doctor.getByLabel('Peserta BPJS Kesehatan').check();
+	await doctor.getByLabel('Nomor BPJS').fill('0001234599001');
+	await doctor.getByLabel('Keluhan').fill('Keluhan uji E2E');
+	await doctor.getByLabel('Diagnosis').fill(diagnosis);
+	await doctor.getByLabel('Tindakan').fill('Tindakan awal E2E');
+	await doctor.getByLabel('Catatan medis').fill('Catatan awal sintetis');
+	await doctor.getByRole('button', { name: 'Simpan rekam medis' }).click();
+	await expect(doctor).toHaveURL(/\/medical-records\/.+$/);
+	await expect(doctor.getByRole('heading', { name: new RegExp(newPatientName) })).toBeVisible();
+	const recordUrl = doctor.url();
+
+	// UC-PR-01 & UC-PR-02: Nurse views record and records patient condition / vitals
+	const nurse = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+	await signIn(nurse, 'dina');
+	await nurse.goto(recordUrl);
+	await expect(nurse.getByText(diagnosis)).toBeVisible();
+	await expect(nurse.getByRole('button', { name: 'Simpan perubahan' })).toHaveCount(0);
+	await expect(nurse.getByRole('button', { name: 'Hapus rekam medis' })).toHaveCount(0);
+	await nurse.getByText(/Tambah observasi/).click();
+	await nurse.getByLabel('Gejala/kondisi').fill('Kondisi stabil pada pemeriksaan E2E');
+	await nurse.getByLabel('Catatan keperawatan').fill('Tanda vital dalam batas pemantauan');
+	await nurse.getByLabel('Suhu (°C)').fill('36.7');
+	await nurse.getByLabel('Sistolik').fill('118');
+	await nurse.getByLabel('Diastolik').fill('78');
+	await nurse.getByLabel('Nadi (bpm)').fill('76');
+	await nurse.getByLabel('Pernapasan (/menit)').fill('18');
+	await nurse.getByLabel('Saturasi O₂ (%)').fill('99');
+	await nurse.getByRole('button', { name: 'Simpan observasi' }).click();
+	await expect(nurse.getByRole('status')).toContainText(/tersimpan/i);
+	await expect(nurse.getByText('Kondisi stabil pada pemeriksaan E2E')).toBeVisible();
+	await expect(nurse.getByText('118/78')).toBeVisible();
+
+	// UC-DR-03 & UC-DR-04: Doctor updates then logically deletes the authored record
+	await doctor.reload();
+	await expect(doctor.getByText('Kondisi stabil pada pemeriksaan E2E')).toBeVisible();
+	const updatedDiagnosis = `${diagnosis} (Diperbarui)`;
+	await doctor.getByLabel('Diagnosis').fill(updatedDiagnosis);
+	await doctor.getByRole('button', { name: 'Simpan perubahan' }).click();
+	await expect(doctor.getByRole('status')).toContainText(/tersimpan/i);
+
+	await doctor.getByRole('button', { name: 'Hapus rekam medis' }).click();
+	await expect(doctor.getByRole('dialog')).toContainText('Konfirmasi hapus rekam medis');
+	await doctor.getByRole('dialog').getByRole('button', { name: 'Hapus rekam medis' }).click();
+	await expect(doctor).toHaveURL(/\/medical-records$/);
+	await expect(doctor.getByText(updatedDiagnosis)).toHaveCount(0);
+	await doctor.getByRole('button', { name: /Tambah rekam medis/ }).click();
+	await expect(doctor.getByLabel('Pasien').locator('option', { hasText: newPatientName })).toHaveCount(1);
+
+	expectNoBrowserErrors(doctor);
+	expectNoBrowserErrors(nurse);
+	await nurse.close();
+	await doctor.close();
+});

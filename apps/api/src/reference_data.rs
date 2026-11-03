@@ -14,7 +14,7 @@ pub fn router() -> Router<AppState> {
         .route("/patients/{id}/context", get(context))
         .route("/staff", get(staff))
 }
-const PATIENT_SQL:&str="SELECT jsonb_build_object('id',p.id,'name',p.name,'medicalRecordNo',p.medical_record_no,'birthDate',p.birth_date,'gender',p.gender,'bpjs',p.bpjs,'bpjsNumber',p.bpjs_number) FROM patients p WHERE ($1 <> 'DOKTER' OR EXISTS(SELECT 1 FROM cycles c WHERE c.patient_id=p.id AND c.doctor_id=$2)) AND ($3='' OR p.name ILIKE '%' || $3 || '%' OR p.medical_record_no ILIKE '%' || $3 || '%') ORDER BY p.name,p.id LIMIT $4";
+const PATIENT_SQL: &str = "SELECT jsonb_build_object('id',p.id,'name',p.name,'medicalRecordNo',p.medical_record_no,'birthDate',p.birth_date,'gender',p.gender,'bpjs',p.bpjs,'bpjsNumber',p.bpjs_number) FROM patients p WHERE ($1 <> 'DOKTER' OR EXISTS(SELECT 1 FROM cycles c WHERE c.patient_id=p.id AND c.doctor_id=$2) OR EXISTS(SELECT 1 FROM medical_records m WHERE m.patient_id=p.id AND m.doctor_id=$2)) AND ($3='' OR p.name ILIKE '%' || $3 || '%' OR p.medical_record_no ILIKE '%' || $3 || '%') ORDER BY p.name,p.id LIMIT $4";
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Filter {
@@ -34,7 +34,12 @@ async fn patients(
         .bind(filter.limit.unwrap_or(50).clamp(1, 100))
         .fetch_all(&state.pool)
         .await?;
-    let total:i64=sqlx::query_scalar("SELECT count(*) FROM patients p WHERE ($1<>'DOKTER' OR EXISTS(SELECT 1 FROM cycles c WHERE c.patient_id=p.id AND c.doctor_id=$2)) AND ($3='' OR p.name ILIKE '%'||$3||'%' OR p.medical_record_no ILIKE '%'||$3||'%')").bind(&user.role).bind(&user.id).bind(filter.q.trim()).fetch_one(&state.pool).await?;
+    let total: i64 = sqlx::query_scalar("SELECT count(*) FROM patients p WHERE ($1<>'DOKTER' OR EXISTS(SELECT 1 FROM cycles c WHERE c.patient_id=p.id AND c.doctor_id=$2) OR EXISTS(SELECT 1 FROM medical_records m WHERE m.patient_id=p.id AND m.doctor_id=$2)) AND ($3='' OR p.name ILIKE '%'||$3||'%' OR p.medical_record_no ILIKE '%'||$3||'%')")
+        .bind(&user.role)
+        .bind(&user.id)
+        .bind(filter.q.trim())
+        .fetch_one(&state.pool)
+        .await?;
     Ok(Json(json!({"items":items,"total":total})))
 }
 async fn staff(State(state): State<AppState>, _user: AuthUser) -> AppResult<Json<Value>> {

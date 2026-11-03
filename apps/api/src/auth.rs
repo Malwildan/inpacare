@@ -24,6 +24,9 @@ use std::{
 };
 
 const SESSION_LIFETIME: Duration = Duration::days(30);
+const MAX_LOGIN_ATTEMPTS: u32 = 10;
+const MAX_TRACKED_USERS: usize = 1000;
+const LOGIN_WINDOW: StdDuration = StdDuration::from_secs(900);
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,14 +65,22 @@ impl AuthUser {
 }
 pub fn cookie(headers: &HeaderMap, name: &str) -> Option<String> {
     headers
-        .get(header::COOKIE)?
-        .to_str()
-        .ok()?
-        .split(';')
+        .get_all(header::COOKIE)
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .flat_map(|v| v.split(';'))
         .find_map(|c| {
             let (key, value) = c.trim().split_once('=')?;
             (key == name).then(|| value.to_string())
         })
+}
+fn header_first<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+    headers
+        .get(name)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.split(',').next())
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
 }
 fn digest(token: &str) -> String {
     hex::encode(Sha256::digest(token.as_bytes()))
@@ -87,10 +98,8 @@ fn check_origin(headers: &HeaderMap) -> AppResult<()> {
     let uri = origin
         .parse::<axum::http::Uri>()
         .map_err(|_| AppError::forbidden())?;
-    let host = headers
-        .get("x-forwarded-host")
-        .or_else(|| headers.get(header::HOST))
-        .and_then(|v| v.to_str().ok())
+    let host = header_first(headers, "x-forwarded-host")
+        .or_else(|| header_first(headers, header::HOST.as_str()))
         .ok_or_else(AppError::forbidden)?;
     if uri.authority().map(|a| a.as_str()) != Some(host)
         || !matches!(uri.scheme_str(), Some("http" | "https"))
@@ -147,6 +156,29 @@ struct Login {
 }
 type Attempts = HashMap<String, (u32, Instant)>;
 static ATTEMPTS: OnceLock<Mutex<Attempts>> = OnceLock::new();
+
+fn is_rate_limited(attempts: &mut Attempts, username: &str) -> bool {
+    attempts.retain(|_, (_, time)| time.elapsed() < LOGIN_WINDOW);
+    attempts
+        .get(username)
+        .is_some_and(|(count, _)| *count >= MAX_LOGIN_ATTEMPTS)
+}
+
+fn record_failed_attempt(attempts: &mut Attempts, username: String) {
+    attempts.retain(|_, (_, time)| time.elapsed() < LOGIN_WINDOW);
+    if !attempts.contains_key(&username) && attempts.len() >= MAX_TRACKED_USERS {
+        if let Some(oldest_key) = attempts
+            .iter()
+            .min_by_key(|(_, (_, time))| *time)
+            .map(|(k, _)| k.clone())
+        {
+            attempts.remove(&oldest_key);
+        }
+    }
+    let entry = attempts.entry(username).or_insert((0, Instant::now()));
+    entry.0 += 1;
+}
+
 async fn login(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -161,12 +193,7 @@ async fn login(
             .get_or_init(|| Mutex::new(HashMap::new()))
             .lock()
             .map_err(|_| AppError::internal())?;
-        attempts.retain(|_, (_, time)| time.elapsed() < StdDuration::from_secs(900));
-        if attempts
-            .get(&username)
-            .is_some_and(|(count, _)| *count >= 10)
-            || attempts.len() > 1000
-        {
+        if is_rate_limited(&mut attempts, &username) {
             return Err(AppError {
                 status: StatusCode::TOO_MANY_REQUESTS,
                 code: "RATE_LIMITED",
@@ -187,13 +214,15 @@ async fn login(
             .get_or_init(|| Mutex::new(HashMap::new()))
             .lock()
             .map_err(|_| AppError::internal())?;
-        let entry = attempts.entry(username).or_insert((0, Instant::now()));
-        entry.0 += 1;
+        record_failed_attempt(&mut attempts, username);
         return Err(AppError {
             status: StatusCode::UNAUTHORIZED,
             code: "INVALID_CREDENTIALS",
             message: "ID petugas atau kata sandi tidak sesuai.".into(),
         });
+    }
+    if let Ok(mut attempts) = ATTEMPTS.get_or_init(|| Mutex::new(HashMap::new())).lock() {
+        attempts.remove(&username);
     }
     let row = row.unwrap();
     let raw = token();
@@ -221,10 +250,7 @@ async fn login(
     .execute(&mut *tx)
     .await?;
     tx.commit().await?;
-    let secure = headers
-        .get("x-forwarded-proto")
-        .and_then(|v| v.to_str().ok())
-        == Some("https");
+    let secure = header_first(&headers, "x-forwarded-proto") == Some("https");
     let suffix = if secure { "; Secure" } else { "" };
     let max_age = SESSION_LIFETIME.num_seconds();
     let mut response = Json(json!({"user":user})).into_response();
@@ -255,12 +281,62 @@ async fn logout(
             .execute(&state.pool)
             .await?;
     }
+    let secure = header_first(&headers, "x-forwarded-proto") == Some("https");
+    let suffix = if secure { "; Secure" } else { "" };
     let mut response = StatusCode::NO_CONTENT.into_response();
-    for name in ["session", "csrf_token"] {
+    for (name, http_only) in [("session", "; HttpOnly"), ("csrf_token", "")] {
         response.headers_mut().append(
             header::SET_COOKIE,
-            HeaderValue::from_str(&format!("{name}=; Path=/; SameSite=Lax; Max-Age=0")).unwrap(),
+            HeaderValue::from_str(&format!(
+                "{name}=; Path=/{http_only}; SameSite=Lax; Max-Age=0{suffix}"
+            ))
+            .unwrap(),
         );
     }
     Ok(response)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rate_limiter_scopes_lockout_per_user_and_evicts_oldest_without_global_dos() {
+        let mut attempts = Attempts::new();
+        for i in 0..(MAX_TRACKED_USERS + 50) {
+            record_failed_attempt(&mut attempts, format!("unknown-{i}"));
+        }
+        assert_eq!(attempts.len(), MAX_TRACKED_USERS);
+        assert!(!is_rate_limited(&mut attempts, "hendra"));
+
+        for _ in 0..MAX_LOGIN_ATTEMPTS {
+            record_failed_attempt(&mut attempts, "hendra".into());
+        }
+        assert!(is_rate_limited(&mut attempts, "hendra"));
+        assert!(!is_rate_limited(&mut attempts, "dina"));
+        attempts.remove("hendra");
+        assert!(!is_rate_limited(&mut attempts, "hendra"));
+    }
+
+    #[test]
+    fn cookie_and_origin_handle_multiple_headers_and_forwarded_chains() {
+        let mut headers = HeaderMap::new();
+        headers.append(header::COOKIE, HeaderValue::from_static("other=1"));
+        headers.append(
+            header::COOKIE,
+            HeaderValue::from_static("session=abc; csrf_token=xyz"),
+        );
+        assert_eq!(cookie(&headers, "session").as_deref(), Some("abc"));
+        assert_eq!(cookie(&headers, "csrf_token").as_deref(), Some("xyz"));
+
+        headers.insert(
+            header::ORIGIN,
+            HeaderValue::from_static("https://demo.example.com"),
+        );
+        headers.insert(
+            "x-forwarded-host",
+            HeaderValue::from_static("demo.example.com, internal-proxy:3000"),
+        );
+        assert!(check_origin(&headers).is_ok());
+    }
 }

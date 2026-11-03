@@ -63,9 +63,6 @@
               }
             }
           },
-          "429": {
-            "description": "Login throttled."
-          },
           "401": {
             "description": "Invalid credentials.",
             "content": {
@@ -95,6 +92,9 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Login throttled."
           },
           "500": {
             "description": "Unexpected error.",
@@ -1322,6 +1322,16 @@
           }
         ],
         "responses": {
+          "201": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlacementResult"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Unauthenticated.",
             "content": {
@@ -1378,16 +1388,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "201": {
-            "description": "Success.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlacementResult"
                 }
               }
             }
@@ -2637,6 +2637,119 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateMedicalRecord"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DELETE_medical_records_id",
+        "summary": "Logically delete authored record",
+        "tags": [
+          "Medical records"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deleted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "DOKTER"
+        ],
+        "description": "Authoring doctor only; requires expectedVersion.",
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteMedicalRecord"
               }
             }
           }
@@ -4731,6 +4844,10 @@
           "medicalRecordNo": {
             "type": "string"
           },
+          "doctorId": {
+            "type": "string",
+            "maxLength": 36
+          },
           "doctorName": {
             "type": "string"
           },
@@ -4763,6 +4880,7 @@
           "patientId",
           "patientName",
           "medicalRecordNo",
+          "doctorId",
           "doctorName",
           "recordDate",
           "diagnosis",
@@ -5596,8 +5714,14 @@
         "type": "object",
         "properties": {
           "patientId": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "maxLength": 36
+          },
+          "newPatient": {
+            "$ref": "#/components/schemas/NewPatientInput"
           },
           "complaint": {
             "type": "string"
@@ -5617,7 +5741,6 @@
           }
         },
         "required": [
-          "patientId",
           "complaint",
           "diagnosis",
           "treatment",
@@ -5657,6 +5780,18 @@
         ],
         "additionalProperties": false
       },
+      "DeleteMedicalRecord": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
       "NewObservation": {
         "type": "object",
         "properties": {
@@ -5664,7 +5799,10 @@
             "type": "string"
           },
           "nursingNote": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "observedAt": {
             "type": "string",
@@ -5677,16 +5815,28 @@
             ]
           },
           "systolic": {
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "diastolic": {
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "pulse": {
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "respiratoryRate": {
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "spo2": {
             "type": [
@@ -6368,6 +6518,49 @@
           "version",
           "createdAt",
           "requests"
+        ],
+        "additionalProperties": false
+      },
+      "NewPatientInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "medicalRecordNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 40
+          },
+          "birthDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "L",
+              "P"
+            ]
+          },
+          "bpjs": {
+            "type": "boolean"
+          },
+          "bpjsNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 30
+          }
+        },
+        "required": [
+          "name",
+          "birthDate",
+          "gender"
         ],
         "additionalProperties": false
       }

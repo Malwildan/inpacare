@@ -1,6 +1,9 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 const proxy: RequestHandler = async ({ request, url, params }) => {
+ if (!params.path || params.path.split('/').includes('..')) {
+  return Response.json({ error: { code: 'INVALID_REQUEST', message: 'Jalur permintaan tidak valid.' } }, { status: 400 });
+ }
  const headers = new Headers(request.headers);
  headers.delete('host'); headers.delete('connection'); headers.delete('content-length');
  headers.set('x-forwarded-host', url.host); headers.set('x-forwarded-proto', url.protocol.slice(0,-1));

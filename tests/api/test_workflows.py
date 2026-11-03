@@ -257,8 +257,61 @@ class Workflows(unittest.TestCase):
         updated = {**update, "diagnosis": "Diagnosis sintetik diperbarui"}
         status, edited = self.hendra.request("PATCH", f"/medical-records/{record['id']}", updated)
         self.assertEqual(status, 200, edited)
+        self.assertEqual(edited["version"], 2)
         self.assert_error(self.hendra.request("PATCH", f"/medical-records/{record['id']}", updated), 409, "CONFLICT")
         self.assert_error(self.admisi.request("GET", f"/medical-records/{record['id']}"), 403, "FORBIDDEN")
+        self.assert_error(self.dina.request("POST", "/medical-records", create), 403, "FORBIDDEN")
+        self.assert_error(self.dina.request("PATCH", f"/medical-records/{record['id']}", {**updated, "expectedVersion": 2}), 403, "FORBIDDEN")
+        self.assert_error(self.hendra.request("POST", f"/medical-records/{record['id']}/observations", observation), 403, "FORBIDDEN")
+        self.assert_error(self.hendra.request("GET", "/medical-records/MR-002"), 404, "NOT_FOUND")
+        self.assertEqual(self.dina.request("GET", "/medical-records/MR-002")[0], 200)
+
+        list_status, limited = self.hendra.request("GET", "/medical-records?limit=2")
+        self.assertEqual(list_status, 200, limited)
+        self.assertEqual(len(limited["items"]), 2)
+        self.assertGreater(limited["total"], 2)
+        self.assertIn("doctorId", limited["items"][0])
+
+        self.assert_error(self.dina.request("DELETE", f"/medical-records/{record['id']}", {"expectedVersion": 2}), 403, "FORBIDDEN")
+        self.assert_error(self.users["maya"].request("DELETE", f"/medical-records/{record['id']}", {"expectedVersion": 2}), 403, "FORBIDDEN")
+        self.assert_error(self.hendra.request("DELETE", f"/medical-records/{record['id']}", {"expectedVersion": 1}), 409, "CONFLICT")
+        del_status, deleted = self.hendra.request("DELETE", f"/medical-records/{record['id']}", {"expectedVersion": 2})
+        self.assertEqual(del_status, 200, deleted)
+        self.assertTrue(deleted["deleted"])
+        self.assert_error(self.hendra.request("GET", f"/medical-records/{record['id']}"), 404, "NOT_FOUND")
+        self.assert_error(self.dina.request("GET", f"/medical-records/{record['id']}"), 404, "NOT_FOUND")
+        self.assert_error(self.dina.request("POST", f"/medical-records/{record['id']}/observations", observation), 404, "NOT_FOUND")
+
+        base_fields = {
+            "complaint": f"Keluhan pasien baru {self.tag}", "diagnosis": "Observasi awal pasien baru",
+            "treatment": " Terapi cairan sintetis ", "notes": "Pasien baru dari form rekam medis",
+            "recordDate": date.today().isoformat(),
+        }
+        new_patient_payload = {
+            "name": f"Pasien Baru {self.tag}", "birthDate": "1994-06-15",
+            "gender": "P", "bpjs": True, "bpjsNumber": "0001234599001",
+        }
+        self.assert_error(self.hendra.request("POST", "/medical-records", base_fields), 422, "VALIDATION_FAILED")
+        self.assert_error(self.hendra.request("POST", "/medical-records", {
+            **base_fields, "patientId": "PT-001", "newPatient": new_patient_payload,
+        }), 422, "VALIDATION_FAILED")
+        np_status, np_record = self.hendra.request("POST", "/medical-records", {
+            **base_fields, "newPatient": new_patient_payload,
+        })
+        self.assertIn(np_status, (200, 201), np_record)
+        self.assertTrue(np_record["medicalRecordNo"].startswith("RM-"), np_record)
+        self.assertEqual(np_record["patientName"], f"Pasien Baru {self.tag}")
+        self.assertEqual(self.hendra.request("GET", f"/patients?q={self.tag}")[1]["total"], 1)
+        self.assertEqual(self.hendra.request("GET", f"/patients/{np_record['patientId']}/context")[0], 200)
+        self.assert_error(self.users["maya"].request("GET", f"/patients/{np_record['patientId']}/context"), 404, "NOT_FOUND")
+        self.assert_error(self.users["maya"].request("GET", f"/medical-records/{np_record['id']}"), 404, "NOT_FOUND")
+        self.assertEqual(self.dina.request("GET", f"/medical-records/{np_record['id']}")[0], 200)
+        self.assert_error(self.hendra.request("POST", "/medical-records", {
+            **base_fields,
+            "newPatient": {**new_patient_payload, "medicalRecordNo": np_record["medicalRecordNo"]},
+        }), 409, "CONFLICT")
+        self.assertEqual(self.hendra.request("DELETE", f"/medical-records/{np_record['id']}", {"expectedVersion": 1})[0], 200)
+        self.assertEqual(self.hendra.request("GET", f"/patients?q={self.tag}")[1]["total"], 1)
 
     def test_room_item_cost_is_computed_from_server_prices(self) -> None:
         name = f"QA-{self.tag}"
