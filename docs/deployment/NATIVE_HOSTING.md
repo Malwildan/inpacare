@@ -23,7 +23,7 @@ To create synthetic demo accounts, seed only when the database is empty and prov
 SEED_DEMO_PASSWORD='choose-a-demo-only-password' bash scripts/native-host.sh seed-demo
 ```
 
-Set `TRUSTED_ORIGINS` in `.data/native.env` to each exact browser origin you use, including host/IP and port. All mutating requests, including login, require a trusted origin. Then install services:
+All mutating requests, including login, require an Origin that matches the request's external scheme, host and port, or an exact entry in `TRUSTED_ORIGINS` in `.data/native.env`. The same-origin native frontend and public tunnel work without adding their addresses to that list. Set `TRUSTED_ORIGINS` for any separately hosted frontend. The API trusts forwarded host and protocol only from `TRUST_PROXY` (loopback by default); keep it behind the frontend proxy, which overwrites those headers. Then install services:
 
 ```sh
 bash scripts/native-host.sh install

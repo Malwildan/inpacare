@@ -45,7 +45,13 @@ export function trustedOrigins(): string[] {
   return values;
 }
 export function checkOrigin(req: Request) {
-  if (!req.headers.origin || !trustedOrigins().includes(req.headers.origin))
+  // Express resolves these through TRUST_PROXY; host retains non-default ports.
+  const requestOrigin = `${req.protocol}://${req.host}`;
+  if (
+    !req.headers.origin ||
+    (!trustedOrigins().includes(req.headers.origin) &&
+      req.headers.origin !== requestOrigin)
+  )
     throw DomainError.forbidden();
 }
 export function equalToken(a: string, b: string): boolean {

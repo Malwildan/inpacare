@@ -29,16 +29,31 @@ test("login attempts throttle one source without locking other users or sources"
   assert.doesNotThrow(() => limiter.consume("attacker", "rina", 900_001));
 });
 
-test("CSRF trusts exact configured HTTP origins and ignores forwarded host", () => {
+test("CSRF trusts configured or proxy-resolved request origins only", () => {
   const prior = process.env.TRUSTED_ORIGINS;
   try {
     process.env.TRUSTED_ORIGINS = "https://care.example";
     assert.doesNotThrow(() =>
       checkOrigin({ headers: { origin: "https://care.example" } }),
     );
+    process.env.TRUSTED_ORIGINS = "http://127.0.0.1:8088";
+    assert.doesNotThrow(() =>
+      checkOrigin({
+        protocol: "https",
+        host: "care.ngrok-free.dev",
+        headers: {
+          origin: "https://care.ngrok-free.dev",
+          "x-forwarded-host": "care.ngrok-free.dev",
+          "x-forwarded-proto": "https",
+        },
+      }),
+    );
+    process.env.TRUSTED_ORIGINS = "https://care.example";
     assert.throws(
       () =>
         checkOrigin({
+          protocol: "https",
+          host: "care.example",
           headers: {
             origin: "https://evil.example",
             "x-forwarded-host": "evil.example",
@@ -62,6 +77,46 @@ test("CSRF trusts exact configured HTTP origins and ignores forwarded host", () 
     if (prior === undefined) delete process.env.TRUSTED_ORIGINS;
     else process.env.TRUSTED_ORIGINS = prior;
   }
+});
+
+test("origin checks use Express proxy trust and preserve scheme and port", async (t) => {
+  const express = require("express");
+  const app = express();
+  app.set("trust proxy", "loopback");
+  app.post("/session", (req, res) => {
+    try {
+      checkOrigin(req);
+      res.sendStatus(204);
+    } catch (error) {
+      res.status(403).json({ error: { code: error.code, message: error.message } });
+    }
+  });
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise((resolve) => server.once("listening", resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}/session`;
+  for (const host of ["care.ngrok-free.dev", "care.example:8443"]) {
+    const headers = {
+      "x-forwarded-host": host,
+      "x-forwarded-proto": "https",
+      origin: `https://${host}`,
+    };
+    assert.equal((await fetch(url, { method: "POST", headers })).status, 204);
+    for (const origin of ["https://evil.example", `http://${host}`, `https://${host}:9443`, "null", ""]) {
+      const response = await fetch(url, { method: "POST", headers: { ...headers, origin } });
+      assert.equal(response.status, 403, origin);
+      assert.equal((await response.json()).error.code, "FORBIDDEN");
+    }
+  }
+  app.set("trust proxy", false);
+  assert.equal((await fetch(url, {
+    method: "POST",
+    headers: {
+      origin: "https://evil.example",
+      "x-forwarded-host": "evil.example",
+      "x-forwarded-proto": "https",
+    },
+  })).status, 403);
 });
 
 test("session guard delegates lookup to auth use cases and enforces role and CSRF", async () => {
