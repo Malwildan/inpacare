@@ -5,6 +5,7 @@ import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
 import { money as rupiah } from '$lib/shared/format';
 import { Plus } from 'lucide-svelte';
+import Modal from '$lib/shared/ui/Modal.svelte';
 let { data, billing }: {
     data: BillingPageData;
     billing: Billing;
@@ -24,6 +25,8 @@ let editingInvoice = $state(false);
 let editLines = $state<InvoiceLine[]>([]);
 let editCovered = $state('0');
 let editReason = $state('');
+let deletingInvoice = $state<SelectedInvoice | null>(null);
+let deleteReason = $state('');
 let editTotal = $derived(editLines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0), 0));
 let patient = $derived(data.reference.patients.find((item) => item.id === patientId));
 let total = $derived(lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0), 0));
@@ -64,7 +67,9 @@ async function create(event: SubmitEvent) {
 async function openInvoice(id: string) {
     error = '';
     try {
-        selected = await billing.openInvoice(id);
+        const invoice = await billing.openInvoice(id);
+        editingInvoice = false;
+        selected = invoice;
     }
     catch (cause) {
         error = sessionFailure(cause);
@@ -76,6 +81,7 @@ function startInvoiceEdit() {
     editCovered = selected.coveredAmount;
     editReason = '';
     editingInvoice = true;
+    error = '';
 }
 async function saveInvoiceEdit(event: SubmitEvent) {
     event.preventDefault();
@@ -83,7 +89,7 @@ async function saveInvoiceEdit(event: SubmitEvent) {
     const id = selected.id;
     const result = await send(() => billing.changePayment(id, {
         lines: editLines.map(({ roomItemId, kind, description, quantity, unitPrice }) => ({ roomItemId, kind, description, quantity: Number(quantity), unitPrice: String(unitPrice) })),
-        coveredAmount: editCovered, reason: editReason, expectedVersion: selected!.version
+        coveredAmount: String(editCovered), reason: editReason, expectedVersion: selected!.version
     }));
     if (result) { editingInvoice = false; await openInvoice(id); }
 }
@@ -106,9 +112,23 @@ async function deleteLine(line: InvoiceLine) { if (!selected)
     await openInvoice(id); }
 async function verifyClaim(event: SubmitEvent, invoice: Pick<Invoice, 'id' | 'version'>) { event.preventDefault(); const f = new FormData(event.currentTarget as HTMLFormElement); if (await send(() => billing.verifyClaim(invoice.id, { result: formText(f, 'result'), verified: formText(f, 'verified') === 'true', reason: formText(f, 'reason'), expectedVersion: invoice.version })))
     await openInvoice(invoice.id); }
-async function deleteInvoice(invoice: Pick<Invoice, 'id' | 'version'>) { const reason = prompt('Alasan penghapusan tagihan:'); if (!reason?.trim() || !confirm('Hapus tagihan belum dibayar ini?'))
-    return; if (await send(() => billing.remove(invoice.id, { expectedVersion: invoice.version, reason })))
-    selected = null; }
+function startInvoiceDelete() {
+    if (!selected) return;
+    deletingInvoice = selected;
+    deleteReason = '';
+    error = '';
+}
+async function deleteInvoice(event: SubmitEvent) {
+    event.preventDefault();
+    const invoice = deletingInvoice;
+    if (!invoice) return;
+    if (await send(() => billing.remove(invoice.id, { expectedVersion: invoice.version, reason: deleteReason }))) {
+        deletingInvoice = null;
+        if (selected?.id === invoice.id) selected = null;
+        editingInvoice = false;
+        success = 'Tagihan berhasil dihapus. Riwayat penghapusan tetap tercatat.';
+    }
+}
 async function choosePatient(value: string) {
     patientId = value;
     creationContext = null;
@@ -154,10 +174,24 @@ async function choosePatient(value: string) {
 		<div class="panel-header"><div><h2>Rincian tagihan · {selected.patientName}</h2><span class="muted">{selected.id} · {selected.medicalRecordNo}</span></div><button class="button secondary small" onclick={() => selected=null}>Tutup</button></div>
 		<div class="patient-card"><strong>{selected.patientContext.patient.name}</strong><span>Status BPJS pasien: {selected.patientContext.patient.bpjs ? 'Terdaftar' : 'Tidak terdaftar'}</span><span>Riwayat tagihan pasien: {selected.patientContext.invoices.length}</span></div>
 		<div class="table-wrap"><table class="data-table"><thead><tr><th>Layanan</th><th>Qty</th><th>Harga satuan</th><th>Subtotal</th></tr></thead><tbody>{#each selected.lines as line}<tr><td>{line.description}</td><td>{line.quantity}</td><td>{rupiah(line.unitPrice)}</td><td>{rupiah(line.lineTotal)}</td></tr>{/each}</tbody></table></div>
-		{#if data.user.role==='ADMISI'}<div class="invoice-line-editors"><div class="line-heading"><h3>Rincian dan jaminan</h3><button class="button secondary small" disabled={busy||selected.status==='paid'} onclick={startInvoiceEdit}>Ubah tagihan</button></div>{#if editingInvoice}<form onsubmit={saveInvoiceEdit}><div class="line-heading"><h3>Edit rincian</h3><button class="button small" type="button" disabled={editLines.length>=30} onclick={()=>editLines=[...editLines,{id:'',description:'',quantity:1,unitPrice:'0',lineTotal:'0',roomItemId:null,kind:'service'}]}>Tambah baris</button></div>{#each editLines as line,index (index)}<div class="line-editor"><label class="field">Jenis<input bind:value={line.kind} maxlength="40"/></label><label class="field">Item ruangan<select bind:value={line.roomItemId}><option value={null}>Layanan tanpa item ruangan</option>{#each data.rooms as room}{#each room.items as roomItem}<option value={roomItem.id}>{room.name} · {roomItem.name}</option>{/each}{/each}</select></label><label class="field">Deskripsi<input bind:value={line.description} required maxlength="160"/></label><label class="field">Jumlah<input bind:value={line.quantity} type="number" min="1" max="10000" required/></label><label class="field">Harga satuan<input bind:value={line.unitPrice} type="number" min="0" step="0.01" required/></label><button class="remove-line" type="button" aria-label="Hapus rincian" disabled={editLines.length<=1} onclick={()=>editLines=editLines.filter((_,i)=>i!==index)}>Hapus</button></div>{/each}<label class="field">Jumlah jaminan BPJS (Rp)<input bind:value={editCovered} type="number" min="0" step="0.01" disabled={!selected.bpjsSnapshot} required/></label><label class="field">Alasan perubahan<input bind:value={editReason} required maxlength="500"/></label><div class="detail-totals"><span>Total layanan: {rupiah(editTotal)}</span><strong>Dibayar pasien: {rupiah(Math.max(0,editTotal-Number(editCovered)))}</strong></div><div class="form-actions"><button class="button primary" disabled={busy}>Simpan perubahan</button><button class="button secondary" type="button" onclick={()=>editingInvoice=false}>Batal</button></div></form>{/if}</div><div class="invoice-management"><p>Status verifikasi klaim: <strong>{selected.claimResult??'Belum ada hasil verifikasi'}</strong></p><div class="row-actions"><form class="form-grid" onsubmit={(event)=>selected&&verifyClaim(event,selected)}><label class="field">Hasil verifikasi klaim<input name="result" value={selected.claimResult??''} required maxlength="120" list="claim-results"/><datalist id="claim-results"><option value="Disetujui"></option><option value="Ditolak"></option><option value="Perlu perbaikan berkas"></option></datalist></label><label class="field">Keputusan klaim<select name="verified" value={String(selected.claimVerified)}><option value="false">Belum disetujui</option><option value="true">Disetujui</option></select></label><label class="field">Alasan verifikasi<input name="reason" required maxlength="500"/></label><button class="button secondary small" disabled={busy||!selected.bpjsSnapshot}>Simpan verifikasi klaim</button></form><button class="button danger small" disabled={busy||selected.status==='paid'} onclick={()=>{if(selected)void deleteInvoice(selected);}}>Hapus tagihan</button></div></div>{/if}
+		{#if data.user.role==='ADMISI'}<div class="invoice-line-editors"><div class="line-heading"><h3>Rincian dan jaminan</h3><button class="button secondary small" disabled={busy||selected.status==='paid'} onclick={startInvoiceEdit}>Ubah tagihan</button></div>{#if editingInvoice}<form onsubmit={saveInvoiceEdit}><div class="line-heading"><h3>Edit rincian</h3><button class="button small" type="button" disabled={editLines.length>=30} onclick={()=>editLines=[...editLines,{id:'',description:'',quantity:1,unitPrice:'0',lineTotal:'0',roomItemId:null,kind:'service'}]}>Tambah baris</button></div>{#each editLines as line,index (index)}<div class="line-editor"><label class="field">Jenis<input bind:value={line.kind} maxlength="40"/></label><label class="field">Item ruangan<select bind:value={line.roomItemId}><option value={null}>Layanan tanpa item ruangan</option>{#each data.rooms as room}{#each room.items as roomItem}<option value={roomItem.id}>{room.name} · {roomItem.name}</option>{/each}{/each}</select></label><label class="field">Deskripsi<input bind:value={line.description} required maxlength="160"/></label><label class="field">Jumlah<input bind:value={line.quantity} type="number" min="1" max="10000" required/></label><label class="field">Harga satuan<input bind:value={line.unitPrice} type="number" min="0" step="0.01" required/></label><button class="remove-line" type="button" aria-label="Hapus rincian" disabled={editLines.length<=1} onclick={()=>editLines=editLines.filter((_,i)=>i!==index)}>Hapus</button></div>{/each}<label class="field">Jumlah jaminan BPJS (Rp)<input bind:value={editCovered} type="number" min="0" step="0.01" disabled={!selected.bpjsSnapshot} required/></label><label class="field">Alasan perubahan<input bind:value={editReason} required maxlength="500"/></label><div class="detail-totals"><span>Total layanan: {rupiah(editTotal)}</span><strong>Dibayar pasien: {rupiah(Math.max(0,editTotal-Number(editCovered)))}</strong></div><div class="form-actions"><button class="button primary" disabled={busy}>Simpan perubahan</button><button class="button secondary" type="button" onclick={()=>editingInvoice=false}>Batal</button></div></form>{:else}{#each selected.lines as line (line.id)}<form class="line-editor" onsubmit={(event)=>editLine(event,line)}><label class="field">Jenis<input name="kind" value={line.kind??''} placeholder="layanan / item"/></label><label class="field">Item ruangan<select name="roomItemId" value={line.roomItemId??''}><option value="">Layanan tanpa item ruangan</option>{#each data.rooms as room}{#each room.items as roomItem}<option value={roomItem.id}>{room.name} · {roomItem.name}</option>{/each}{/each}</select></label><label class="field">Deskripsi<input name="description" value={line.description} required maxlength="160"/></label><label class="field">Jumlah<input name="quantity" type="number" min="1" value={line.quantity} required/></label><label class="field">Harga satuan<input name="unitPrice" type="number" min="0" step="0.01" value={line.unitPrice} required/></label><label class="field">Alasan<input name="reason" required maxlength="500"/></label><div class="row-actions"><button class="button primary small" disabled={busy}>Simpan</button><button class="button danger small" type="button" disabled={busy||selected.status==='paid'} onclick={()=>void deleteLine(line)}>Hapus</button></div></form>{/each}{/if}</div><div class="invoice-management"><p>Status verifikasi klaim: <strong>{selected.claimResult??'Belum ada hasil verifikasi'}</strong></p><div class="row-actions"><form class="form-grid" onsubmit={(event)=>selected&&verifyClaim(event,selected)}><label class="field">Hasil verifikasi klaim<input name="result" value={selected.claimResult??''} required maxlength="120" list="claim-results"/><datalist id="claim-results"><option value="Disetujui"></option><option value="Ditolak"></option><option value="Perlu perbaikan berkas"></option></datalist></label><label class="field">Keputusan klaim<select name="verified" value={String(selected.claimVerified)}><option value="false">Belum disetujui</option><option value="true">Disetujui</option></select></label><label class="field">Alasan verifikasi<input name="reason" required maxlength="500"/></label><button class="button secondary small" disabled={busy||!selected.bpjsSnapshot}>Simpan verifikasi klaim</button></form><button class="button danger small" disabled={busy||selected.status==='paid'} onclick={startInvoiceDelete}>Hapus tagihan</button></div></div>{/if}
 		<div class="detail-totals"><span>Jaminan BPJS ({selected.bpjsSnapshot ? 'ya' : 'tidak'}): {rupiah(selected.coveredAmount)}</span><strong>Total: {rupiah(selected.totalAmount)} · Dibayar pasien: {rupiah(selected.payableAmount)}</strong></div>
 		<h3>Riwayat perubahan</h3>{#if selected.history.length}<ul class="history-list">{#each selected.history as item}<li><strong>{({created:'Tagihan dibuat',status_changed:'Status pembayaran diubah',updated:'Tagihan dan jaminan diperbarui',line_updated:'Rincian diperbarui',line_deleted:'Rincian dihapus',claim_verification:'Klaim diverifikasi',deleted:'Tagihan dihapus'} as Record<string,string>)[item.action] ?? item.action} · {item.actor}</strong><span>{item.reason} · {new Date(item.createdAt).toLocaleString('id-ID')}</span></li>{/each}</ul>{:else}<p class="muted">Belum ada riwayat.</p>{/if}
 	</section>
+{/if}
+
+{#if deletingInvoice}
+    <Modal title="Hapus tagihan?" onclose={() => { if (!busy) deletingInvoice = null; }}>
+        <form onsubmit={deleteInvoice}>
+            <p>Tagihan <strong>{deletingInvoice.id}</strong> atas nama <strong>{deletingInvoice.patientName}</strong> akan dihapus dari daftar. Riwayat penghapusan tetap tersimpan.</p>
+            {#if error}<p class="error" role="alert">{error}</p>{/if}
+            <label class="field">Alasan penghapusan<input bind:value={deleteReason} maxlength="500" required /></label>
+            <div class="form-actions">
+                <button class="button danger" disabled={busy}>Ya, hapus</button>
+                <button class="button secondary" type="button" disabled={busy} onclick={() => deletingInvoice = null}>Batal</button>
+            </div>
+        </form>
+    </Modal>
 {/if}
 
 <section class="stats" aria-label="Ringkasan pembayaran"><div class="stat"><strong>{data.invoices.length}</strong><span>Total tagihan</span></div><div class="stat"><strong>{data.invoices.filter((item) => item.status === 'unpaid').length}</strong><span>Belum dibayar</span></div><div class="stat"><strong>{data.invoices.filter((item) => item.status === 'paid').length}</strong><span>Lunas</span></div><div class="stat"><strong>{rupiah(data.invoices.reduce((sum: number,item) => sum + Number(item.payableAmount),0))}</strong><span>Total dibayar pasien</span></div></section>

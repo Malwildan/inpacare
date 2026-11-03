@@ -164,12 +164,10 @@ export class TagihanUseCases {
         throw DomainError.validation("Tagihan sudah memiliki status tersebut.");
       if (editingMoney && row.status === "paid")
         throw DomainError.conflict("Tagihan lunas tidak dapat mengubah rincian keuangan.");
-      if (editingMoney && input.status === "paid")
-        throw DomainError.conflict("Perubahan keuangan harus disimpan sebelum melunasi tagihan.");
       const oldLines = editingMoney ? await tx.billing.invoiceLines(invoiceId) : [];
       const lines = input.lines?.map((line, index) => ({
         ...line,
-        roomItemId: line.roomItemId ?? oldLines[index]?.room_item_id ?? null,
+        roomItemId: line.roomItemId === undefined ? oldLines[index]?.room_item_id ?? null : line.roomItemId,
         kind: line.kind ?? oldLines[index]?.kind ?? "service",
       }));
       const calculated = lines ? calculateInvoiceLines(lines, id) : undefined;
