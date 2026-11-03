@@ -10,7 +10,7 @@ InpaCare implements an educational inpatient-care workflow with synthetic data. 
 - Nursing: task creation, delegation, progress, notes, reassignment, reason-required cancellation/logical deletion, and atomic history. Former PIC access is removed after reassignment.
 - Clinical: assigned-doctor records with versioned edits and nursing observations/vitals. Admissions staff cannot read clinical text.
 - Care cycles: scoped recaps, active-placement progression, durable extension/release requests, assigned-doctor decisions, history, and notifications.
-- Billing: admissions-only invoices, decimal-string totals, recorded insurance coverage, payment status, and versioned history. No payment or insurance-service transaction is performed.
+- Billing: admissions-only invoices, decimal-string totals, recorded insurance coverage, payment status, invoice-line/coverage editing, soft delete with reason, and versioned history. No payment or insurance-service transaction is performed.
 
 Demo defaults and unresolved source decisions are recorded in [implementation rules](development/BUILD_CONTRACT.md) and [planning](planning/REQUIREMENTS_AND_DECISIONS.md).
 
@@ -26,7 +26,7 @@ The retained [synthetic read smoke](validation/performance-smoke.json) covers 60
 - Monthly calendar, placement rescheduling/cancellation, and associated task/cycle effects.
 - Attach or replace placements after creating a pending recap.
 - Account administration and recovery, retention/deletion rules, and idempotent create requests.
-- Invoice-line editing, full claim workflows, and separately specified external integrations.
+- Full claim workflows and separately specified external integrations.
 - Sustained load testing, backup restoration exercises, and operational deployment controls.
 
 Use [feature requests](https://github.com/Malwildan/inpacare/issues/new/choose) to discuss scope and acceptance criteria before implementing changes to domain rules.

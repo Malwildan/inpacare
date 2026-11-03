@@ -462,10 +462,17 @@ export interface paths {
         get: operations["GET_invoices_id"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Soft delete invoice
+         * @description ADMISI only. expectedVersion and reason required. The invoice is hidden, not removed; a history record with the reason is kept.
+         */
+        delete: operations["DELETE_invoices_id"];
         options?: never;
         head?: never;
-        /** Update payment status */
+        /**
+         * Update invoice (status, lines, coverage)
+         * @description ADMISI only. Send any of status, lines (replaces all lines) or coveredAmount, plus reason and expectedVersion. Totals are recomputed server-side; history is written atomically.
+         */
         patch: operations["PATCH_invoices_id"];
         trace?: never;
     };
@@ -922,7 +929,10 @@ export interface components {
             lines: components["schemas"]["NewInvoiceLine"][];
         };
         ChangePayment: {
-            status: string;
+            status?: string;
+            /** @description Decimal string */
+            coveredAmount?: string;
+            lines?: components["schemas"]["NewInvoiceLine"][];
             reason: string;
             expectedVersion: number;
         };
@@ -1012,6 +1022,7 @@ export interface components {
             coveredAmount: string;
             /** @description Decimal string */
             payableAmount: string;
+            lines?: components["schemas"]["InvoiceLine"][];
         };
         Deleted: {
             deleted: boolean;
@@ -1046,6 +1057,10 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             requests: components["schemas"]["CycleRequestSummary"][];
+        };
+        DeleteInvoice: {
+            reason: string;
+            expectedVersion: number;
         };
     };
     responses: never;
@@ -3906,6 +3921,89 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvoiceDetail"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    DELETE_invoices_id: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteInvoice"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deleted"];
                 };
             };
             /** @description Unauthenticated. */
