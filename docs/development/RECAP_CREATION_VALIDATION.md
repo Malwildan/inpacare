@@ -16,6 +16,14 @@ Only the selected patient's active placements are offered. A single matching pla
 
 ![Creation modal with synthetic records](recap-creation-synthetic.png)
 
+## Pending doctor decisions and release visibility
+
+The old detail view hid the entire release/extension form when a request was pending. An In Care patient then appeared to have no next action. Keep the section visible with disabled controls and explain which request is waiting for which doctor. Also show "Menunggu keputusan dokter" alongside the care status in the table. New requests remain blocked until the existing request is decided, preserving the current approval rules.
+
+Verified in a local synthetic browser fixture: a patient with a pending extension displays the explanation and disabled release form; a patient without a pending request has an enabled release selector and submit button. Svelte check reports zero errors/warnings; the production build passes. No request or decision was submitted on the shared deployment.
+
+![Pending decision explanation with synthetic records](cycle-pending-approval-synthetic.png)
+
 ## Deployment
 
 Deploy API and frontend together because the dashboard now calls `GET /api/v1/cycles/creation-candidates`. No database migration is needed. Run the PostgreSQL workflow/integration gate in CI before merging.

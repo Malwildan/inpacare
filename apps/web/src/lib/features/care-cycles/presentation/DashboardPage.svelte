@@ -33,6 +33,7 @@ function choosePatient() {
 function openCreate() { createPatientId = ''; createPlacementId = ''; createError = ''; error = ''; success = ''; createOpen = true; }
 let selectedCycleId = $state<string | null>(null);
 let selectedCycle = $state<CycleDetail | null>(null);
+let pendingRequest = $derived(selectedCycle?.requests.find(item => item.status === 'pending'));
 let detailLoading = $state(false);
 let requestKind = $state('release');
 let cycles = $derived(data.cycles);
@@ -172,7 +173,7 @@ async function deleteCycle(cycle: CycleDetail) { if (cycle.status !== 'pending')
 		{#each cycles as cycle (cycle.id)}<tr>
 			<td><strong>{cycle.patientName}</strong><span class="cell-meta">{cycle.id} · {cycle.medicalRecordNo}</span></td>
 			<td>{cycle.room ?? 'Belum ditempatkan'}</td><td>{cycle.doctorName}</td><td>{cycle.nurseName}</td>
-			<td><Badge value={cycle.status}/></td>
+			<td><Badge value={cycle.status}/>{#if cycle.requests.some(item => item.status === 'pending')}<span class="cell-meta">Menunggu keputusan dokter</span>{/if}</td>
 			<td><button class="button secondary small" onclick={() => void openDetail(cycle.id)}>{data.user.role === 'DOKTER' && cycle.requests.some((item) => item.status === 'pending') ? 'Tinjau permintaan' : 'Lihat detail'}</button></td>
 		</tr>
 		{:else}<tr><td colspan="6" class="empty">Tidak ada rekap yang cocok.</td></tr>{/each}
@@ -197,9 +198,10 @@ async function deleteCycle(cycle: CycleDetail) { if (cycle.status !== 'pending')
 					<form onsubmit={(event) => transition(event, selectedCycle!)}><label class="field">Tahap berikutnya<select name="status" required><option value={selectedCycle.status === 'pending' ? 'assigned' : 'in_care'}>{selectedCycle.status === 'pending' ? 'Assigned' : 'In Care'}</option></select></label><div class="form-actions"><button class="button primary" disabled={busy}>Simpan status</button></div></form>
 				</section>
 			{/if}
-			{#if data.user.role === 'PERAWAT' && ['in_care', 'extend'].includes(selectedCycle.status) && !selectedCycle.requests.some((item) => item.status === 'pending')}
+			{#if data.user.role === 'PERAWAT' && ['in_care', 'extend'].includes(selectedCycle.status)}
 				<section class="detail-section"><h3>Ajukan perpanjangan atau pelepasan</h3><p class="muted">Permintaan akan ditinjau oleh dokter penanggung jawab.</p>
-					<form onsubmit={(event) => request(event, selectedCycle!)}><div class="form-grid"><label class="field">Jenis permintaan<select name="kind" bind:value={requestKind}><option value="release">Pelepasan</option><option value="extend">Perpanjangan</option></select></label>{#if requestKind === 'extend'}<label class="field">Perpanjang sampai tanggal<input name="requestedEnd" type="date" required /></label>{/if}<label class="field full">Alasan<textarea name="reason" maxlength="500" required></textarea></label></div><div class="form-actions"><button class="button primary" disabled={busy}>Ajukan ke dokter</button></div></form>
+					{#if pendingRequest}<p class="approval-note" id="cycle-request-blocked" role="status">Pengajuan {pendingRequest.kind === 'extend' ? 'perpanjangan' : 'pelepasan'} sebelumnya masih menunggu keputusan <strong>{selectedCycle.doctorName}</strong>. Dokter perlu menyetujui atau menolak pengajuan itu terlebih dahulu. Pengajuan baru belum dapat dikirim; status pasien tetap <strong>{statusLabels[selectedCycle.status]}</strong> sampai ada persetujuan.</p>{/if}
+					<form onsubmit={(event) => request(event, selectedCycle!)}><fieldset class="request-fields" disabled={busy || !!pendingRequest} aria-describedby={pendingRequest ? 'cycle-request-blocked' : undefined}><legend class="request-legend">Pengajuan perubahan perawatan</legend><div class="form-grid"><label class="field">Jenis permintaan<select name="kind" bind:value={requestKind}><option value="release">Pelepasan</option><option value="extend">Perpanjangan</option></select></label>{#if requestKind === 'extend'}<label class="field">Perpanjang sampai tanggal<input name="requestedEnd" type="date" required /></label>{/if}<label class="field full">Alasan<textarea name="reason" maxlength="500" required></textarea></label></div><div class="form-actions"><button class="button primary">Ajukan ke dokter</button></div></fieldset></form>
 				</section>
 			{/if}
 			<section class="detail-section"><h3>Riwayat permintaan</h3>
@@ -215,6 +217,10 @@ async function deleteCycle(cycle: CycleDetail) { if (cycle.status !== 'pending')
 <p class="muted workflow-note">Alur: Pending → Assigned → In Care → Extend / Pelepasan. Perpanjangan dan pelepasan berlaku setelah keputusan dokter.</p>
 
 <style>
+	.approval-note{padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--surface-subtle, #f3f4f6);font-size:13px;line-height:1.6}
+	.request-fields{border:0;padding:0;margin:0;min-width:0}
+	.request-fields:disabled{opacity:.65}
+	.request-legend{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 	.create-panel{margin-bottom:24px}
 	.create-note{padding:16px;background:var(--surface-subtle, #f3f4f6);border-radius:8px;font-size:13px;line-height:1.6}
 	.form-actions{display:flex;justify-content:flex-end;gap:12px}
