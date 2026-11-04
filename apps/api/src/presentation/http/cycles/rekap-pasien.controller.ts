@@ -42,6 +42,11 @@ export class RekapPasienController {
   ) {
     return this.service.create(actor, body);
   }
+  @Get("creation-candidates")
+  @Roles("PERAWAT")
+  getCalonRekap(@CurrentActor() actor: Actor) {
+    return this.service.creationCandidates(actor);
+  }
   @Get(":id")
   @Roles("DOKTER", "PERAWAT")
   getDetailRekap(

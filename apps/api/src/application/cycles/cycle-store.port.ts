@@ -34,7 +34,14 @@ export interface LockedCycleRequest {
   decided_by: string | null;
   decision_note: string | null;
 }
+export interface CycleCandidate {
+  id: string;
+  name: string;
+  medicalRecordNo: string;
+}
 export interface CycleStore {
+  creationCandidates(): Promise<CycleCandidate[]>;
+  hasActiveCycle(patientId: string): Promise<boolean>;
   list(
     actor: Actor,
     filters: CycleListFilters,

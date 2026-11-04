@@ -3,7 +3,9 @@ import type { User } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
 import type { Notification } from '$lib/features/notifications';
 export type CycleFilters = Record<'search' | 'status' | 'roomId' | 'patientId', string>;
+export type CycleCandidate = { id: string; name: string; medicalRecordNo: string };
 export type CareCycles = {
+    creationCandidates(): Promise<CycleCandidate[]>;
     dashboard(filters: CycleFilters): Promise<CycleSummary[]>;
     detail(id: string): Promise<Cycle>;
     create(input: NewCycle): Promise<unknown>;
@@ -14,6 +16,7 @@ export type CareCycles = {
 };
 export type DashboardData = {
     cycles: CycleSummary[];
+    creationCandidates: CycleCandidate[];
     filters: CycleFilters;
     user: User;
     reference: Reference;

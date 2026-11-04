@@ -68,6 +68,10 @@ export class CyclesUseCases {
     if (!item) throw DomainError.notFound();
     return item;
   }
+  async creationCandidates(actor: Actor) {
+    if (actor.role !== "PERAWAT") throw DomainError.forbidden();
+    return { items: await this.store.creationCandidates() };
+  }
   async create(actor: Actor, input: CreateCycleInput) {
     if (actor.role !== "PERAWAT") throw DomainError.forbidden();
     if (!(await this.store.canReadPatient(actor, input.patientId)))
@@ -78,13 +82,15 @@ export class CyclesUseCases {
     await this.uow.run(async (tx) => {
       if (!(await tx.cycles.lockPatient(input.patientId)))
         throw DomainError.notFound();
+      if (await tx.cycles.hasActiveCycle(input.patientId))
+        throw DomainError.conflict("Pasien sudah memiliki rekap aktif. Buka rekap yang ada atau pilih pasien lain.");
       const placementId = input.placementId || null;
       if (placementId) {
         const roomId = await tx.cycles.placementRoom(
           placementId,
           input.patientId,
         );
-        if (!roomId) throw DomainError.notFound();
+        if (!roomId) throw DomainError.validation("Penempatan tidak sesuai dengan pasien yang dipilih.");
         await tx.cycles.lockRoom(roomId);
         if (!(await tx.cycles.activePlacement(placementId, input.patientId)))
           throw DomainError.conflict("Penempatan tidak lagi aktif.");

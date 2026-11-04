@@ -6,6 +6,18 @@ import {
 } from "../../../../application/cycles/cycle-store.port";
 export class TypeOrmCycleStore implements CycleStore {
   constructor(private readonly manager: EntityManager) {}
+  async creationCandidates() {
+    return this.manager.query(
+      `SELECT p.id,p.name,p.medical_record_no AS "medicalRecordNo" FROM patients p WHERE NOT EXISTS(SELECT 1 FROM cycles c WHERE c.patient_id=p.id AND c.status<>'released' AND c.deleted_at IS NULL) ORDER BY p.name,p.id`,
+    );
+  }
+  async hasActiveCycle(patientId: string) {
+    const rows = await this.manager.query(
+      `SELECT EXISTS(SELECT 1 FROM cycles WHERE patient_id=$1 AND status<>'released' AND deleted_at IS NULL) AS active`,
+      [patientId],
+    );
+    return Boolean(rows[0]?.active);
+  }
   async list(actor: Actor, filters: CycleListFilters) {
     const rows = await this.manager.query(
       `SELECT jsonb_build_object('id',c.id,'patientId',c.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',c.placement_id,'room',r.name,'roomId',pl.room_id,'doctorId',c.doctor_id,'doctorName',d.name,'nurseId',c.nurse_id,'nurseName',n.name,'status',c.status,'pendingApproval',EXISTS(SELECT 1 FROM cycle_requests q WHERE q.cycle_id=c.id AND q.status='pending'),'version',c.version,'createdAt',c.created_at,'requests',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',q.id,'kind',q.kind,'requestedEnd',q.requested_end,'reason',q.reason,'requestedBy',ru.name,'status',q.status,'note',q.decision_note,'createdAt',q.created_at) ORDER BY q.created_at DESC) FROM cycle_requests q JOIN users ru ON ru.id=q.requested_by WHERE q.cycle_id=c.id),'[]'::jsonb)) AS item FROM cycles c JOIN patients p ON p.id=c.patient_id JOIN users d ON d.id=c.doctor_id JOIN users n ON n.id=c.nurse_id LEFT JOIN placements pl ON pl.id=c.placement_id LEFT JOIN rooms r ON r.id=pl.room_id WHERE c.deleted_at IS NULL AND (($1='DOKTER' AND c.doctor_id=$2) OR ($1='PERAWAT' AND c.nurse_id=$2)) AND ($3::text IS NULL OR c.patient_id=$3) AND ($4::text IS NULL OR pl.room_id=$4) AND ($5::text IS NULL OR ($5='pending_approval' AND EXISTS(SELECT 1 FROM cycle_requests q WHERE q.cycle_id=c.id AND q.status='pending')) OR c.status=$5) AND ($6='' OR p.name ILIKE '%'||$6||'%' OR p.medical_record_no ILIKE '%'||$6||'%' OR r.name ILIKE '%'||$6||'%') ORDER BY c.created_at DESC,c.id LIMIT 100`,
