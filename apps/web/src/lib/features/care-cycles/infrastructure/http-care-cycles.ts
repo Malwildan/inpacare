@@ -5,6 +5,7 @@ type Schemas = components['schemas'];
 export function createHttpCareCycles(http: HttpClient): CareCycles {
     const path = (id: string) => `/cycles/${encodeURIComponent(id)}`;
     return {
+        creationCandidates: async () => (await http.request<Schemas['CycleCandidatePage']>('/cycles/creation-candidates')).items,
         dashboard: async (filters) => { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value)); return (await http.request<Schemas['CyclePage']>(`/cycles/dashboard${query.size ? '?' + query : ''}`)).items; },
         detail: id => http.request<Schemas['Cycle']>(path(id)),
         create: input => http.request('/cycles', { method: 'POST', body: JSON.stringify(input satisfies Schemas['NewCycle']) }),

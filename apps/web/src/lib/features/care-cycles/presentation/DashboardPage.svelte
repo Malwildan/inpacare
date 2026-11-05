@@ -20,8 +20,20 @@ $effect(() => { search = data.filters.search; roomFilter = data.filters.roomId; 
 let busy = $state(false);
 let error = $state('');
 let success = $state('');
+let createOpen = $state(false);
+let createPatientId = $state('');
+let createPlacementId = $state('');
+let createError = $state('');
+let matchingPlacements = $derived(data.reference.placements.filter(p => p.patientId === createPatientId && p.status === 'active'));
+function choosePatient() {
+    const placements = data.reference.placements.filter(p => p.patientId === createPatientId && p.status === 'active');
+    createPlacementId = placements.length === 1 ? placements[0].id : '';
+    createError = '';
+}
+function openCreate() { createPatientId = ''; createPlacementId = ''; createError = ''; error = ''; success = ''; createOpen = true; }
 let selectedCycleId = $state<string | null>(null);
 let selectedCycle = $state<CycleDetail | null>(null);
+let pendingRequest = $derived(selectedCycle?.requests.find(item => item.status === 'pending'));
 let detailLoading = $state(false);
 let requestKind = $state('release');
 let cycles = $derived(data.cycles);
@@ -70,10 +82,22 @@ async function send(operation: () => Promise<unknown>): Promise<boolean> {
         busy = false;
     }
 }
-function create(event: SubmitEvent) {
+async function create(event: SubmitEvent) {
     event.preventDefault();
+    if (busy) return;
     const form = new FormData(event.currentTarget as HTMLFormElement);
-    void send(() => careCycles.create({ patientId: formText(form, 'patientId'), doctorId: formText(form, 'doctorId'), placementId: formText(form, 'placementId') || null }));
+    busy = true;
+    createError = '';
+    try {
+        await careCycles.create({ patientId: createPatientId, doctorId: formText(form, 'doctorId'), placementId: createPlacementId || null });
+        createOpen = false;
+        success = 'Rekap berhasil dibuat dengan status Pending. Buka Lihat detail untuk melanjutkan siklus.';
+        await goto('/dashboard', { invalidateAll: true });
+    } catch (cause) {
+        if (createOpen) createError = sessionFailure(cause);
+        else error = 'Rekap tersimpan, tetapi daftar gagal dimuat. Muat ulang halaman.';
+    }
+    finally { busy = false; }
 }
 async function transition(event: SubmitEvent, cycle: CycleDetail) {
     event.preventDefault();
@@ -114,16 +138,27 @@ async function deleteCycle(cycle: CycleDetail) { if (cycle.status !== 'pending')
 </section>
 
 {#if data.user.role === 'PERAWAT'}
-	<details class="panel create-panel">
-		<summary>Tambah rekap pasien</summary>
-		<p class="create-help">Tetapkan dokter penanggung jawab dan, bila sudah ada, penempatan aktif.</p>
-		<form class="create-form" onsubmit={create}>
-			<label class="field">Pasien<select name="patientId" required><option value="">Pilih pasien</option>{#each data.reference.patients as patient}<option value={patient.id}>{patient.name} · {patient.medicalRecordNo}</option>{/each}</select></label>
-			<label class="field">Dokter<select name="doctorId" required><option value="">Pilih dokter</option>{#each data.reference.staff.filter((s) => s.role === 'DOKTER') as doctor}<option value={doctor.id}>{doctor.name}</option>{/each}</select></label>
-			<label class="field">Penempatan aktif<select name="placementId"><option value="">Belum ditempatkan</option>{#each data.reference.placements.filter((p) => p.status === 'active') as placement}<option value={placement.id}>{placement.patientName} · {placement.roomName} · {placement.startsOn}–{placement.endsOn}</option>{/each}</select></label>
-			<button class="button primary" disabled={busy}>Tambah rekap</button>
-		</form>
-	</details>
+    <div class="create-panel"><button class="button primary" onclick={openCreate}>Tambah rekap pasien</button></div>
+{/if}
+{#if createOpen}
+    <Modal title="Tambah rekap pasien" onclose={() => { if (!busy) createOpen = false; }}>
+        <p class="create-help">Buat siklus rawat inap untuk pasien yang sudah terdaftar. Status awal rekap adalah Pending.</p>
+        {#if createError}<p class="error" role="alert">{createError}</p>{/if}
+        {#if data.creationCandidates.length === 0}
+            <p class="empty">Belum ada pasien terdaftar tanpa rekap aktif. Periksa rekap yang ada atau minta data pasien didaftarkan terlebih dahulu.</p>
+            <button class="button secondary" onclick={() => createOpen = false}>Tutup</button>
+        {:else}
+            <form class="create-form" onsubmit={create}>
+                <label class="field">Pasien terdaftar<select name="patientId" required bind:value={createPatientId} onchange={choosePatient} disabled={busy}><option value="">Pilih pasien</option>{#each data.creationCandidates as patient}<option value={patient.id}>{patient.name} · {patient.medicalRecordNo}</option>{/each}</select></label>
+                <p class="muted">Hanya pasien yang belum memiliki rekap aktif yang dapat dipilih.</p>
+                <label class="field">Dokter penanggung jawab<select name="doctorId" required disabled={busy}><option value="">Pilih dokter aktif</option>{#each data.reference.staff.filter(s => s.role === 'DOKTER' && s.active) as doctor}<option value={doctor.id}>{doctor.name}</option>{/each}</select></label>
+                <label class="field">Penempatan pasien<select name="placementId" bind:value={createPlacementId} disabled={busy || !createPatientId || matchingPlacements.length === 0}><option value="">Belum ditempatkan</option>{#each matchingPlacements as placement}<option value={placement.id}>{placement.roomName} · {placement.startsOn}–{placement.endsOn}</option>{/each}</select></label>
+                {#if createPatientId && matchingPlacements.length === 0}<p class="muted">Pasien belum memiliki penempatan aktif. Rekap tetap dapat disimpan sebagai Pending.</p>{/if}
+                <p class="create-note"><strong>Status awal: Pending.</strong> Setelah disimpan, buka Lihat detail. Kaitkan penempatan aktif sebelum mengubah status menjadi Assigned, lalu In Care.</p>
+                <div class="form-actions"><button type="button" class="button secondary" disabled={busy} onclick={() => createOpen = false}>Batalkan</button><button class="button primary" disabled={busy || !createPatientId}>{busy ? 'Menyimpan…' : 'Simpan rekap'}</button></div>
+            </form>
+        {/if}
+    </Modal>
 {/if}
 
 <details class="notification-inbox">
@@ -138,7 +173,7 @@ async function deleteCycle(cycle: CycleDetail) { if (cycle.status !== 'pending')
 		{#each cycles as cycle (cycle.id)}<tr>
 			<td><strong>{cycle.patientName}</strong><span class="cell-meta">{cycle.id} · {cycle.medicalRecordNo}</span></td>
 			<td>{cycle.room ?? 'Belum ditempatkan'}</td><td>{cycle.doctorName}</td><td>{cycle.nurseName}</td>
-			<td><Badge value={cycle.status}/></td>
+			<td><Badge value={cycle.status}/>{#if cycle.requests.some(item => item.status === 'pending')}<span class="cell-meta">Menunggu keputusan dokter</span>{/if}</td>
 			<td><button class="button secondary small" onclick={() => void openDetail(cycle.id)}>{data.user.role === 'DOKTER' && cycle.requests.some((item) => item.status === 'pending') ? 'Tinjau permintaan' : 'Lihat detail'}</button></td>
 		</tr>
 		{:else}<tr><td colspan="6" class="empty">Tidak ada rekap yang cocok.</td></tr>{/each}
@@ -163,9 +198,10 @@ async function deleteCycle(cycle: CycleDetail) { if (cycle.status !== 'pending')
 					<form onsubmit={(event) => transition(event, selectedCycle!)}><label class="field">Tahap berikutnya<select name="status" required><option value={selectedCycle.status === 'pending' ? 'assigned' : 'in_care'}>{selectedCycle.status === 'pending' ? 'Assigned' : 'In Care'}</option></select></label><div class="form-actions"><button class="button primary" disabled={busy}>Simpan status</button></div></form>
 				</section>
 			{/if}
-			{#if data.user.role === 'PERAWAT' && ['in_care', 'extend'].includes(selectedCycle.status) && !selectedCycle.requests.some((item) => item.status === 'pending')}
+			{#if data.user.role === 'PERAWAT' && ['in_care', 'extend'].includes(selectedCycle.status)}
 				<section class="detail-section"><h3>Ajukan perpanjangan atau pelepasan</h3><p class="muted">Permintaan akan ditinjau oleh dokter penanggung jawab.</p>
-					<form onsubmit={(event) => request(event, selectedCycle!)}><div class="form-grid"><label class="field">Jenis permintaan<select name="kind" bind:value={requestKind}><option value="release">Pelepasan</option><option value="extend">Perpanjangan</option></select></label>{#if requestKind === 'extend'}<label class="field">Perpanjang sampai tanggal<input name="requestedEnd" type="date" required /></label>{/if}<label class="field full">Alasan<textarea name="reason" maxlength="500" required></textarea></label></div><div class="form-actions"><button class="button primary" disabled={busy}>Ajukan ke dokter</button></div></form>
+					{#if pendingRequest}<p class="approval-note" id="cycle-request-blocked" role="status">Pengajuan {pendingRequest.kind === 'extend' ? 'perpanjangan' : 'pelepasan'} sebelumnya masih menunggu keputusan <strong>{selectedCycle.doctorName}</strong>. Dokter perlu menyetujui atau menolak pengajuan itu terlebih dahulu. Pengajuan baru belum dapat dikirim; status pasien tetap <strong>{statusLabels[selectedCycle.status]}</strong> sampai ada persetujuan.</p>{/if}
+					<form onsubmit={(event) => request(event, selectedCycle!)}><fieldset class="request-fields" disabled={busy || !!pendingRequest} aria-describedby={pendingRequest ? 'cycle-request-blocked' : undefined}><legend class="request-legend">Pengajuan perubahan perawatan</legend><div class="form-grid"><label class="field">Jenis permintaan<select name="kind" bind:value={requestKind}><option value="release">Pelepasan</option><option value="extend">Perpanjangan</option></select></label>{#if requestKind === 'extend'}<label class="field">Perpanjang sampai tanggal<input name="requestedEnd" type="date" required /></label>{/if}<label class="field full">Alasan<textarea name="reason" maxlength="500" required></textarea></label></div><div class="form-actions"><button class="button primary">Ajukan ke dokter</button></div></fieldset></form>
 				</section>
 			{/if}
 			<section class="detail-section"><h3>Riwayat permintaan</h3>
@@ -181,9 +217,15 @@ async function deleteCycle(cycle: CycleDetail) { if (cycle.status !== 'pending')
 <p class="muted workflow-note">Alur: Pending → Assigned → In Care → Extend / Pelepasan. Perpanjangan dan pelepasan berlaku setelah keputusan dokter.</p>
 
 <style>
-	.create-panel summary{cursor:pointer;color:var(--primary);font-weight:600}
+	.approval-note{padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--surface-subtle, #f3f4f6);font-size:13px;line-height:1.6}
+	.request-fields{border:0;padding:0;margin:0;min-width:0}
+	.request-fields:disabled{opacity:.65}
+	.request-legend{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+	.create-panel{margin-bottom:24px}
+	.create-note{padding:16px;background:var(--surface-subtle, #f3f4f6);border-radius:8px;font-size:13px;line-height:1.6}
+	.form-actions{display:flex;justify-content:flex-end;gap:12px}
 	.create-help{margin:12px 0 18px;font-size:13px}
-	.create-form{display:grid;grid-template-columns:1fr 1fr 1.5fr auto;align-items:end;gap:16px}
+	.create-form{display:grid;gap:16px}
 	.notification-inbox{margin-bottom:24px;border-bottom:1px solid var(--border);padding:0 4px 16px}
 	.notification-inbox summary{cursor:pointer;font-weight:600}
 	.notification-inbox summary span{font-size:12px;font-weight:400;margin-left:12px}
@@ -203,6 +245,5 @@ async function deleteCycle(cycle: CycleDetail) { if (cycle.status !== 'pending')
 	.request-item p{margin-top:8px;color:var(--text)}
 	.request-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 	.workflow-note{margin-top:20px;font-size:12px;max-width:80ch}
-	@media(max-width:1000px){.create-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
-	@media(max-width:600px){.create-form{grid-template-columns:1fr}.notification-inbox li{align-items:flex-start;flex-direction:column}}
+	@media(max-width:600px){.notification-inbox li{align-items:flex-start;flex-direction:column}}
 </style>
