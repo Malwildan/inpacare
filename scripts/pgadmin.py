@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import secrets
@@ -10,6 +11,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tarfile
+import urllib.request
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -38,15 +41,26 @@ EXCLUDED_TABLES = (
     "_sqlx_migrations", "cycle_history", "invoice_history", "medical_history",
     "migrations", "sessions", "task_history", "users",
 )
+CLOUDFLARE_PROXY_CIDRS = (
+    "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22",
+    "104.16.0.0/13", "104.24.0.0/14", "108.162.192.0/18",
+    "131.0.72.0/22", "141.101.64.0/18", "162.158.0.0/15",
+    "172.64.0.0/13", "173.245.48.0/20", "188.114.96.0/20",
+    "190.93.240.0/20", "197.234.240.0/22", "198.41.128.0/17",
+    "2400:cb00::/32", "2606:4700::/32", "2803:f800::/32",
+    "2405:b500::/32", "2405:8100::/32", "2a06:98c0::/29",
+    "2c0f:f248::/32",
+)
 
 
 def run(args: list[str], *, check: bool = True, capture: bool = False,
-        env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+        env: dict[str, str] | None = None,
+        cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     try:
         result = subprocess.run(args, check=False, text=True,
                                 stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
                                 stderr=subprocess.PIPE if capture else subprocess.DEVNULL,
-                                env=env)
+                                env=env, cwd=cwd)
     except FileNotFoundError as exc:
         raise RuntimeError(f"required executable not found: {args[0]}") from exc
     if check and result.returncode:
@@ -99,6 +113,64 @@ def load_pgadmin() -> dict[str, str]:
         raise RuntimeError("pgAdmin is not installed; run scripts/setup-pgadmin.sh")
     return {"PATH": f"{VENV / 'bin'}:{os.environ.get('PATH', '')}",
             "PYTHONPATH": str(SITE), "PYTHONUNBUFFERED": "1"}
+
+
+def ensure_web_assets() -> bool:
+    """Build the official 9.19 web bundle when the PyPI wheel omits it."""
+    static = SITE / "pgadmin" / "static"
+    generated = static / "js" / "generated"
+    required = ("style.css", "vendor.main.js", "vendor.react.js",
+                "vendor.others.js", "vendor.sqleditor.js", "pgadmin_commons.js")
+    if all((generated / name).is_file() and (generated / name).stat().st_size
+           for name in required):
+        return False
+
+    node = shutil.which("node")
+    if not node:
+        raise RuntimeError("Node.js is required to build pgAdmin's missing web assets")
+    DATA.mkdir(mode=0o700, parents=True, exist_ok=True)
+    source_url = "https://github.com/pgadmin-org/pgadmin4/archive/refs/tags/REL-9_19.tar.gz"
+    yarn_url = "https://repo.yarnpkg.com/4.15.0/packages/yarnpkg-cli/bin/yarn.js"
+    source_sha256 = "a78485f162748b4383f9d97ea334338c3e737e81a98f461718e948211bb99ba2"
+    yarn_sha256 = "31cb07af197fac43b14bf97a8a03a7010dda364ec8d8b78b0d3d437fdf41a072"
+    with tempfile.TemporaryDirectory(prefix="pgadmin-assets-", dir=DATA) as tmp:
+        work = Path(tmp)
+        archive = work / "pgadmin.tar.gz"
+        yarn = work / "yarn.js"
+        for url, destination, expected in (
+                (source_url, archive, source_sha256),
+                (yarn_url, yarn, yarn_sha256)):
+            urllib.request.urlretrieve(url, destination)
+            digest = hashlib.sha256(destination.read_bytes()).hexdigest()
+            if digest != expected:
+                raise RuntimeError("downloaded pgAdmin web build input failed its SHA-256 check")
+        with tarfile.open(archive, "r:gz") as bundle:
+            members = bundle.getmembers()
+            if any(Path(member.name).is_absolute() or ".." in Path(member.name).parts
+                   for member in members):
+                raise RuntimeError("official pgAdmin source archive contains an unsafe path")
+            bundle.extractall(work, members=members, filter="data")
+        source = work / "pgadmin4-REL-9_19" / "web"
+        env = {**os.environ, "CI": "1"}
+        run([node, str(yarn), "install", "--immutable"], env=env, cwd=source)
+        run([node, str(yarn), "run", "bundle"], env=env, cwd=source)
+        built = source / "pgadmin" / "static" / "js" / "generated"
+        if not all((built / name).is_file() and (built / name).stat().st_size
+                   for name in required):
+            raise RuntimeError("official pgAdmin 9.19 build did not produce its required web bundles")
+        replacement = work / "generated"
+        shutil.copytree(built, replacement)
+        generated.parent.mkdir(parents=True, exist_ok=True)
+        previous = work / "previous-generated"
+        if generated.exists():
+            os.replace(generated, previous)
+        try:
+            os.replace(replacement, generated)
+        except Exception:
+            if previous.exists():
+                os.replace(previous, generated)
+            raise
+    return True
 
 
 def setup_call(*args: str, capture: bool = True,
@@ -381,7 +453,9 @@ def setup_caddy() -> None:
     backup_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     backup = backup_dir / "inpacare.caddy.before-pgadmin"
     current = caddyfile.read_text(encoding="utf-8")
+    original = current
     changed = False
+    trusted_proxies = "            trusted_proxies " + " ".join(CLOUDFLARE_PROXY_CIDRS) + "\n"
     if "@pgadmin path /db /db/*" not in current:
         if current.count("https://inpacare.hailmary.my.id {") != 1:
             raise RuntimeError("could not safely identify the existing InpaCare Caddy site")
@@ -394,19 +468,37 @@ def setup_caddy() -> None:
         reverse_proxy 127.0.0.1:5050 {
             header_up X-Script-Name /db
             header_up X-Scheme {scheme}
-        }
+''' + trusted_proxies + '''        }
     }
 '''
         updated, count = re.subn(r"(?m)^[ \t]*reverse_proxy 127\.0\.0\.1:8089", block + "    reverse_proxy 127.0.0.1:8089", current, count=1)
         if count != 1:
             raise RuntimeError("failed to insert the narrow pgAdmin route")
-        private_write(caddyfile, updated)
+        current = updated
         changed = True
+    else:
+        route_match = re.search(r"(?ms)^[ \t]*reverse_proxy 127\.0\.0\.1:5050[ \t]*\{.*?^[ \t]*\}", current)
+        if not route_match:
+            raise RuntimeError("could not safely identify the existing pgAdmin proxy route")
+        route = route_match.group()
+        if "trusted_proxies " not in route:
+            route, count = re.subn(
+                r"(?m)^([ \t]*)header_up X-Scheme \{scheme\}[ \t]*$",
+                r"\g<0>\n\g<1>trusted_proxies " + " ".join(CLOUDFLARE_PROXY_CIDRS),
+                route, count=1)
+            if count != 1:
+                raise RuntimeError("could not safely update the existing pgAdmin proxy route")
+            current = current[:route_match.start()] + route + current[route_match.end():]
+            changed = True
+    if changed:
+        if not backup.exists():
+            private_write(backup, caddyfile.read_text(encoding="utf-8"), exclusive=True)
+        private_write(caddyfile, current)
     config = str(caddy_dir / "Caddyfile")
     check = run([str(caddy), "validate", "--config", config, "--adapter", "caddyfile"], check=False, capture=True)
     if check.returncode:
         if changed:
-            private_write(caddyfile, current)
+            private_write(caddyfile, original)
         raise RuntimeError("whole Caddy gateway validation failed; original site config restored")
     if not changed:
         return
@@ -437,6 +529,7 @@ def install() -> None:
                     check=False, capture=True)
     if installed.returncode or installed.stdout.strip() != "9.19 23.0.0":
         run([uv, "pip", "install", "--python", str(PYTHON), "pgadmin4==9.19", "gunicorn==23.0.0"])
+    assets_changed = ensure_web_assets()
     make_config()
     ensure_owner_secret_file()
     owner_pw = next(line.split(": ", 1)[1] for line in
@@ -448,6 +541,8 @@ def install() -> None:
     ensure_owner_db_login()
     import_server_for(OWNER_EMAIL, OWNER_DB_ROLE)
     setup_service()
+    if assets_changed:
+        run(["systemctl", "--user", "restart", SERVICE_NAME])
     setup_caddy()
 
 
