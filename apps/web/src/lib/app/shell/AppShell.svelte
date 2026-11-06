@@ -122,8 +122,7 @@ async function readNotification(id: string) {
 			>
 				{#if mobileOpen}<X size={20} />{:else}<Menu size={20} />{/if}
 			</button>
-			<span>Rawat Inap</span>
-			<ChevronRight size={14} aria-hidden="true" />
+
 			<span class="current-page">{current}</span>
 		</div>
 		<div class="topbar-actions">
