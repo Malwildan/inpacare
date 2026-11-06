@@ -1,0 +1,21 @@
+https://inpacare.hailmary.my.id {
+	bind ::
+	tls "/home/malwildan/.local/share/mac-cloud-drive/acme/certificates/inpacare.hailmary.my.id.crt" "/home/malwildan/.local/share/mac-cloud-drive/acme/certificates/inpacare.hailmary.my.id.key"
+	encode zstd gzip
+	@pgadmin path /db /db/*
+	handle @pgadmin {
+		reverse_proxy 127.0.0.1:5050 {
+			header_up X-Script-Name /db
+			header_up X-Scheme {scheme}
+		}
+	}
+	# This loopback listener fixes the external scheme to HTTPS for secure sessions.
+	reverse_proxy 127.0.0.1:8089 {
+		header_up Host {host}
+	}
+}
+
+http://inpacare.hailmary.my.id {
+	bind ::
+	redir https://{host}{uri} 308
+}

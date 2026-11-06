@@ -1,0 +1,19 @@
+[Unit]
+Description=InpaCare pgAdmin shared PostgreSQL console
+After=network.target inpacare-db.service
+Wants=inpacare-db.service
+
+[Service]
+Type=simple
+WorkingDirectory=@ROOT@
+Environment=SCRIPT_NAME=/db
+Environment=PYTHONUNBUFFERED=1
+ExecStart=@ROOT@/.data/pgadmin/venv/bin/gunicorn --bind 127.0.0.1:5050 --workers 1 --threads 25 --timeout 120 --chdir @ROOT@/.data/pgadmin/venv/lib/python3.12/site-packages/pgadmin4 pgAdmin4:app
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

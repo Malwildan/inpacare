@@ -6,6 +6,7 @@ COPY apps/web/package.json ./apps/web/package.json
 COPY apps/api/package.json ./apps/api/package.json
 RUN npm ci --no-audit --no-fund --workspace apps/web --include-workspace-root=false
 COPY apps/web/ ./apps/web/
+COPY contracts/openapi.json ./contracts/openapi.json
 RUN npm run build --workspace apps/web
 
 FROM node:24-bookworm-slim AS runtime

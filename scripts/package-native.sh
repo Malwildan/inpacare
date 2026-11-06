@@ -21,7 +21,9 @@ cp package.json package-lock.json "$stage/"
 cp apps/web/package.json "$stage/apps/web/"
 cp scripts/native-host.sh scripts/native-web.mjs "$stage/scripts/"
 cp scripts/deploy-native.py scripts/install-native-cd.sh "$stage/scripts/"
+cp scripts/pgadmin.py scripts/setup-pgadmin.sh scripts/check-pgadmin.py "$stage/scripts/"
 cp ops/native/inpacare-update.service ops/native/inpacare-update.timer "$stage/ops/native/"
+cp ops/native/inpacare-pgadmin.service ops/native/inpacare.caddy "$stage/ops/native/"
 printf '%s\n' "$revision" > "$stage/REVISION"
 tar -czf "$output/inpacare-linux-x86_64.tar.gz" -C "$stage" \
   REVISION apps package.json package-lock.json scripts ops
