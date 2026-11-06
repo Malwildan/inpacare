@@ -8,7 +8,7 @@ import secrets
 import socket
 import sys
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / ".data" / "pgadmin"
@@ -145,6 +145,34 @@ def db_checks() -> None:
     print("PASS: owner and teammate DB logins have no elevated role attributes or excluded sequence access")
 
 
+def check_html_assets(page: str, label: str, requester) -> list[dict]:
+    refs = re.findall(r'''(?:src|href)=["']([^"']+)["']''', page)
+    origin = urlsplit(BASE)
+    assets = list(dict.fromkeys(urljoin(BASE + "/", ref) for ref in refs
+                  if urlsplit(urljoin(BASE + "/", ref)).path.startswith("/db/static/")
+                  and urlsplit(urljoin(BASE + "/", ref)).netloc == origin.netloc
+                  and urlsplit(urljoin(BASE + "/", ref)).scheme == origin.scheme))
+    if not assets:
+        raise RuntimeError(f"{label} HTML has no /db/static asset references")
+    results = []
+    for asset in assets:
+        result = requester.get(asset, timeout=30)
+        path = urlsplit(asset).path.lower()
+        mime = result.headers.get("Content-Type", "").lower()
+        if result.status_code != 200 or not result.content:
+            raise RuntimeError(f"{label} referenced static asset did not return nonempty HTTP 200")
+        if path.endswith(".css") and "text/css" not in mime:
+            raise RuntimeError(f"{label} stylesheet returned an incorrect MIME type")
+        if path.endswith(".js") and "javascript" not in mime and "ecmascript" not in mime:
+            raise RuntimeError(f"{label} script returned an incorrect MIME type")
+        results.append({"path": urlsplit(asset).path,
+                        "status": result.status_code,
+                        "mime": mime.split(";", 1)[0],
+                        "bytes": len(result.content),
+                        "elapsed_ms": round(result.elapsed.total_seconds() * 1000, 2)})
+    return results
+
+
 def http_checks() -> None:
     import requests
     requests.packages.urllib3.disable_warnings()
@@ -157,6 +185,7 @@ def http_checks() -> None:
         port, *args, **kwargs)
     session = requests.Session()
     session.verify = True
+    session.headers["User-Agent"] = "InpaCare pgAdmin HTTP verification/1.0"
     session.headers["X-Script-Name"] = "/attacker-prefix"
     protected = session.get(BASE + "/browser/", allow_redirects=False, timeout=20)
     if protected.status_code not in (301, 302, 303, 307, 308) or "/db/login" not in protected.headers.get("Location", ""):
@@ -164,8 +193,7 @@ def http_checks() -> None:
     login = session.get(BASE + "/login", allow_redirects=True, timeout=20)
     if login.status_code != 200 or "/db/login" not in login.url:
         raise RuntimeError("pgAdmin login page did not load below the /db prefix")
-    if not re.search(r"/(?:db/)?static/|/db/static/", login.text):
-        raise RuntimeError("login page HTML lacks a pgAdmin static asset reference")
+    login_assets = check_html_assets(login.text, "login", session)
     csrf = re.search(r'"csrfToken"\s*:\s*"([^"]+)"', login.text)
     if not csrf:
         raise RuntimeError("login CSRF token was not found")
@@ -183,10 +211,50 @@ def http_checks() -> None:
         raise RuntimeError("HTTPS session cookie lacks Secure, HttpOnly, or /db path flags")
     if "samesite=lax" not in lower_cookie:
         raise RuntimeError("session cookie lacks SameSite=Lax")
-    body = session.get(BASE + "/browser/", timeout=20).text
-    if "/db/static/" not in body and "src=\"/db/" not in body and "href=\"/db/" not in body:
-        raise RuntimeError("authenticated page did not retain its /db asset URL prefix")
-    print("PASS: HTTPS login required; authenticated redirects/assets and secure session cookie stay under /db")
+    dashboard = session.get(BASE + "/browser/", allow_redirects=True, timeout=30)
+    if dashboard.status_code != 200 or "/login" in dashboard.url:
+        raise RuntimeError("loopback authenticated dashboard did not remain authenticated")
+    dashboard_assets = check_html_assets(dashboard.text, "loopback dashboard", session)
+
+    # Restore normal DNS before checking the real Cloudflare endpoint.
+    socket.getaddrinfo = resolver
+    public = requests.Session()
+    public.headers["User-Agent"] = session.headers["User-Agent"]
+    public.headers["X-Script-Name"] = "/attacker-prefix"
+    public_login = public.get(BASE + "/login", allow_redirects=True, timeout=30)
+    public_csrf = re.search(r'"csrfToken"\s*:\s*"([^"]+)"', public_login.text)
+    if public_login.status_code != 200 or not public_csrf:
+        raise RuntimeError("public Cloudflare login page or CSRF token did not load")
+    public_auth = public.post(BASE + "/authenticate/login",
+                              data={"email": email, "password": password,
+                                    "csrf_token": public_csrf.group(1)},
+                              allow_redirects=False, timeout=30)
+    public_dashboard = public.get(BASE + "/browser/", allow_redirects=False, timeout=30)
+    public_result = {"login_status": public_login.status_code,
+                     "authenticate_status": public_auth.status_code,
+                     "authenticate_location": public_auth.headers.get("Location", ""),
+                     "browser_status": public_dashboard.status_code,
+                     "browser_location": public_dashboard.headers.get("Location", ""),
+                     "cookie_retained": bool(public.cookies)}
+    if public_auth.status_code not in (302, 303, 307, 308) or public_dashboard.status_code != 200:
+        import json
+        (DATA / "performance-verification.json").write_text(
+            json.dumps({"public_cloudflare_session": public_result}, indent=2) + "\n",
+            encoding="utf-8")
+        raise RuntimeError("public Cloudflare authenticated dashboard did not remain authenticated")
+    public_assets = check_html_assets(public_dashboard.text, "public Cloudflare dashboard", public)
+    import json
+    report = {"loopback_gateway": {"login_elapsed_ms": round(login.elapsed.total_seconds() * 1000, 2),
+                                   "dashboard_elapsed_ms": round(dashboard.elapsed.total_seconds() * 1000, 2),
+                                   "login_assets": login_assets,
+                                   "dashboard_assets": dashboard_assets},
+              "public_cloudflare": {**public_result,
+                                    "login_elapsed_ms": round(public_login.elapsed.total_seconds() * 1000, 2),
+                                    "dashboard_elapsed_ms": round(public_dashboard.elapsed.total_seconds() * 1000, 2),
+                                    "dashboard_assets": public_assets}}
+    (DATA / "performance-verification.json").write_text(
+        json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print("PASS: loopback and public Cloudflare sessions load authenticated HTML and every referenced JS/CSS asset with valid MIME types")
 
 
 def cleanup_test_user(email: str, role: str, group: str, access: str) -> None:

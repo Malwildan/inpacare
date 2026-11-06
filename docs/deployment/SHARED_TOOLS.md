@@ -16,7 +16,10 @@ python3 scripts/pgadmin.py status
 ```
 
 The pinned runtime is pgAdmin 4 `9.19` in `.data/pgadmin/venv`, with Gunicorn
-`23.0.0`. SQLite settings, sessions, storage, logs, and credentials are under
+`23.0.0`. If its wheel omits generated frontend files, the installer builds the
+matching official 9.19 source with checksum-pinned inputs; this requires Node.js
+and network access on that first repair. Complete existing bundles are reused.
+SQLite settings, sessions, storage, logs, and credentials are under
 `.data/pgadmin/`, outside release directories. The owner pgAdmin credential file
 is `.data/pgadmin/owner-credentials.txt`; the owner database editor credential
 is stored separately in `.data/pgadmin/owner-db-password.txt`. Both files are
@@ -65,14 +68,24 @@ The Caddy host config backup is `.data/pgadmin/backups/inpacare.caddy.before-pga
 The installed user unit is `~/.config/systemd/user/inpacare-pgadmin.service`.
 The repository unit template is `ops/native/inpacare-pgadmin.service`.
 
+The `/db` reverse proxy trusts only the published Cloudflare proxy ranges, so
+pgAdmin's protected session sees the visitor's forwarded address consistently.
+Cookie protection, authentication and CSRF remain enabled. Refresh
+`CLOUDFLARE_PROXY_CIDRS` and the site template if Cloudflare changes those ranges;
+keep the trust configuration scoped to the pgAdmin route.
+
 ## Self-check
 
 Run `python3 scripts/check-pgadmin.py` to check viewer/editor restrictions,
 including denied auth/session/history/migration table access, persistent and
 temporary DDL, and TRUNCATE;
 one synthetic `room_items` row is inserted and deleted to verify editor writes.
-The HTTP check covers login enforcement, prefix asset and redirect behavior,
-and Secure/HttpOnly/SameSite cookie flags over HTTPS. The checker creates two
+The HTTP check fetches the actual referenced scripts and stylesheets, requiring
+nonempty HTTP 200 responses with the correct MIME types. It checks login and
+session retention through both the local gateway and the public Cloudflare URL,
+plus prefix handling and Secure/HttpOnly/SameSite cookie flags over HTTPS. Its
+sanitized observations are saved in `.data/pgadmin/performance-verification.json`.
+The checker creates two
 disposable pgAdmin accounts and matching SQL logins, then removes them in a
 `finally` cleanup. It intentionally fails if it cannot confirm all controls.
 
