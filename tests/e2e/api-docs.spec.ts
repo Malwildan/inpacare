@@ -13,7 +13,8 @@ test('Swagger renders, reads the API, and sends authenticated CSRF-protected mut
     await page.getByLabel('Kata sandi', { exact: true }).fill('InpaCareDemo!2026');
     await page.getByRole('button', { name: 'Masuk', exact: true }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
-    await page.getByRole('link', { name: 'API Explorer', exact: true }).click();
+    await expect(page.getByRole('navigation').getByRole('link', { name: 'API Explorer', exact: true })).toHaveCount(0);
+    await page.goto('/api-docs');
     await expect(page.getByRole('heading', { name: 'InpaCare API Explorer', exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Database (pgAdmin)' })).toHaveAttribute('href', '/db/');
 

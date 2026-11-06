@@ -1,8 +1,8 @@
 # Shared API explorer
 
 Open `/api-docs` on the same origin as InpaCare, after signing in through `/login`.
-The app sidebar includes an **API Explorer** link. The explorer header links back
-to the app and to the native host's pgAdmin installation at `/db/`.
+The explorer is accessed directly by URL. Its header links back to the app and
+to the native host's pgAdmin installation at `/db/`.
 
 Swagger UI renders the existing `contracts/openapi.json`; there is no second API
 definition to maintain. Both the page and `/api-docs/openapi.json` require a valid
