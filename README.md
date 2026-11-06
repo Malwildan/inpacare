@@ -7,7 +7,7 @@ An inpatient-care management application built with **SvelteKit, NestJS, and Pos
 
 Built as an educational project with an Indonesian-language interface and synthetic records. It is a working reference implementation, with remaining scope documented in [project status](docs/PROJECT_STATUS.md).
 
-**[Try the demo](https://carbon-cactus-sputter.ngrok-free.dev)** · **[Documentation](docs/README.md)** · **[Contribute](CONTRIBUTING.md)** · **[Report a bug](https://github.com/Malwildan/inpacare/issues/new/choose)**
+**[Try the demo](https://inpacare.hailmary.my.id)** · **[Documentation](docs/README.md)** · **[Contribute](CONTRIBUTING.md)** · **[Report a bug](https://github.com/Malwildan/inpacare/issues/new/choose)**
 
 ## Features
 
@@ -79,7 +79,7 @@ Follow the [development guide](docs/development/GETTING_STARTED.md) to run the N
 | `hendra`, `maya` | Doctor |
 | `admisi` | Admissions and billing |
 
-Choose a password explicitly when seeding synthetic accounts. The seed command refuses a non-empty users table. The public demo may display ngrok's **Visit Site** screen on the first visit and is available while its host is online.
+Choose a password explicitly when seeding synthetic accounts. The seed command refuses a non-empty users table. The public demo is served through Cloudflare's HTTPS proxy at **https://inpacare.hailmary.my.id** and is available while its host is online. See [native hosting](docs/deployment/NATIVE_HOSTING.md) for the deployment guide.
 
 ## Repository layout
 
