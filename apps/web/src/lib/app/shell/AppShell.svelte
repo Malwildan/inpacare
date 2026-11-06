@@ -106,7 +106,6 @@ async function readNotification(id: string) {
 		<div class="user-summary">
 			<strong>{role}</strong>
 			<span>{data.user.name}</span>
-			<span class="demo-tag">Data demo sintetis</span>
 		</div>
 	</div>
 </aside>
@@ -168,10 +167,6 @@ async function readNotification(id: string) {
 	{/if}
 
 	<main id="main-content">{@render children()}</main>
-	<footer class="app-footer">
-		<span>InpaCare</span>
-		<span>Lingkungan demonstrasi · data sintetis</span>
-	</footer>
 </div>
 
 <style>
