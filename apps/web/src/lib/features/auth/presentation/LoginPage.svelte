@@ -97,7 +97,6 @@ async function login(event: SubmitEvent) {
 				<p class="synthetic-note">Seluruh data di lingkungan ini adalah data sintetis.</p>
 			</aside>
 		</div>
-		<footer>© 2026 RSI · Sistem Rawat Inap</footer>
 	</main>
 </div>
 

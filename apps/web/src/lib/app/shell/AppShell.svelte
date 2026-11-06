@@ -106,7 +106,6 @@ async function readNotification(id: string) {
 		<div class="user-summary">
 			<strong>{role}</strong>
 			<span>{data.user.name}</span>
-			<span class="demo-tag">Data demo sintetis</span>
 		</div>
 	</div>
 </aside>
@@ -123,8 +122,7 @@ async function readNotification(id: string) {
 			>
 				{#if mobileOpen}<X size={20} />{:else}<Menu size={20} />{/if}
 			</button>
-			<span>Rawat Inap</span>
-			<ChevronRight size={14} aria-hidden="true" />
+
 			<span class="current-page">{current}</span>
 		</div>
 		<div class="topbar-actions">
@@ -168,10 +166,6 @@ async function readNotification(id: string) {
 	{/if}
 
 	<main id="main-content">{@render children()}</main>
-	<footer class="app-footer">
-		<span>InpaCare</span>
-		<span>Lingkungan demonstrasi · data sintetis</span>
-	</footer>
 </div>
 
 <style>
