@@ -1,7 +1,7 @@
 <script lang="ts">
 import { page } from '$app/state';
 import { goto } from '$app/navigation';
-import { LayoutDashboard, BedDouble, CalendarDays, ClipboardList, FileHeart, ReceiptText, CodeXml, LogOut, Bell, Menu, X, ChevronRight } from 'lucide-svelte';
+import { LayoutDashboard, BedDouble, CalendarDays, ClipboardList, FileHeart, ReceiptText, LogOut, Bell, Menu, X, ChevronRight } from 'lucide-svelte';
 import type { User, Auth } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
 import type { Notifications, Notification } from '$lib/features/notifications';
@@ -26,8 +26,7 @@ const navigation = [
     { path: '/calendar', label: 'Kalender Ruangan', icon: CalendarDays, roles: ['PERAWAT', 'DOKTER', 'ADMISI'] },
     { path: '/medical-records', label: 'Rekam Medis', icon: FileHeart, roles: ['DOKTER', 'PERAWAT', 'ADMISI'] },
     { path: '/tasks', label: 'Tugas Perawatan', icon: ClipboardList, roles: ['PERAWAT'] },
-    { path: '/invoices', label: 'Tagihan', icon: ReceiptText, roles: ['ADMISI'] },
-    { path: '/api-docs', label: 'API Explorer', icon: CodeXml, roles: ['DOKTER', 'PERAWAT', 'ADMISI'] }
+    { path: '/invoices', label: 'Tagihan', icon: ReceiptText, roles: ['ADMISI'] }
 ];
 let current = $derived(navigation.find((item) => page.url.pathname.startsWith(item.path))?.label ?? 'Ringkasan Pasien');
 let role = $derived(data.user.coordinator ? 'Koordinator Perawat' : ({ DOKTER: 'Dokter', PERAWAT: 'Perawat', ADMISI: 'Admisi' }[data.user.role]));
