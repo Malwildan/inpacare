@@ -10,7 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "lucide-svelte": "npm:@lucide/svelte@^1.64.0"
+    "lucide-svelte": "npm:@lucide/svelte@^1.64.0",
+    "swagger-ui-dist": "5.34.1"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.5.0",
