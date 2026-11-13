@@ -40,7 +40,7 @@
 	<meta name="description" content="Masuk ke InpaCare, sistem manajemen rawat inap." />
 </svelte:head>
 
-<div class="grid min-h-dvh grid-cols-[minmax(360px,0.86fr)_minmax(0,1.14fr)] bg-background max-[700px]:grid-cols-1">
+<div class="grid min-h-dvh grid-cols-[minmax(360px,0.86fr)_minmax(0,1.14fr)] bg-background max-[700px]:grid-cols-1 max-[700px]:grid-rows-[auto_1fr]">
 	<section class="flex flex-col bg-primary px-[clamp(32px,5vw,72px)] py-11 text-primary-foreground max-[900px]:px-[30px] max-[900px]:py-9 max-[700px]:min-h-0 max-[700px]:px-6 max-[700px]:py-5">
 		<a
 			class="inline-flex w-fit items-baseline gap-[9px] text-primary-foreground no-underline hover:no-underline"

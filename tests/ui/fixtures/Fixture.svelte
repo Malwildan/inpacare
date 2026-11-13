@@ -21,7 +21,8 @@ const notificationService = {
 };
 window.releaseNotification = () => release();
 window.callCount = () => calls;
-const data = { user: { id: '1', name: 'Test User', role: 'PERAWAT', coordinator: false }, reference: {} };
+const data = $state({ user: { id: '1', name: 'Test User', role: 'PERAWAT', coordinator: false }, reference: {} });
+window.setRole = role => { data.user.role = role; };
 </script>
 
 <AppShell {data} auth={{ logout: async () => {} }} {notificationService}>
