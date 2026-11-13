@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Dialog as DialogPrimitive } from "bits-ui";
-	import XIcon from '@lucide/svelte/icons/x';
+	import XIcon from 'lucide-svelte/icons/x';
 	import { Button } from "$lib/shared/ui/button/index.js";
 	import { cn, type WithoutChildrenOrChild } from "$lib/shared/utils.js";
 	import DialogOverlay from "./dialog-overlay.svelte";
@@ -37,9 +37,9 @@
 		{#if showCloseButton}
 			<DialogPrimitive.Close data-slot="dialog-close">
 				{#snippet child({ props })}
-					<Button variant="ghost" class="absolute top-2 right-2" size="icon-sm" {...props}>
+					<Button variant="ghost" class="absolute top-1 right-1 size-11 text-muted-foreground" size="icon" {...props}>
 						<XIcon  />
-						<span class="sr-only">Close</span>
+						<span class="sr-only">Tutup</span>
 					</Button>
 				{/snippet}
 			</DialogPrimitive.Close>
