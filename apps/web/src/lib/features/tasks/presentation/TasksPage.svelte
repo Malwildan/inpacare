@@ -157,7 +157,7 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 .task-card p{font-size:12px;line-height:1.6;margin:6px 0}
 .task-card p strong{color:var(--text);font-weight:500}
 .card-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
-.card-actions .text-link{font-size:12px;padding:6px 0;min-height:32px}
+.card-actions .text-link{font-size:12px;padding:6px 0;min-height:44px}
 .board-toolbar .card-actions{margin-top:0}
 .task-context{margin:-8px 0 20px;font-size:13px}.edit-task{margin:20px 0;border-top:1px solid var(--border);padding-top:14px}.edit-task summary{cursor:pointer}.task-filters{align-items:end}
 .inline-edit{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:20px 0}

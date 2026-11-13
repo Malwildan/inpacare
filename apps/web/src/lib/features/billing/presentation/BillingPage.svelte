@@ -222,7 +222,7 @@ async function choosePatient(value: string) {
 	.search-field{min-width:220px;flex:2}
 	.cell-meta{display:block;font-size:12px;color:var(--muted);margin-top:4px}
 	.row-actions{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;min-width:160px}
-	.row-actions .text-link,.row-actions summary{font-size:13px;padding:6px 0;min-height:32px}
+	.row-actions .text-link,.row-actions summary{font-size:13px;padding:6px 0;min-height:44px}
 	.row-actions summary{cursor:pointer;color:var(--primary)}
 	.status-form{width:220px;padding:12px 0 4px}
 	.status-form .field{margin-bottom:12px}

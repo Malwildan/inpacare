@@ -205,6 +205,7 @@ async function login(event: SubmitEvent) {
 	}
 
 	.password-input input {
+		min-height: 48px;
 		padding-right: 52px;
 	}
 
@@ -215,8 +216,8 @@ async function login(event: SubmitEvent) {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 40px;
-		height: 40px;
+		width: 44px;
+		height: 44px;
 		border: 0;
 		border-radius: 7px;
 		background: transparent;
