@@ -461,7 +461,7 @@ async function removeItemConfirmed() {
                 {#if isNurse}
                     <Button variant="outline" class="h-11 px-4" onclick={() => openAddItem(room.id)}><Plus aria-hidden="true" /> Tambah item</Button>
                 {/if}
-                <Button class="h-11 px-4" onclick={() => (viewOpen = false)}>Tutup</Button>
+                <Button class="h-11 px-4" onclick={() => (viewOpen = false)}>Tutup detail ruangan</Button>
             </DialogFooter>
         {/if}
     </DialogContent>

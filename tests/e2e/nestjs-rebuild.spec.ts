@@ -208,7 +208,7 @@ test('a nurse can edit and remove a room item and archive the empty room', async
 	await expect(detail.getByRole('listitem').filter({ hasText: itemName })).toHaveCount(0);
 	await expect(page.getByRole('status')).toContainText(/berhasil/i);
 
-	await detail.getByRole('button', { name: 'Tutup' }).click();
+	await detail.getByRole('button', { name: 'Tutup detail ruangan', exact: true }).click();
 	await expect(detail).toHaveCount(0);
 	await page.getByRole('row').filter({ hasText: roomName }).getByRole('button', { name: 'Hapus' }).click();
 	const removeRoomDialog = page.getByRole('alertdialog', { name: 'Hapus ruangan?' });
