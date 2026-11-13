@@ -78,7 +78,7 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 		<label class="field">Ruangan<select name="roomId" required><option value="">Pilih ruangan tersedia</option>{#each data.rooms.filter((r)=>r.status==='available') as room}<option value={room.id}>{room.name} · {room.roomClass} · kapasitas {room.capacity}</option>{/each}</select></label>
 		<label class="field">Tanggal masuk<input name="startsOn" type="date" value={data.from} required /></label>
 		<label class="field">Tanggal keluar<input name="endsOn" type="date" value={data.to} required /></label>
-		<div class="form-actions"><button class="button primary" disabled={busy}>Simpan penempatan</button><button class="button secondary" type="button" onclick={() => placing=false}>Batal</button></div>
+		<div class="form-actions"><button class="button primary" disabled={busy}>{busy ? 'Menyimpan penempatan…' : 'Simpan penempatan'}</button><button class="button secondary" type="button" onclick={() => placing=false}>Batal</button></div>
 	</form>
 </section>{/if}
 <section class="panel">

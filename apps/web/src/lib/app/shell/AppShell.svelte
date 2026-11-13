@@ -6,6 +6,7 @@ import type { User, Auth } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
 import type { Notifications, Notification } from '$lib/features/notifications';
 import { sessionFailure } from '$lib/shared/presentation/session';
+import { tick } from 'svelte';
 let { data, children, auth, notificationService }: {
     data: {
         user: User;
@@ -19,6 +20,10 @@ let mobileOpen = $state(false);
 let notificationsOpen = $state(false);
 let notifications = $state<Notification[]>([]);
 let notificationError = $state('');
+let notificationsLoading = $state(false);
+let notificationButton: HTMLButtonElement;
+let menuButton: HTMLButtonElement;
+let navigationBrand: HTMLAnchorElement;
 let loggingOut = $state(false);
 const navigation = [
     { path: '/dashboard', label: 'Dashboard Siklus', icon: LayoutDashboard, roles: ['DOKTER', 'PERAWAT'] },
@@ -43,8 +48,10 @@ async function logout() {
 }
 async function showNotifications() {
     notificationsOpen = !notificationsOpen;
-    if (!notificationsOpen)
+    if (!notificationsOpen || notificationsLoading)
         return;
+    notificationsLoading = true;
+    notificationError = '';
     try {
         notifications = await notificationService.list();
         notificationError = '';
@@ -52,6 +59,26 @@ async function showNotifications() {
     catch (error) {
         notificationError = sessionFailure(error);
     }
+    finally {
+        notificationsLoading = false;
+    }
+}
+function closeNavigation() {
+    mobileOpen = false;
+    menuButton?.focus();
+}
+async function toggleNavigation() {
+    if (mobileOpen) {
+        closeNavigation();
+        return;
+    }
+    mobileOpen = true;
+    await tick();
+    if (mobileOpen) navigationBrand?.focus();
+}
+function closeNotifications() {
+    notificationsOpen = false;
+    notificationButton?.focus();
 }
 async function readNotification(id: string) {
     try {
@@ -69,15 +96,15 @@ async function readNotification(id: string) {
 	<meta name="description" content="InpaCare — sistem rawat inap terhubung." />
 </svelte:head>
 
-<svelte:window onkeydown={(event) => { if (event.key === 'Escape') { mobileOpen = false; notificationsOpen = false; } }}/>
+<svelte:window onkeydown={(event) => { if (event.key === 'Escape' && !document.querySelector('dialog[open]')) { if (mobileOpen) closeNavigation(); else if (notificationsOpen) closeNotifications(); } }}/>
 
 <a class="skip-link" href="#main-content">Lewati navigasi</a>
 {#if mobileOpen}
-	<button class="sidebar-backdrop" aria-label="Tutup navigasi" onclick={() => (mobileOpen = false)}></button>
+	<button class="sidebar-backdrop" aria-label="Tutup navigasi" onclick={closeNavigation}></button>
 {/if}
 
 <aside id="main-navigation" class:open={mobileOpen} class="sidebar" aria-label="Navigasi samping">
-	<a class="brand" href={data.user.role === 'ADMISI' ? '/invoices' : '/dashboard'}>
+	<a class="brand" bind:this={navigationBrand} href={data.user.role === 'ADMISI' ? '/invoices' : '/dashboard'} onclick={() => (mobileOpen = false)}>
 		<span class="brand-name">InpaCare</span>
 		<span class="brand-org">RSI</span>
 	</a>
@@ -114,10 +141,11 @@ async function readNotification(id: string) {
 		<div class="breadcrumbs">
 			<button
 				class="icon-button menu-toggle"
-				aria-label="Buka navigasi"
+				aria-label={mobileOpen ? 'Tutup navigasi' : 'Buka navigasi'}
+				bind:this={menuButton}
 				aria-expanded={mobileOpen}
 				aria-controls="main-navigation"
-				onclick={() => (mobileOpen = !mobileOpen)}
+				onclick={toggleNavigation}
 			>
 				{#if mobileOpen}<X size={20} />{:else}<Menu size={20} />{/if}
 			</button>
@@ -129,6 +157,7 @@ async function readNotification(id: string) {
 			<button
 				class="icon-button"
 				aria-label="Notifikasi"
+				bind:this={notificationButton}
 				aria-expanded={notificationsOpen}
 				aria-controls="notifications-panel"
 				onclick={showNotifications}
@@ -145,11 +174,13 @@ async function readNotification(id: string) {
 		<section id="notifications-panel" class="notifications" aria-label="Notifikasi">
 			<div class="panel-header">
 				<h2>Notifikasi</h2>
-				<button class="icon-button" aria-label="Tutup notifikasi" onclick={() => (notificationsOpen = false)}>
+				<button class="icon-button" aria-label="Tutup notifikasi" onclick={closeNotifications}>
 					<X size={18} />
 				</button>
 			</div>
-			{#if notificationError}
+			{#if notificationsLoading}
+				<p role="status">Memuat notifikasi…</p>
+			{:else if notificationError}
 				<p class="error" role="alert">{notificationError}</p>
 			{:else if notifications.length === 0}
 				<p class="empty">Belum ada notifikasi.</p>

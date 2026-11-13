@@ -170,6 +170,10 @@ small {
 }
 
 button.text-link {
+	display: inline-flex;
+	align-items: center;
+	min-width: 44px;
+	min-height: 44px;
 	border: 0;
 	padding: 0;
 	background: transparent;
@@ -259,7 +263,7 @@ button.text-link:hover {
 }
 
 .button.small {
-	min-height: 34px;
+	min-height: 44px;
 	padding: 5px 10px;
 	font-size: 13px;
 }
@@ -268,8 +272,8 @@ button.text-link:hover {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 40px;
-	min-height: 40px;
+	min-width: 44px;
+	min-height: 44px;
 	border: 0;
 	border-radius: 8px;
 	padding: 7px;
@@ -600,6 +604,10 @@ dialog::backdrop {
 	background: var(--primary-soft);
 	color: #3c4d94;
 	font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.button { transition: none; }
 }
 
 @media (max-width: 900px) {
