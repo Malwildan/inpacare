@@ -131,7 +131,60 @@ try {
     await expect(page.getByRole('row').filter({ hasText: 'RM-TEST' })).toHaveCount(0);
     assert.deepEqual(await page.evaluate(() => window.calendarCancellations), [{ id: 'placement', expectedVersion: 7 }, { id: 'placement', expectedVersion: 7 }]);
     assert.deepEqual(pageErrors, []);
-    console.log('PASS shell interactions/roles/viewports; calendar inclusive dates, failed drafts, cancellation dismissal/pending/conflict/retry');
+
+    await page.goto(server.resolvedUrls.local[0] + '?surface=dashboard', { waitUntil: 'domcontentloaded' });
+    for (const width of [390, 768, 1440]) {
+        await page.setViewportSize({ width, height: 1000 });
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Dashboard page overflow at ' + width + 'px');
+        await page.screenshot({ path: path.join(projectRoot, '.local/evidence', 'shadcn-dashboard-' + width + '.png'), fullPage: true, animations: 'disabled' });
+    }
+    await page.getByLabel('Cari nama atau nomor rekam medis').fill(' filter ');
+    await page.getByRole('button', { name: 'Terapkan filter', exact: true }).click();
+    assert.equal(await page.evaluate(() => window.lastNavigation), '/dashboard?search=filter');
+    const addCycle = page.getByRole('button', { name: 'Tambah rekap pasien', exact: true });
+    await addCycle.click();
+    const createCycle = page.getByRole('dialog', { name: 'Tambah rekap pasien', exact: true });
+    await createCycle.getByRole('combobox', { name: 'Pasien terdaftar', exact: true }).selectOption('new-patient');
+    await createCycle.getByRole('combobox', { name: 'Dokter penanggung jawab', exact: true }).selectOption('doctor');
+    await createCycle.getByRole('button', { name: 'Simpan rekap', exact: true }).click();
+    await expect(createCycle.getByRole('alert')).toContainText('Rekap gagal tersimpan.');
+    await expect(createCycle.getByRole('combobox', { name: 'Pasien terdaftar', exact: true })).toHaveValue('new-patient');
+    assert.deepEqual(await page.evaluate(() => window.cycleCreate), { patientId: 'new-patient', doctorId: 'doctor', placementId: null });
+    await createCycle.getByRole('button', { name: 'Tutup', exact: true }).click();
+    await expect(createCycle).toHaveCount(0);
+    await expect(addCycle).toBeFocused();
+
+    await page.getByRole('button', { name: 'Lihat detail', exact: true }).click();
+    const detailCycle = page.getByRole('dialog', { name: 'Detail siklus inpatient care', exact: true });
+    const deleteCycle = detailCycle.getByRole('button', { name: 'Hapus rekap', exact: true });
+    await deleteCycle.click();
+    const removeCycle = page.getByRole('dialog', { name: 'Hapus rekap pending?', exact: true });
+    await removeCycle.getByRole('button', { name: 'Batal', exact: true }).click();
+    await expect(removeCycle).toHaveCount(0);
+    await expect(deleteCycle).toBeFocused();
+    assert.equal(await page.evaluate(() => window.cycleRemovals.length), 0);
+    await deleteCycle.click();
+    const cycleReason = removeCycle.getByLabel('Alasan penghapusan');
+    await cycleReason.fill('   ');
+    await removeCycle.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();
+    await expect(removeCycle.getByRole('alert')).toContainText('Alasan penghapusan wajib diisi.');
+    assert.equal(await page.evaluate(() => window.cycleRemovals.length), 0);
+    await cycleReason.fill('Koreksi data ganda');
+    await removeCycle.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();
+    await page.keyboard.press('Escape');
+    await expect(removeCycle).toBeVisible();
+    await page.evaluate(() => window.rejectCycleRemoval());
+    await expect(removeCycle.getByRole('alert')).toContainText('Versi rekap berubah.');
+    await expect(cycleReason).toHaveValue('Koreksi data ganda');
+    await removeCycle.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();
+    await expect(removeCycle).toHaveCount(0);
+    await expect(detailCycle).toHaveCount(0);
+    assert.deepEqual(await page.evaluate(() => window.cycleRemovals), [
+        { id: 'cycle', expectedVersion: 11, reason: 'Koreksi data ganda' },
+        { id: 'cycle', expectedVersion: 11, reason: 'Koreksi data ganda' }
+    ]);
+    assert.deepEqual(pageErrors, []);
+    console.log('PASS shell, calendar and dashboard: responsive layouts, roles, payloads, drafts, dialogs, focus and conflict recovery');
 } finally {
     await browser?.close();
     await server.close();
