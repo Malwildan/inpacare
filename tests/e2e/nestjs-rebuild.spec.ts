@@ -24,6 +24,53 @@ test('doctor correction requires and submits its explanation', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Catatan dokter' })).toBeVisible();
 });
 
+test('medical record archive requires confirmation and keeps its reason after a conflict', async ({ page }) => {
+	await page.goto('/login');
+	await page.getByLabel('ID petugas').fill('hendra');
+	await page.getByLabel('Kata sandi', { exact: true }).fill(password);
+	await page.getByRole('button', { name: 'Masuk' }).click();
+	await expect(page).toHaveURL(/\/dashboard$/);
+
+	let archiveRequests = 0;
+	let archivePayload: Record<string, unknown> | undefined;
+	await page.route('**/api/v1/medical-records/MR-001', async (route) => {
+		if (route.request().method() !== 'DELETE') {
+			await route.continue();
+			return;
+		}
+		archiveRequests += 1;
+		archivePayload = route.request().postDataJSON() as Record<string, unknown>;
+		await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ message: 'Versi rekam medis berubah.' }) });
+	});
+
+	await page.goto('/medical-records/MR-001');
+	await page.getByRole('button', { name: 'Arsipkan rekam medis' }).click();
+	let dialog = page.getByRole('dialog', { name: 'Arsipkan rekam medis?' });
+	await expect(dialog).toBeVisible();
+	await dialog.getByRole('button', { name: 'Batal' }).click();
+	await expect(dialog).toHaveCount(0);
+	expect(archiveRequests).toBe(0);
+
+	await page.getByRole('button', { name: 'Arsipkan rekam medis' }).click();
+	dialog = page.getByRole('dialog', { name: 'Arsipkan rekam medis?' });
+	const reason = dialog.getByLabel('Alasan pengarsipan');
+	await reason.fill('   ');
+	await dialog.getByRole('button', { name: 'Konfirmasi arsip' }).click();
+	await expect(dialog.getByRole('alert')).toContainText('Alasan pengarsipan wajib diisi.');
+	expect(archiveRequests).toBe(0);
+
+	await reason.fill('Periksa konflik versi rekam medis');
+	const archived = page.waitForRequest((request) => request.method() === 'DELETE' && new URL(request.url()).pathname === '/api/v1/medical-records/MR-001');
+	await dialog.getByRole('button', { name: 'Konfirmasi arsip' }).click();
+	await archived;
+	await expect(dialog).toBeVisible();
+	await expect(reason).toHaveValue('Periksa konflik versi rekam medis');
+	await expect(dialog.getByRole('alert')).toContainText('Versi rekam medis berubah.');
+	expect(archiveRequests).toBe(1);
+	expect(archivePayload).toMatchObject({ reason: 'Periksa konflik versi rekam medis' });
+	expect(typeof archivePayload?.expectedVersion).toBe('number');
+});
+
 test('dashboard cycle filters are restored from and submitted to the server', async ({ page }) => {
 	await page.goto('/login');
 	await page.getByLabel('ID petugas').fill('rina');
