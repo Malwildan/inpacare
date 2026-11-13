@@ -108,6 +108,113 @@ async function moveVia(page: Page, title: string, statusLabel: string, options: 
 	return dialog;
 }
 
+test('a filtered card stays pending and a filter change receives the committed move', async ({ browser }) => {
+	const page = await browser.newPage();
+	await signIn(page, 'rina');
+	const ref = await reference(page);
+	const title = unique('Navigasi tertunda');
+	await createTask(page, ref, title);
+	await page.goto(`/tasks?search=${encodeURIComponent(title)}&status=todo`);
+	let release!: () => void;
+	const gate = new Promise<void>(resolve => (release = resolve));
+	await page.route('**/api/v1/tasks/*/move', async route => { await gate; await route.continue(); });
+	try {
+		await moveVia(page, title, 'Sedang Dikerjakan');
+		await expect(column(page, 'Belum Dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
+		await expect(card(page, title).getByRole('status')).toContainText('Menyimpan');
+		await page.getByRole('dialog').getByRole('button', { name: 'Batal' }).click();
+		await page.getByRole('button', { name: 'status: todo - Hapus' }).click();
+		await expect(page).not.toHaveURL(/status=todo/);
+		await expect(column(page, 'Belum Dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
+		release();
+		await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
+		await expect(column(page, 'Belum Dikerjakan').locator('.task-card').filter({ hasText: title })).toHaveCount(0);
+		await expect(page.locator('p.success')).toContainText('dipindahkan ke Sedang Dikerjakan');
+		expect(await headingCounts(page, 'Sedang Dikerjakan')).toEqual({ loaded: 1, total: 1 });
+	} finally { release(); await page.close(); }
+});
+
+test('retry after a rejected move and failed refresh replaces stale cards', async ({ browser }) => {
+	const page = await browser.newPage();
+	await signIn(page, 'rina');
+	const ref = await reference(page);
+	const title = unique('Pulihkan daftar');
+	const task = await createTask(page, ref, title);
+	await page.goto(`/tasks?search=${encodeURIComponent(title)}`);
+	await expect(card(page, title)).toBeVisible();
+	await moveApi(page, task, 'in_progress');
+	await page.route('**/api/v1/tasks?**', route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Daftar gagal dimuat.' } }) }));
+	const dialog = await moveVia(page, title, 'Sedang Dikerjakan');
+	await expect(dialog.locator('p.error')).toContainText('Tugas berubah');
+	await dialog.getByRole('button', { name: 'Batal' }).click();
+	await expect(column(page, 'Belum Dikerjakan').getByRole('alert')).toBeVisible();
+	await page.unroute('**/api/v1/tasks?**');
+	await column(page, 'Belum Dikerjakan').getByRole('button', { name: 'Coba lagi' }).click();
+	await expect(column(page, 'Belum Dikerjakan').locator('.task-card')).toHaveCount(0);
+	await column(page, 'Sedang Dikerjakan').getByRole('button', { name: 'Coba lagi' }).click();
+	await expect(column(page, 'Sedang Dikerjakan').locator('.task-card')).toContainText(title);
+	await moveVia(page, title, 'Selesai');
+	await expect(page.locator('p.success')).toContainText('dipindahkan ke Selesai');
+	await page.close();
+});
+
+test('a delayed pagination response cannot restore a moved card', async ({ browser }) => {
+	const page = await browser.newPage();
+	await signIn(page, 'rina');
+	const ref = await reference(page);
+	const prefix = unique('Halaman tertunda');
+	for (let i = 0; i < 51; i++) await createTask(page, ref, `${prefix} ${i}`);
+	await page.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
+	const title = await column(page, 'Belum Dikerjakan').locator('.card-title').first().innerText();
+	let release!: () => void;
+	let captured!: () => void;
+	const gate = new Promise<void>(resolve => (release = resolve));
+	const ready = new Promise<void>(resolve => (captured = resolve));
+	await page.route(/\/api\/v1\/tasks\?.*status=todo.*offset=50/, async route => {
+		const response = await route.fetch();
+		captured();
+		await gate;
+		await route.fulfill({ response });
+	});
+	try {
+		await column(page, 'Belum Dikerjakan').getByRole('button', { name: 'Muat lebih banyak' }).click();
+		await ready;
+		await moveVia(page, title, 'Sedang Dikerjakan');
+		await expect(page.locator('p.success')).toContainText('dipindahkan ke Sedang Dikerjakan');
+		const paginationResponse = page.waitForResponse(response => response.url().includes('offset=50'));
+		release();
+		await paginationResponse;
+		await expect(column(page, 'Belum Dikerjakan').locator('.task-card').filter({ hasText: title })).toHaveCount(0);
+		expect(await headingCounts(page, 'Belum Dikerjakan')).toEqual({ loaded: 50, total: 50 });
+		await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
+	} finally { release(); await page.close(); }
+});
+
+test('a cancelled task can be reordered without a new cancellation reason', async ({ browser }) => {
+	const author = await browser.newPage();
+	await signIn(author, 'rina');
+	const ref = await reference(author);
+	const prefix = unique('Batal urut');
+	const first = await createTask(author, ref, `${prefix} A`);
+	const second = await createTask(author, ref, `${prefix} B`);
+	const existing = await api<{ items: Task[] }>(author, 'GET', '/tasks?status=cancelled&order=board&limit=1');
+	const anchor = existing.items[0]?.id ?? null;
+	await moveApi(author, first, 'cancelled', anchor, 'Tidak diperlukan');
+	await moveApi(author, second, 'cancelled', anchor, 'Tidak diperlukan');
+	const pic = await browser.newPage();
+	await signIn(pic, 'dina');
+	await pic.goto('/tasks');
+	const dialog = await moveVia(pic, second.title, 'Dibatalkan', { before: first.title });
+	await expect(dialog).toHaveCount(0);
+	await pic.reload();
+	expect(await titles(pic, 'Dibatalkan', prefix)).toEqual([second.title, first.title]);
+	const saved = await api<Task>(pic, 'GET', `/tasks/${second.id}`);
+	expect(saved.status).toBe('cancelled');
+	expect(saved.version).toBe(3);
+	await pic.close();
+	await author.close();
+});
+
 test('pointer drag saves status and same-list order across reload and a second session', async ({ browser }) => {
 	const author = await browser.newPage();
 	await signIn(author, 'rina');

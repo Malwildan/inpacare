@@ -28,6 +28,7 @@ const coordinator = $derived(data.user?.role === 'PERAWAT' && data.user?.coordin
 let board = $state<TaskBoard>({ todo: { items: [], total: 0, error: false, filtered: false }, in_progress: { items: [], total: 0, error: false, filtered: false }, done: { items: [], total: 0, error: false, filtered: false }, cancelled: { items: [], total: 0, error: false, filtered: false } });
 let generation = 0;
 let loading = $state<BoardStatus[]>([]);
+const refreshErrors = new Set<BoardStatus>();
 let pending = $state<string[]>([]);
 let moving = $state<Task | null>(null);
 let destination = $state<BoardStatus>('todo');
@@ -39,7 +40,7 @@ let dragTarget = $state<{ status: BoardStatus; before: string | null } | null>(n
 let origin: HTMLElement | null = null;
 let suppressClick = false;
 const filtered = $derived(Object.values(data.filters).some(Boolean));
-$effect(() => { board = data.board; generation++; dragTask = null; dragTarget = null; });
+$effect(() => { board = data.board; generation++; refreshErrors.clear(); dragTask = null; dragTarget = null; });
 function canOperate(task: Task) { return coordinator || task.picId === data.user.id; }
 function allowed(task: Task, status: BoardStatus) {
     if (!canOperate(task)) return false;
@@ -53,36 +54,44 @@ function startMove(task: Task, status?: BoardStatus, before: string | null = nul
 }
 async function refreshColumn(status: BoardStatus, current = generation) {
     if (data.filters.status && data.filters.status !== status) return;
+    const column = board[status];
     try {
         const page = await tasks.list({ ...data.filters, status, order: 'board', limit: 50, offset: 0 });
-        if (current === generation) board[status] = { items: page.items, total: page.total, error: false, filtered: false };
-    } catch (failure) { sessionFailure(failure); if (current === generation) board[status] = { ...board[status], error: true }; }
+        if (current === generation && board[status] === column) { refreshErrors.delete(status); board[status] = { items: page.items, total: page.total, error: false, filtered: false }; }
+    } catch (failure) { sessionFailure(failure); if (current === generation && board[status] === column) { refreshErrors.add(status); board[status] = { ...column, error: true }; } }
 }
 async function loadMore(status: BoardStatus) {
     if (loading.includes(status)) return;
-    const current = generation; const column = board[status]; loading = [...loading, status];
+    const current = generation; const column = board[status]; const reset = refreshErrors.has(status); loading = [...loading, status];
     try {
-        const page = await tasks.list({ ...data.filters, status, order: 'board', limit: 50, offset: column.items.length });
-        if (current === generation) board[status] = { items: [...column.items, ...page.items], total: page.total, error: false, filtered: false };
-    } catch (failure) { sessionFailure(failure); if (current === generation) board[status] = { ...column, error: true }; } finally { loading = loading.filter(item => item !== status); }
+        const page = await tasks.list({ ...data.filters, status, order: 'board', limit: 50, offset: reset ? 0 : column.items.length });
+        if (current === generation && board[status] === column) { refreshErrors.delete(status); board[status] = { items: reset ? page.items : [...column.items, ...page.items], total: page.total, error: false, filtered: false }; }
+    } catch (failure) { sessionFailure(failure); if (current === generation && board[status] === column) board[status] = { ...column, error: true }; } finally { loading = loading.filter(item => item !== status); }
 }
 async function moveTask(task: Task, status: BoardStatus, before: string | null, cancellationReason?: string) {
     if (!allowed(task, status) || pending.includes(task.id)) return false;
-    if (status === 'cancelled' && !cancellationReason?.trim()) { error = 'Masukkan alasan pembatalan.'; return false; }
+    if (status === 'cancelled' && task.status !== 'cancelled' && !cancellationReason?.trim()) { error = 'Masukkan alasan pembatalan.'; return false; }
     const current = generation;
     const source = task.status as BoardStatus;
     const snapshot = structuredClone($state.snapshot(board));
     pending = [...pending, task.id]; error = ''; notice = `Menyimpan ${task.title} ke ${statusLabel(status)}.`;
     const next = { ...task, status };
-    board[source].items = board[source].items.filter(item => item.id !== task.id);
     if (!board[status].filtered) {
-        const index = before ? board[status].items.findIndex(item => item.id === before) : -1;
-        board[status].items.splice(index < 0 ? board[status].items.length : index, 0, next);
+        board[source] = { ...board[source], items: board[source].items.filter(item => item.id !== task.id) };
+        const items = [...board[status].items];
+        const index = before ? items.findIndex(item => item.id === before) : -1;
+        items.splice(index < 0 ? items.length : index, 0, next);
+        board[status] = { ...board[status], items };
     }
     try {
         const saved = await tasks.move(task.id, { expectedVersion: task.version, status, beforeTaskId: filtered ? null : before, ...(cancellationReason ? { reason: cancellationReason.trim() } : {}) });
-        if (current !== generation) return true;
-        board[status].items = board[status].items.map(item => item.id === task.id ? saved : item);
+        if (current !== generation) {
+            await Promise.all(statuses.map(([key]) => refreshColumn(key as BoardStatus)));
+            notice = `${task.title} dipindahkan ke ${statusLabel(status)}.`;
+            return true;
+        }
+        if (board[status].filtered) board[source] = { ...board[source], items: board[source].items.filter(item => item.id !== task.id) };
+        else board[status] = { ...board[status], items: board[status].items.map(item => item.id === task.id ? saved : item) };
         await Promise.all([...new Set([source, status])].map(column => refreshColumn(column, current)));
         if (current !== generation) return true;
         notice = `${task.title} dipindahkan ke ${statusLabel(status)}.${board[status].filtered ? ' Tugas tidak ditampilkan karena filter status.' : ''}`;
@@ -92,8 +101,12 @@ async function moveTask(task: Task, status: BoardStatus, before: string | null, 
         return true;
     } catch (e) {
         sessionFailure(e);
-        if (current !== generation) return false;
-        board = snapshot;
+        if (current !== generation) {
+            await Promise.all(statuses.map(([key]) => refreshColumn(key as BoardStatus)));
+            error = sessionFailure(e); notice = '';
+            return false;
+        }
+        for (const column of new Set([source, status])) board[column] = snapshot[column];
         await Promise.all([...new Set([source, status])].map(column => refreshColumn(column, current)));
         error = sessionFailure(e); notice = '';
         return false;
