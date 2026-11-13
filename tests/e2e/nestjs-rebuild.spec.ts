@@ -40,7 +40,7 @@ test('medical record archive requires confirmation and keeps its reason after a 
 		}
 		archiveRequests += 1;
 		archivePayload = route.request().postDataJSON() as Record<string, unknown>;
-		await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ message: 'Versi rekam medis berubah.' }) });
+		await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: { code: 'CONFLICT', message: 'Versi rekam medis berubah.' } }) });
 	});
 
 	await page.goto('/medical-records/MR-001');

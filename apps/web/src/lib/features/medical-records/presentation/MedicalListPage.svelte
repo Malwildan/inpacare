@@ -112,7 +112,7 @@
 	{#if creating && doctors}
 		<Card>
 			<CardHeader>
-				<CardTitle class="text-[17px] font-semibold">Tambah rekam medis</CardTitle>
+				<CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Tambah rekam medis</CardTitle>
 			</CardHeader>
 			<CardContent>
 				<form class="flex flex-col gap-5" onsubmit={create}>
@@ -158,7 +158,7 @@
 
 	<Card class="gap-0 py-0">
 		<CardHeader class="gap-1 border-b px-4 py-4 sm:px-5">
-			<CardTitle class="text-[17px] font-semibold">Daftar catatan</CardTitle>
+			<CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Daftar catatan</CardTitle>
 			<CardDescription>Menampilkan {filtered.length} dari {data.records.length} catatan</CardDescription>
 		</CardHeader>
 		<CardContent class="px-0">

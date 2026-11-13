@@ -55,7 +55,7 @@
 	<Card>
 		<CardHeader class="flex-row flex-wrap items-center justify-between gap-3">
 			<div class="min-w-0">
-				<CardTitle class="text-[19px]">{data.context.patient.name}</CardTitle>
+				<CardTitle role="heading" aria-level={2} class="text-[19px]">{data.context.patient.name}</CardTitle>
 				<CardDescription class="mt-1">Nomor rekam medis {data.context.patient.medicalRecordNo}</CardDescription>
 			</div>
 			<Badge variant="secondary">{data.context.patient.medicalRecordNo}</Badge>
@@ -84,7 +84,7 @@
 
 	<Card class="gap-0 py-0">
 		<CardHeader class="flex-row flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-5">
-			<CardTitle class="text-[17px] font-semibold">Riwayat Penempatan</CardTitle>
+			<CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Riwayat Penempatan</CardTitle>
 			<a class="text-sm font-semibold text-primary hover:underline" href="/calendar">Lihat kalender</a>
 		</CardHeader>
 		<CardContent class="px-0">
@@ -118,7 +118,7 @@
 	{#if data.user.role !== 'ADMISI'}
 		<Card>
 			<CardHeader>
-				<CardTitle class="text-[17px] font-semibold">Tim Perawatan</CardTitle>
+				<CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Tim Perawatan</CardTitle>
 			</CardHeader>
 			<CardContent class="flex flex-col gap-5">
 				{#each data.context.cycles as cycle}

@@ -26,6 +26,7 @@
 	const canObserve = $derived(data.user.role === 'PERAWAT');
 
 	async function send(operation: () => Promise<unknown>) {
+		if (busy) return;
 		busy = true;
 		error = '';
 		notice = '';
@@ -99,6 +100,7 @@
 
 	async function archive(event: SubmitEvent) {
 		event.preventDefault();
+		if (busy) return;
 		const reason = archiveReason.trim();
 		if (!reason) {
 			archiveError = 'Alasan pengarsipan wajib diisi.';
@@ -126,7 +128,7 @@
 
 <svelte:head><title>{record.patientName} · Rekam Medis | InpaCare</title></svelte:head>
 
-<main class="flex flex-col gap-6">
+<div class="flex flex-col gap-6">
 	<div class="text-sm text-muted-foreground">
 		<a href="/medical-records" class="text-primary underline-offset-4 hover:underline">Rekam Medis</a>
 		<span aria-hidden="true"> / </span><span>{record.medicalRecordNo}</span>
@@ -153,7 +155,7 @@
 	{#if data.admisiProjection}
 		<Card>
 			<CardHeader>
-				<CardTitle>Proyeksi administrasi baca saja</CardTitle>
+				<CardTitle role="heading" aria-level={2}>Proyeksi administrasi baca saja</CardTitle>
 				<CardDescription>Informasi klinis disembunyikan untuk akun Admisi.</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -168,7 +170,7 @@
 	{:else}
 		<Card>
 			<CardHeader>
-				<CardTitle>Catatan dokter</CardTitle>
+				<CardTitle role="heading" aria-level={2}>Catatan dokter</CardTitle>
 				<CardDescription>Terakhir diperbarui {new Date(record.updatedAt ?? record.recordDate).toLocaleString('id-ID')} · versi {record.version ?? '—'}</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -203,7 +205,7 @@
 
 		<Card>
 			<CardHeader class="flex flex-row flex-wrap items-start justify-between gap-3">
-				<div class="space-y-1"><CardTitle>Observasi keperawatan</CardTitle><CardDescription>Pengukuran disimpan sebagai catatan yang dikirim perawat.</CardDescription></div>
+				<div class="space-y-1"><CardTitle role="heading" aria-level={2}>Observasi keperawatan</CardTitle><CardDescription>Pengukuran disimpan sebagai catatan yang dikirim perawat.</CardDescription></div>
 				<Badge variant="secondary">{record.observations?.length ?? 0} observasi</Badge>
 			</CardHeader>
 			<CardContent>
@@ -276,10 +278,10 @@
 			</CardContent>
 		</Card>
 	{/if}
-</main>
+</div>
 
 <Dialog bind:open={archiveOpen}>
-	<DialogContent class="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+	<DialogContent class="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg" showCloseButton={!busy} onEscapeKeydown={(event) => { if (busy) event.preventDefault(); }} onInteractOutside={(event) => { if (busy) event.preventDefault(); }}>
 		<DialogHeader>
 			<DialogTitle>Arsipkan rekam medis?</DialogTitle>
 			<DialogDescription>Catatan {record.medicalRecordNo} akan diarsipkan. Tindakan ini memerlukan alasan dan konfirmasi.</DialogDescription>
