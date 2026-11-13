@@ -98,7 +98,7 @@
 		}));
 	}
 
-	async function archive(event: SubmitEvent) {
+	async function removeRecord(event: SubmitEvent) {
 		event.preventDefault();
 		if (busy) return;
 		const reason = archiveReason.trim();
@@ -286,7 +286,7 @@
 			<DialogTitle>Arsipkan rekam medis?</DialogTitle>
 			<DialogDescription>Catatan {record.medicalRecordNo} akan diarsipkan. Tindakan ini memerlukan alasan dan konfirmasi.</DialogDescription>
 		</DialogHeader>
-		<form class="flex flex-col gap-5" onsubmit={archive}>
+		<form class="flex flex-col gap-5" onsubmit={removeRecord}>
 			<Field>
 				<FieldLabel for="archive-reason">Alasan pengarsipan</FieldLabel>
 				<Textarea id="archive-reason" name="reason" bind:value={archiveReason} rows={3} maxlength={500} required aria-invalid={archiveError ? 'true' : undefined} />

@@ -104,7 +104,7 @@ function startAction() {
 }
 
 async function submit(operation: () => Promise<unknown>) {
-    if (busy) return;
+    if (busy) return false;
     busy = true;
     error = '';
     success = '';
@@ -116,8 +116,10 @@ async function submit(operation: () => Promise<unknown>) {
         addItemOpen = false;
         itemEditOpen = false;
         success = 'Perubahan berhasil disimpan.';
+        return true;
     } catch (e) {
         error = sessionFailure(e);
+        return false;
     } finally {
         busy = false;
     }
@@ -169,14 +171,19 @@ function openRemoveItem(room: Room, item: RoomItem) {
 async function removeRoomConfirmed() {
     const room = removeRoom;
     if (!room) return;
-    await submit(() => roomService.remove(room.id, { expectedVersion: room.version }));
+    if (await submit(() => roomService.remove(room.id, { expectedVersion: room.version }))) {
+        removeOpen = false;
+        if (viewId === room.id) viewOpen = false;
+    }
 }
 
 async function removeItemConfirmed() {
     const room = removeItemRoom;
     const item = removeItem;
     if (!room || !item) return;
-    await submit(() => roomService.removeItem(room.id, item.id, { expectedVersion: room.version }));
+    if (await submit(() => roomService.removeItem(room.id, item.id, { expectedVersion: room.version }))) {
+        removeOpen = false;
+    }
 }
 </script>
 
@@ -544,7 +551,7 @@ async function removeItemConfirmed() {
 </Dialog>
 
 <AlertDialog bind:open={removeOpen}>
-    <AlertDialogContent>
+    <AlertDialogContent onEscapeKeydown={(event) => { if (busy) event.preventDefault(); }}>
         <AlertDialogHeader>
             <AlertDialogTitle>{removeItemTarget ? 'Hapus item?' : 'Hapus ruangan?'}</AlertDialogTitle>
             <AlertDialogDescription>
@@ -558,12 +565,12 @@ async function removeItemConfirmed() {
             </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-            <AlertDialogCancel class="h-11 px-4">Batal</AlertDialogCancel>
+            <AlertDialogCancel class="h-11 px-4" disabled={busy}>Batal</AlertDialogCancel>
             <AlertDialogAction
                 variant="destructive"
                 class="h-11 px-4"
                 disabled={busy}
-                onclick={() => { if (removeItemTarget) void removeItemConfirmed(); else void removeRoomConfirmed(); }}>Hapus</AlertDialogAction>
+                onclick={(event) => { event.preventDefault(); if (removeItemTarget) void removeItemConfirmed(); else void removeRoomConfirmed(); }}>Hapus</AlertDialogAction>
         </AlertDialogFooter>
     </AlertDialogContent>
 </AlertDialog>

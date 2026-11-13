@@ -113,7 +113,7 @@
 									type="button"
 									variant="ghost"
 									size="icon"
-									class="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground"
+									class="absolute right-1 top-1/2 size-11 -translate-y-1/2 text-muted-foreground"
 									aria-label={visible ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
 									onclick={() => (visible = !visible)}
 								>
@@ -123,7 +123,7 @@
 						</Field>
 					</FieldGroup>
 
-					<Button type="submit" size="lg" class="mt-0.5 h-11 w-full text-sm" disabled={pending}>
+					<Button type="submit" size="lg" class="submit mt-0.5 h-11 w-full text-sm motion-reduce:transition-none" disabled={pending}>
 						{pending ? 'Memeriksa akun…' : 'Masuk'}
 					</Button>
 				</form>
