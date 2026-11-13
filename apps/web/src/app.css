@@ -63,6 +63,8 @@
 	--success-soft: #eaf5ee;
 	--warning: #805a08;
 	--warning-soft: #fbf3df;
+	--info: #235e91;
+	--info-soft: #e8f2fb;
 	--danger: #a83232;
 	--danger-soft: #fbebeb;
 }
@@ -94,6 +96,17 @@
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
+
+	/* Clinical status tones: solid text color plus its readable surface tint */
+	--color-success: var(--success);
+	--color-success-soft: var(--success-soft);
+	--color-warning: var(--warning);
+	--color-warning-soft: var(--warning-soft);
+	--color-info: var(--info);
+	--color-info-soft: var(--info-soft);
+	--color-danger: var(--danger);
+	--color-danger-soft: var(--danger-soft);
+
 	--color-chart-1: var(--chart-1);
 	--color-chart-2: var(--chart-2);
 	--color-chart-3: var(--chart-3);
