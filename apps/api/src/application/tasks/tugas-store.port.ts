@@ -51,6 +51,7 @@ export interface TaskStore {
   list(
     actor: Actor,
     filters: {
+      order?: "board";
       search: string;
       status: string | null;
       priority: string | null;
@@ -73,6 +74,8 @@ export interface TaskStore {
     includeDeleted?: boolean,
   ): Promise<TaskRecord>;
   lockTask(taskId: string): Promise<TaskLock>;
+  lockBoard(): Promise<void>;
+  movePosition(taskId: string, actor: Actor, status: string, beforeTaskId: string | null): Promise<boolean>;
   requireActivePic(picId: string): Promise<void>;
   patientExistsForUpdate(patientId: string): Promise<boolean>;
   placementRoom(placementId: string): Promise<string | undefined>;

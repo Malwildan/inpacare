@@ -17,6 +17,7 @@ import {
   UpdateTaskInput,
   ReasonInput,
   ReassignTaskInput,
+  MoveTaskInput,
 } from "./tugas.types";
 export class TugasUseCases {
   constructor(
@@ -28,6 +29,7 @@ export class TugasUseCases {
     if (q.from && q.to && q.to < q.from)
       throw DomainError.validation("Rentang tanggal tidak valid.");
     return this.store.list(actor, {
+      order: q.order,
       search: (q.search ?? "").trim(),
       status: q.status ?? null,
       priority: q.priority ?? null,
@@ -49,6 +51,7 @@ export class TugasUseCases {
     TugasPerawatan.validateSpan(startsAt, endsAt);
     const taskId = id();
     await this.uow.run(async (tx) => {
+      await tx.tasks.lockBoard();
       if (!(await tx.tasks.patientExistsForUpdate(d.patientId)))
         throw DomainError.notFound();
       await canReadPatient(tx.patients, actor, d.patientId);
@@ -102,6 +105,7 @@ export class TugasUseCases {
   async update(actor: Actor, taskId: string, d: UpdateTaskInput) {
     if (actor.role !== "PERAWAT") throw DomainError.forbidden();
     return this.uow.run(async (tx) => {
+      if (d.status !== undefined) await tx.tasks.lockBoard();
       const { task: t, placement } = await tx.tasks.lockTask(taskId);
       if (t.deleted_at || (!isCoordinator(actor) && t.pic_id !== actor.id))
         throw DomainError.notFound();
@@ -143,6 +147,8 @@ export class TugasUseCases {
         status: t.status,
         version: t.version,
       };
+      if (next.status !== t.status)
+        await tx.tasks.movePosition(taskId, actor, next.status, null);
       await tx.tasks.updateTask(taskId, next);
       await tx.tasks.historyChange({
         id: id(),
@@ -165,10 +171,31 @@ export class TugasUseCases {
       return tx.tasks.detail(taskId, actor);
     });
   }
+  async move(actor: Actor, taskId: string, d: MoveTaskInput) {
+    if (actor.role !== "PERAWAT") throw DomainError.forbidden();
+    return this.uow.run(async (tx) => {
+      await tx.tasks.lockBoard();
+      const { task: t, placement } = await tx.tasks.lockTask(taskId);
+      if (t.deleted_at || (!isCoordinator(actor) && t.pic_id !== actor.id)) throw DomainError.notFound();
+      if (t.version !== d.expectedVersion) throw DomainError.conflict("Tugas berubah. Muat ulang sebelum menyimpan.");
+      if (d.status !== t.status) {
+        if (placement.status !== "active") throw DomainError.validation("Penempatan pasien tidak aktif.");
+        TugasPerawatan.validateStatus(t.status as TaskStatus, d.status, isCoordinator(actor));
+        if (d.status === "cancelled" && !d.reason?.trim()) throw DomainError.validation("Pembatalan memerlukan alasan koordinator.");
+        await tx.tasks.requireActivePic(t.pic_id);
+      }
+      const changed = await tx.tasks.movePosition(taskId, actor, d.status, d.beforeTaskId);
+      if (!changed) return tx.tasks.detail(taskId, actor);
+      await tx.tasks.updateTask(taskId, { title: t.title, description: t.description, notes: t.notes, priority: t.priority, startsAt: new Date(t.starts_at), endsAt: new Date(t.ends_at), status: d.status });
+      await tx.tasks.historyChange({ id: id(), taskId, actorId: actor.id, action: d.status === t.status ? "reordered" : "updated", reason: d.reason?.trim() || null, before: { status: t.status, version: t.version }, after: { status: d.status, version: t.version + 1, beforeTaskId: d.beforeTaskId } });
+      return tx.tasks.detail(taskId, actor);
+    });
+  }
   async remove(actor: Actor, taskId: string, d: ReasonInput) {
     if (!isCoordinator(actor)) throw DomainError.forbidden();
     if (!d.reason.trim()) throw DomainError.validation("Alasan wajib diisi.");
     return this.uow.run(async (tx) => {
+      await tx.tasks.lockBoard();
       const { task: t } = await tx.tasks.lockTask(taskId);
       if (t.deleted_at) throw DomainError.notFound();
       if (t.version !== d.expectedVersion)
@@ -197,6 +224,7 @@ export class TugasUseCases {
         "Koordinator tidak dapat ditetapkan sebagai PIC.",
       );
     return this.uow.run(async (tx) => {
+      await tx.tasks.lockBoard();
       const { task: t } = await tx.tasks.lockTask(taskId);
       if (t.deleted_at) throw DomainError.notFound();
       if (t.version !== d.expectedVersion)

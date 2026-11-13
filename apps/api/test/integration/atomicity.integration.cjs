@@ -339,6 +339,27 @@ test(
 
 const validationError = pattern => error => error.code === "VALIDATION_FAILED" && pattern.test(error.message);
 
+test("task movement rolls back status, position and version when history fails", { skip: !enabled }, async () => {
+  const f = await scenario("release");
+  const task = await useCases.tasks.create(nurse, {
+    patientId: f.patientId, placementId: f.placementId, picId: nurse.id,
+    title: "Atomic movement", priority: "normal",
+    startsAt: new Date().toISOString(), endsAt: new Date(Date.now() + 60000).toISOString(),
+  });
+  const [before] = await ds.query("SELECT status,board_position,version FROM tasks WHERE id=$1", [task.id]);
+  await ds.query("CREATE FUNCTION fail_move_history() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'move history failure'; END $$");
+  await ds.query("CREATE TRIGGER fail_move_history BEFORE INSERT ON task_history FOR EACH ROW EXECUTE FUNCTION fail_move_history()");
+  try {
+    await assert.rejects(useCases.tasks.move(nurse, task.id, { expectedVersion: 1, status: "in_progress", beforeTaskId: null }), /move history failure/);
+    const [after] = await ds.query("SELECT status,board_position,version FROM tasks WHERE id=$1", [task.id]);
+    assert.deepEqual(after, before);
+    assert.equal((await useCases.tasks.history(nurse, task.id)).total, 1);
+  } finally {
+    await ds.query("DROP TRIGGER fail_move_history ON task_history");
+    await ds.query("DROP FUNCTION fail_move_history()");
+  }
+});
+
 test("task edits recheck active PIC and placement, and creation history retains the full snapshot", { skip: !enabled }, async () => {
   const f = await scenario("release");
   const task = await useCases.tasks.create(nurse, {
@@ -456,7 +477,7 @@ test("adoption upgrades an existing Nest schema without inventing negative claim
       { id: "legacy-approved", claim_result: "Terverifikasi (data lama)", total_amount: "10.00" },
       { id: "legacy-unknown", claim_result: null, total_amount: "10.00" },
     ]);
-    assert.equal((await legacy.query("SELECT count(*)::int n FROM migrations"))[0].n, 3);
+    assert.equal((await legacy.query("SELECT count(*)::int n FROM migrations"))[0].n, 4);
   } finally {
     if (legacy?.isInitialized) await legacy.destroy();
     await admin.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);

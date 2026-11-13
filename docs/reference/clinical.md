@@ -6,7 +6,7 @@ API prefix `/api/v1`; all routes require a live server session. JSON uses camelC
 
 ### `GET /tasks`
 
-Optional query: `search`, `status` (`todo | in_progress | done | cancelled`), `priority` (`low | normal | high`), `roomId`, `limit`. `todo` is the API alias for source status `baru` and is displayed as “Belum Dikerjakan.” A coordinator sees all live ward tasks; a PIC sees only tasks currently assigned to that user's account. Search covers task title, patient name and medical record number. Response:
+Optional query: `search`, `status` (`todo | in_progress | done | cancelled`), `priority` (`low | normal | high`), `roomId`, `patientId`, `picId`, `from`, `to`, `limit`, `offset`, `order=board`. Board order is durable within each status; without `order` the schedule and ID order remains unchanged. Counts reflect the full matching scope, not just the page. `todo` is the API alias for source status `baru` and is displayed as “Belum Dikerjakan.” A coordinator sees all live ward tasks; a PIC sees only tasks currently assigned to that user's account. Search covers task title, patient name and medical record number. Response:
 
 ```json
 {"items":[{"id":"…","title":"Pemeriksaan tanda vital","description":"…","notes":"…","patientId":"…","patientName":"…","medicalRecordNo":"RM-…","roomId":"…","roomName":"Melati 02","picId":"…","picName":"Dina Putri","priority":"high","status":"todo","startsAt":"2026-10-29T03:00:00Z","endsAt":"2026-10-29T03:30:00Z","version":1}],"total":1}
@@ -25,6 +25,10 @@ Coordinator or currently assigned PIC. Returns the task object above. Former PIC
 ### `PATCH /tasks/{id}`
 
 Coordinator or current PIC. Body `{ expectedVersion, status?, notes?, reason? }`; at least `status` or `notes` is required. Every save compares/locks the version and writes task plus history atomically. PIC can progress `todo -> in_progress -> done`; coordinator also can progress those states and cancel `todo`/`in_progress` with a non-empty `reason`. No status reopens a terminal task. Stale version is 409; invalid progression or missing cancellation reason is 422. Returns the updated task.
+
+### `POST /tasks/{id}/move`
+
+Current PIC or coordinator. Body `{ expectedVersion, status, beforeTaskId, reason? }`; a null anchor appends to the complete destination list. Anchors must be visible and in the destination status. Existing transition and cancellation rules apply; same-status moves also work in terminal lists. An actual move increments the version and writes history atomically; a same-position move does neither. Legacy PATCH status changes append to the destination. Migration `TaskBoardPosition1793577600003` must run before this API version.
 
 ### `POST /tasks/{id}/reassign`
 

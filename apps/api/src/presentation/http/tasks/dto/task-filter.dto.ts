@@ -12,6 +12,9 @@ import { Type } from "class-transformer";
 import { TaskFilters } from "../../../../application/tasks/tugas.types";
 export class TaskFilterDto implements TaskFilters {
   @IsOptional()
+  @IsIn(["board"])
+  order?: "board";
+  @IsOptional()
   @IsString()
   @MaxLength(100)
   search?: string;

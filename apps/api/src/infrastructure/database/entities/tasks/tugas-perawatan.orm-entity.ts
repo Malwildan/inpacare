@@ -33,6 +33,8 @@ export class TugasPerawatan {
   priority!: string;
   @Column({ name: "status", type: "text" })
   status!: string;
+  @Column({ name: "board_position", type: "numeric", default: 0 })
+  boardPosition!: string;
   @Column({ name: "pic_nurse_id", type: "varchar", length: 36, nullable: true })
   picNurseId?: string | null;
   @ManyToOne(() => Perawat, { nullable: true, onDelete: "RESTRICT" })
