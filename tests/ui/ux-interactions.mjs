@@ -85,7 +85,53 @@ try {
     await expect(navigation.getByRole('link', { name: 'Tugas Perawatan', exact: true })).toHaveCount(0);
     await expect(navigation.getByRole('link', { name: 'Dashboard Siklus', exact: true })).toHaveCount(0);
     assert.deepEqual(pageErrors, []);
-    console.log('PASS notifications pending/reopen/error/retry, mobile menu, modal focus, password toggle, keyboard and reduced motion');
+
+    await page.setViewportSize({ width: 390, height: 1000 });
+    await page.goto(server.resolvedUrls.local[0] + '?surface=calendar', { waitUntil: 'domcontentloaded' });
+    const week = page.getByRole('table').first();
+    await expect(week.getByRole('columnheader')).toHaveCount(8);
+    await expect(week.getByRole('columnheader').last()).toContainText('8 Nov');
+    await page.getByRole('button', { name: 'Minggu berikutnya', exact: true }).click();
+    assert.equal(await page.evaluate(() => window.lastNavigation), '/calendar?from=2026-11-09');
+
+    await page.getByRole('button', { name: 'Tempatkan pasien', exact: true }).click();
+    const placementForm = page.getByRole('form', { name: 'Penempatan pasien', exact: true });
+    await placementForm.getByRole('combobox', { name: 'Pasien', exact: true }).selectOption('patient');
+    await placementForm.getByRole('combobox', { name: 'Ruangan', exact: true }).selectOption('room');
+    await placementForm.getByLabel('Tanggal masuk').fill('2026-11-03');
+    await placementForm.getByLabel('Tanggal keluar').fill('2026-11-04');
+    await placementForm.getByRole('button', { name: 'Simpan penempatan', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('Kapasitas telah berubah.');
+    await expect(placementForm.getByLabel('Tanggal masuk')).toHaveValue('2026-11-03');
+    await expect(placementForm.getByLabel('Tanggal keluar')).toHaveValue('2026-11-04');
+    assert.deepEqual(await page.evaluate(() => window.calendarCreate), { patientId: 'patient', roomId: 'room', startsOn: '2026-11-03', endsOn: '2026-11-04' });
+    await placementForm.getByRole('button', { name: 'Batal', exact: true }).click();
+
+    for (const width of [390, 768, 1440]) {
+        await page.setViewportSize({ width, height: 1000 });
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Calendar page must contain schedule scrolling at ' + width + 'px');
+        await page.screenshot({ path: path.join(projectRoot, '.local/evidence', 'shadcn-calendar-' + width + '.png'), fullPage: true, animations: 'disabled' });
+    }
+    const cancelTrigger = page.getByRole('row').filter({ hasText: 'RM-TEST' }).getByRole('button', { name: 'Batalkan', exact: true });
+    await cancelTrigger.click();
+    const cancellation = page.getByRole('alertdialog', { name: 'Batalkan penempatan?', exact: true });
+    await cancellation.getByRole('button', { name: 'Kembali', exact: true }).click();
+    await expect(cancellation).toHaveCount(0);
+    assert.equal(await page.evaluate(() => window.calendarCancellations.length), 0);
+    await expect(cancelTrigger).toBeFocused();
+    await cancelTrigger.click();
+    await cancellation.getByRole('button', { name: 'Konfirmasi pembatalan', exact: true }).click();
+    await page.keyboard.press('Escape');
+    await expect(cancellation).toBeVisible();
+    await page.evaluate(() => window.rejectCancellation());
+    await expect(cancellation.getByRole('alert')).toContainText('Versi penempatan telah berubah.');
+    assert.deepEqual(await page.evaluate(() => window.calendarCancellations), [{ id: 'placement', expectedVersion: 7 }]);
+    await cancellation.getByRole('button', { name: 'Konfirmasi pembatalan', exact: true }).click();
+    await expect(cancellation).toHaveCount(0);
+    await expect(page.getByRole('row').filter({ hasText: 'RM-TEST' })).toHaveCount(0);
+    assert.deepEqual(await page.evaluate(() => window.calendarCancellations), [{ id: 'placement', expectedVersion: 7 }, { id: 'placement', expectedVersion: 7 }]);
+    assert.deepEqual(pageErrors, []);
+    console.log('PASS shell interactions/roles/viewports; calendar inclusive dates, failed drafts, cancellation dismissal/pending/conflict/retry');
 } finally {
     await browser?.close();
     await server.close();
