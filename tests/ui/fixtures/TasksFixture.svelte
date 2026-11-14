@@ -7,7 +7,7 @@ const clone = value => JSON.parse(JSON.stringify(value));
 const data = $state({ user: { id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT', coordinator: true },
     filters: { search: '', status: '', priority: '', roomId: '', patientId: '', picId: '', from: '', to: '' },
     board: { todo: { items: clone(serverTasks.slice(0, 2)), total: 3, error: false, filtered: false }, in_progress: { items: [], total: 0, error: false, filtered: false }, done: { items: [], total: 0, error: false, filtered: false }, cancelled: { items: [], total: 0, error: false, filtered: false } },
-    reference: { patients: [{ id: 'patient', name: 'Pasien Uji' }], rooms: [{ id: 'room', name: 'Ruangan Uji' }], staff: [{ id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT', active: true }], placements: [{ id: 'placement', patientId: 'patient', patientName: 'Pasien Uji', roomName: 'Ruangan Uji', status: 'active', startsOn: '2026-11-02', endsOn: '2026-11-08' }] }
+    reference: { patients: [{ id: 'patient', name: 'Pasien Uji' }, ...Array.from({ length: 12 }, (_, index) => ({ id: `fixture-patient-${index}`, name: `Pasien sintetis ${index + 1} dengan nama panjang untuk pemeriksaan tampilan` }))], rooms: [{ id: 'room', name: 'Ruangan Uji' }], staff: [{ id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT', active: true }], placements: [{ id: 'placement', patientId: 'patient', patientName: 'Pasien Uji', roomName: 'Ruangan Uji', status: 'active', startsOn: '2026-11-02', endsOn: '2026-11-08' }] }
 });
 window.setTaskCoordinator = coordinator => { data.user.coordinator = coordinator; };
 const writes = [];

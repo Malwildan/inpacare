@@ -9,7 +9,7 @@
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
 	import { Field, FieldGroup, FieldLabel } from '$lib/shared/ui/field/index.js';
 	import { Input } from '$lib/shared/ui/input/index.js';
-	import { NativeSelect, NativeSelectOption } from '$lib/shared/ui/native-select/index.js';
+	import FormSelect from '$lib/shared/ui/form-select.svelte';
 	import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
 	import { Textarea } from '$lib/shared/ui/textarea/index.js';
 
@@ -119,12 +119,7 @@
 					<FieldGroup class="grid gap-4 sm:grid-cols-2">
 						<Field>
 							<FieldLabel for="record-patient">Pasien</FieldLabel>
-							<NativeSelect id="record-patient" name="patientId" required class="w-full">
-								<NativeSelectOption value="">Pilih pasien yang ditangani</NativeSelectOption>
-								{#each data.reference.patients as patient}
-									<NativeSelectOption value={patient.id}>{patient.name} · {patient.medicalRecordNo}</NativeSelectOption>
-								{/each}
-							</NativeSelect>
+							<FormSelect id="record-patient" name="patientId" required class="w-full" options={[{ value: "", label: "Pilih pasien yang ditangani" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} />
 						</Field>
 						<Field>
 							<FieldLabel for="record-date">Tanggal rekam medis</FieldLabel>

@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '$lib/shared/ui/alert/index.js';
 import { Button } from '$lib/shared/ui/button/index.js';
 import { Card } from '$lib/shared/ui/card/index.js';
 import { Input } from '$lib/shared/ui/input/index.js';
-import { NativeSelect, NativeSelectOption } from '$lib/shared/ui/native-select/index.js';
+import FormSelect from '$lib/shared/ui/form-select.svelte';
 import { Textarea } from '$lib/shared/ui/textarea/index.js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
 import { invalidateAll, goto } from '$app/navigation';
@@ -87,8 +87,8 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 {#if error}<p class="error" role="alert">{error}</p>{/if}{#if success}<p class="success" role="status">{success}</p>{/if}
 {#if placing && data.user.role === 'PERAWAT'}<Card class="gap-4 p-5 sm:p-6 form-panel"><h2>Penempatan pasien</h2><p class="muted">Tanggal masuk dan keluar dihitung inklusif. Konflik kapasitas diperiksa saat disimpan.</p>
 	<form aria-label="Penempatan pasien" class="form-grid" onsubmit={place}>
-		<label class="field">Pasien<NativeSelect name="patientId" required><NativeSelectOption value="">Pilih pasien</NativeSelectOption>{#each data.patients as patient}<NativeSelectOption value={patient.id}>{patient.name} · {patient.medicalRecordNo}</NativeSelectOption>{/each}</NativeSelect></label>
-		<label class="field">Ruangan<NativeSelect name="roomId" required><NativeSelectOption value="">Pilih ruangan tersedia</NativeSelectOption>{#each data.rooms.filter((r)=>r.status==='available') as room}<NativeSelectOption value={room.id}>{room.name} · {room.roomClass} · kapasitas {room.capacity}</NativeSelectOption>{/each}</NativeSelect></label>
+		<label class="field">Pasien<FormSelect name="patientId" required options={[{ value: "", label: "Pilih pasien" }, ...(data.patients).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} /></label>
+		<label class="field">Ruangan<FormSelect name="roomId" required options={[{ value: "", label: "Pilih ruangan tersedia" }, ...(data.rooms.filter((r)=>r.status==='available')).map((room) => ({ value: room.id, label: (room.name) + " · " + (room.roomClass) + " · kapasitas " + (room.capacity) }))]} /></label>
 		<label class="field">Tanggal masuk<Input class="h-11 text-base md:text-sm" name="startsOn" type="date" value={data.from} required /></label>
 		<label class="field">Tanggal keluar<Input class="h-11 text-base md:text-sm" name="endsOn" type="date" value={data.to} required /></label>
 		<div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>{busy ? 'Menyimpan penempatan…' : 'Simpan penempatan'}</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={() => placing=false}>Batal</Button></div>
@@ -96,7 +96,7 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 </Card>{/if}
 <Card class="gap-4 p-5 sm:p-6 ">
 	<div class="filters">
-		<label class="field room-filter">Filter jadwal ruangan<NativeSelect bind:value={roomFilter}><NativeSelectOption value="">Semua ruangan</NativeSelectOption>{#each data.rooms as room}<NativeSelectOption value={room.id}>{room.name}</NativeSelectOption>{/each}</NativeSelect></label>
+		<label class="field room-filter">Filter jadwal ruangan<FormSelect bind:value={roomFilter} options={[{ value: "", label: "Semua ruangan" }, ...(data.rooms).map((room) => ({ value: room.id, label: (room.name) }))]} /></label>
 		<div class="week-navigation" aria-label="Navigasi kalender">
 			<Button variant="ghost" class="size-11 p-2 no-underline hover:no-underline" aria-label="Minggu sebelumnya" onclick={() => void moveWeek(-1)}><ChevronLeft size={18} aria-hidden="true"/></Button>
 			<strong>{titleDate(dates[0])} – {titleDate(dates[6])} {dates[6].getUTCFullYear()}</strong>
