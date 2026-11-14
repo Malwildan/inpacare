@@ -141,6 +141,60 @@ before(async () => {
   useCases = createUseCases(ds);
 });
 
+test("room edits save while preserving peak capacity and version checks", { skip: !enabled }, async () => {
+  const room = await useCases.rooms.create(nurse, {
+    name: `Room edit ${newId()}`,
+    roomClass: "Test",
+    capacity: 3,
+    picId: nurse.id,
+    dailyRate: "100.00",
+  });
+  const input = {
+    name: `${room.name} updated`,
+    roomClass: "Updated",
+    capacity: 3,
+    status: "available",
+    picId: null,
+    dailyRate: "125.50",
+    expectedVersion: room.version,
+  };
+  const saved = await useCases.rooms.update(room.id, input);
+  assert.equal(saved.name, input.name);
+  assert.equal(saved.roomClass, input.roomClass);
+  assert.equal(saved.picId, null);
+  assert.equal(saved.dailyRate, "125.50");
+  assert.equal(saved.version, room.version + 1);
+
+  for (const [startsOn, endsOn, status] of [
+    ["2030-01-01", "2030-01-04", "active"],
+    ["2030-01-04", "2030-01-06", "active"],
+    ["2030-01-05", "2030-01-08", "active"],
+    ["2030-01-01", "2030-01-08", "cancelled"],
+  ]) {
+    const patientId = newId();
+    await ds.query(
+      "INSERT INTO patients(id,medical_record_no,name,birth_date,gender) VALUES($1,$2,'Room edit patient','2000-01-01','L')",
+      [patientId, `EDIT-${patientId}`],
+    );
+    await ds.query(
+      "INSERT INTO placements(id,patient_id,room_id,starts_on,ends_on,status,created_by) VALUES($1,$2,$3,$4,$5,$6,$7)",
+      [newId(), patientId, room.id, startsOn, endsOn, status, nurse.id],
+    );
+  }
+  await assert.rejects(
+    useCases.rooms.update(room.id, { ...input, capacity: 1, expectedVersion: saved.version }),
+    error => error.code === "CONFLICT" && /Kapasitas/.test(error.message),
+  );
+  const resized = await useCases.rooms.update(room.id, { ...input, capacity: 2, expectedVersion: saved.version });
+  assert.equal(resized.capacity, 2);
+  assert.equal(resized.version, saved.version + 1);
+  await assert.rejects(
+    useCases.rooms.update(room.id, { ...input, expectedVersion: saved.version }),
+    error => error.code === "CONFLICT" && /berubah/.test(error.message),
+  );
+  assert.equal((await useCases.rooms.detail(room.id)).version, resized.version);
+});
+
 after(async () => {
   if (ds?.isInitialized) await ds.destroy();
   if (previousDatabaseUrl === undefined) delete process.env.DATABASE_URL;
