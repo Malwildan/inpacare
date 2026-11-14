@@ -8,7 +8,8 @@ InpaCare uses the actual shadcn-svelte registry source as its general UI foundat
 | --- | --- |
 | `apps/web/components.json` | Registry and aliases into `shared`, with Tailwind CSS at `src/app.css` |
 | `apps/web/src/app.css` | InpaCare colors, DM Sans, semantic tokens, accessibility and application typography |
-| `shared/ui/button`, `input`, `native-select`, `textarea`, `card`, `table`, `badge`, `dialog`, `alert-dialog`, `sheet`, `popover`, `breadcrumb`, `field`, `label`, `separator` | Registry component source and its local variants |
+| `shared/ui/button`, `input`, `select`, `dropdown-menu`, `textarea`, `card`, `table`, `badge`, `dialog`, `alert-dialog`, `sheet`, `popover`, `breadcrumb`, `field`, `label`, `separator` | Registry component source and its local variants |
+| `shared/ui/form-select.svelte` | Shared composition of registry Select for form fields and filters, with string/null values, required validation, FormData and callbacks |
 | `shared/ui/dialog-frame.svelte` | Shared composition of registry Dialog for callback-driven feature dialogs, pending-dismissal protection and focus return |
 | `shared/ui/status-badge.svelte` | Shared composition of registry Badge with Indonesian clinical/task labels and semantic tones |
 | `app/shell` | Role-filtered navigation, mobile Sheet, breadcrumbs and notification Popover |
@@ -20,7 +21,8 @@ Import components from their own `index.js`, for example `$lib/shared/ui/button/
 
 - Theme tokens keep the InpaCare blue identity and readable clinical status colors. Use `muted-foreground` for secondary text; `muted` is a background color.
 - Button defaults to `type="button"`. A form's submitting Button must explicitly specify `type="submit"`.
-- Form controls keep their names, values, native validation and FormData behavior. Native Select is the registry component, including its native option semantics.
+- Dropdown fields and filters use `FormSelect`, composed from registry Select. Both the trigger and the open menu use the shared theme, including keyboard navigation, focus return and portal positioning. Browser-rendered Native Select lists are no longer used by application features. Bits UI's form input preserves required/disabled and FormData behavior; empty filter values and nullable room-item values retain their existing meanings.
+- The editable claim-result field uses Input with a registry Dropdown Menu for suggestions, preserving free typing alongside the suggested results. Swagger UI keeps its independent controls.
 - Feature actions generally use 44px targets. Tables and the room schedule scroll inside their containers on narrow screens.
 - Badge variants carry status text as well as color. Never rely on color alone.
 - Controlled reason dialogs keep drafts on rejection and dismissal. Busy dialogs prevent dismissal and duplicate writes. Successful writes refresh server data; errors must not present unsaved changes as saved.

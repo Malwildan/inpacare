@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { selectOption } from '../select-option.mjs';
 
 const password = 'InpaCareDemo!2026';
 const evidence = path.resolve('.local/evidence');
@@ -109,10 +110,10 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await coordinator.goto('/tasks');
 	await expect(coordinator.getByRole('heading', { name: 'Tugas Perawatan' })).toBeVisible();
 	await coordinator.getByRole('button', { name: /Buat tugas/ }).click();
-	await coordinator.getByLabel('Penempatan pasien').selectOption({ index: 1 });
-	await coordinator.getByLabel('Perawat PIC').selectOption({ label: 'Dina Putri' });
+	await selectOption(coordinator.getByLabel('Penempatan pasien'), { index: 1 });
+	await selectOption(coordinator.getByLabel('Perawat PIC'), { label: 'Dina Putri' });
 	await coordinator.getByLabel('Judul', { exact: true }).fill(title);
-	await coordinator.locator('.form-panel').getByLabel('Prioritas').selectOption('normal');
+	await selectOption(coordinator.locator('.form-panel').getByLabel('Prioritas'), 'normal');
 	const starts = new Date(Date.now() + 5 * 60_000);
 	const ends = new Date(starts.getTime() + 45 * 60_000);
 	const local = (value: Date) => {const date=new Date(value.getTime()-value.getTimezoneOffset()*60_000);return date.toISOString().slice(0,16);};
@@ -145,7 +146,7 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await expect(detail).toBeHidden();
 	await card.getByRole('button',{name:'Pindahkan'}).click();
 	const move=pic.getByRole('dialog',{name:new RegExp(`Pindahkan ${title}`)});
-	await move.getByLabel('Status tujuan').selectOption('in_progress');
+	await selectOption(move.getByLabel('Status tujuan'), 'in_progress');
 	await move.getByRole('button',{name:'Konfirmasi pindahkan'}).click();
 	await expect(move).toBeHidden();
 	await expect(pic.locator('p.success')).toContainText(/dipindahkan/i);
@@ -176,7 +177,7 @@ test('role navigation only exposes the signed-in role’s screens and small scre
 	admission.on('response',async(response)=>{if(response.request().method()==='POST'&&new URL(response.url()).pathname==='/api/v1/invoices'&&response.status()===201){createdInvoiceId=(await response.json()).id;}});
 	await admission.getByRole('button',{name:/Buat tagihan/}).click();
 	const form=admission.locator('.create-form');
-	await form.getByLabel('Pasien').selectOption('PT-012');
+	await selectOption(form.getByLabel('Pasien'), 'PT-012');
 	await form.getByLabel('Layanan').fill(`E2E layanan ${Date.now()}`);
 	await form.getByLabel('Qty').fill('2');
 	await form.getByLabel('Harga satuan (Rp)').fill('1250.25');

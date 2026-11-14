@@ -21,7 +21,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '$lib/shared/ui/dialog/index.js';
 import { Field, FieldGroup, FieldLabel } from '$lib/shared/ui/field/index.js';
 import { Input } from '$lib/shared/ui/input/index.js';
-import { NativeSelect, NativeSelectOption } from '$lib/shared/ui/native-select/index.js';
+import FormSelect from '$lib/shared/ui/form-select.svelte';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
 
 let { data, roomService }: {
@@ -251,19 +251,11 @@ async function removeItemConfirmed() {
                 </Field>
                 <Field>
                     <FieldLabel for="room-filter-class">Tipe</FieldLabel>
-                    <NativeSelect id="room-filter-class" bind:value={classFilter} class="w-full">
-                        <NativeSelectOption value="">Semua tipe</NativeSelectOption>
-                        {#each classes as type}<NativeSelectOption value={type}>{type}</NativeSelectOption>{/each}
-                    </NativeSelect>
+                    <FormSelect id="room-filter-class" bind:value={classFilter} class="w-full" options={[{ value: "", label: "Semua tipe" }, ...(classes).map((type) => ({ value: type, label: (type) }))]} />
                 </Field>
                 <Field>
                     <FieldLabel for="room-filter-status">Status</FieldLabel>
-                    <NativeSelect id="room-filter-status" bind:value={statusFilter} class="w-full">
-                        <NativeSelectOption value="">Semua status</NativeSelectOption>
-                        <NativeSelectOption value="available">Available</NativeSelectOption>
-                        <NativeSelectOption value="occupied">Occupied</NativeSelectOption>
-                        <NativeSelectOption value="maintenance">Maintenance</NativeSelectOption>
-                    </NativeSelect>
+                    <FormSelect id="room-filter-status" bind:value={statusFilter} class="w-full" options={[{ value: "", label: "Semua status" }, { value: "available", label: "Available" }, { value: "occupied", label: "Occupied" }, { value: "maintenance", label: "Maintenance" }]} />
                 </Field>
             </div>
 
@@ -339,10 +331,7 @@ async function removeItemConfirmed() {
                 </Field>
                 <Field>
                     <FieldLabel for="room-pic">PIC</FieldLabel>
-                    <NativeSelect id="room-pic" name="picId" class="w-full">
-                        <NativeSelectOption value="">Pilih perawat</NativeSelectOption>
-                        {#each nurses as nurse}<NativeSelectOption value={nurse.id}>{nurse.name}</NativeSelectOption>{/each}
-                    </NativeSelect>
+                    <FormSelect id="room-pic" name="picId" class="w-full" options={[{ value: "", label: "Pilih perawat" }, ...(nurses).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} />
                 </Field>
                 <Field class="sm:col-span-2">
                     <FieldLabel for="room-daily-rate">Tarif harian (Rp)</FieldLabel>
@@ -382,17 +371,11 @@ async function removeItemConfirmed() {
                     </Field>
                     <Field>
                         <FieldLabel for="room-edit-status">Status</FieldLabel>
-                        <NativeSelect id="room-edit-status" name="status" value={room.status} class="w-full">
-                            <NativeSelectOption value="available">Available</NativeSelectOption>
-                            <NativeSelectOption value="maintenance">Maintenance</NativeSelectOption>
-                        </NativeSelect>
+                        <FormSelect id="room-edit-status" name="status" value={room.status} class="w-full" options={[{ value: "available", label: "Available" }, { value: "maintenance", label: "Maintenance" }]} />
                     </Field>
                     <Field>
                         <FieldLabel for="room-edit-pic">PIC</FieldLabel>
-                        <NativeSelect id="room-edit-pic" name="picId" value={room.picId ?? ''} class="w-full">
-                            <NativeSelectOption value="">Tidak ditentukan</NativeSelectOption>
-                            {#each nurses as nurse}<NativeSelectOption value={nurse.id}>{nurse.name}</NativeSelectOption>{/each}
-                        </NativeSelect>
+                        <FormSelect id="room-edit-pic" name="picId" value={room.picId ?? ''} class="w-full" options={[{ value: "", label: "Tidak ditentukan" }, ...(nurses).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} />
                     </Field>
                     <Field>
                         <FieldLabel for="room-edit-daily-rate">Tarif harian</FieldLabel>

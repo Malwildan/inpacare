@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { selectOption } from '../select-option.mjs';
 
 const password = 'InpaCareDemo!2026';
 const evidence = path.resolve('.local/nestjs-test');
@@ -81,7 +82,7 @@ test('dashboard cycle filters are restored from and submitted to the server', as
 	await page.goto('/dashboard?search=filter-e2e&status=pending_approval');
 	await expect(page.getByRole('heading', { name: 'Dashboard Siklus Inpatient Care' })).toBeVisible();
 	await expect(page.getByLabel('Cari nama atau nomor rekam medis')).toHaveValue('filter-e2e');
-	await expect(page.getByLabel('Status')).toHaveValue('pending_approval');
+	await expect(page.getByLabel('Status')).toHaveAttribute('data-value', 'pending_approval');
 	await page.getByRole('button', { name: 'Terapkan filter' }).click();
 	await expect(page).toHaveURL(/search=filter-e2e.*status=pending_approval/);
 });
@@ -95,7 +96,7 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 
 	await page.getByRole('button', { name: /Buat tagihan/ }).click();
 	const form = page.locator('.create-form');
-	await form.getByLabel('Pasien').selectOption('PT-012');
+	await selectOption(form.getByLabel('Pasien'), 'PT-012');
 	await form.getByLabel('Layanan').fill(`Rebuild E2E ${Date.now()}`);
 	await form.getByLabel('Qty').fill('1');
 	await form.getByLabel('Harga satuan (Rp)').fill('1250');
@@ -132,7 +133,7 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	await expect(editor).toHaveCount(0);
 
 	await detail.getByLabel('Hasil verifikasi klaim').fill('Ditolak');
-	await detail.getByLabel('Keputusan klaim').selectOption('false');
+	await selectOption(detail.getByLabel('Keputusan klaim'), 'false');
 	await detail.getByLabel('Alasan verifikasi').fill('Berkas sintetis belum lengkap.');
 	await detail.getByRole('button', { name: 'Simpan verifikasi klaim' }).click();
 	await expect(detail).toContainText('Ditolak');

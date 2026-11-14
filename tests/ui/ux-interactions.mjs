@@ -1,3 +1,4 @@
+import { selectOption } from '../select-option.mjs';
 import { createServer } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
@@ -96,8 +97,11 @@ try {
 
     await page.getByRole('button', { name: 'Tempatkan pasien', exact: true }).click();
     const placementForm = page.getByRole('form', { name: 'Penempatan pasien', exact: true });
-    await placementForm.getByRole('combobox', { name: 'Pasien', exact: true }).selectOption('patient');
-    await placementForm.getByRole('combobox', { name: 'Ruangan', exact: true }).selectOption('room');
+    await placementForm.getByRole('button', { name: 'Simpan penempatan', exact: true }).click();
+    await expect(placementForm.getByRole('combobox', { name: 'Pasien', exact: true })).toBeFocused();
+    assert.equal(await page.evaluate(() => window.calendarCreate), undefined);
+    await selectOption(placementForm.getByRole('combobox', { name: 'Pasien', exact: true }), 'patient');
+    await selectOption(placementForm.getByRole('combobox', { name: 'Ruangan', exact: true }), 'room');
     await placementForm.getByLabel('Tanggal masuk').fill('2026-11-03');
     await placementForm.getByLabel('Tanggal keluar').fill('2026-11-04');
     await placementForm.getByRole('button', { name: 'Simpan penempatan', exact: true }).click();
@@ -144,11 +148,11 @@ try {
     const addCycle = page.getByRole('button', { name: 'Tambah rekap pasien', exact: true });
     await addCycle.click();
     const createCycle = page.getByRole('dialog', { name: 'Tambah rekap pasien', exact: true });
-    await createCycle.getByRole('combobox', { name: 'Pasien terdaftar', exact: true }).selectOption('new-patient');
-    await createCycle.getByRole('combobox', { name: 'Dokter penanggung jawab', exact: true }).selectOption('doctor');
+    await selectOption(createCycle.getByRole('combobox', { name: 'Pasien terdaftar', exact: true }), 'new-patient');
+    await selectOption(createCycle.getByRole('combobox', { name: 'Dokter penanggung jawab', exact: true }), 'doctor');
     await createCycle.getByRole('button', { name: 'Simpan rekap', exact: true }).click();
     await expect(createCycle.getByRole('alert')).toContainText('Rekap gagal tersimpan.');
-    await expect(createCycle.getByRole('combobox', { name: 'Pasien terdaftar', exact: true })).toHaveValue('new-patient');
+    await expect(createCycle.getByRole('combobox', { name: 'Pasien terdaftar', exact: true })).toHaveAttribute('data-value', 'new-patient');
     assert.deepEqual(await page.evaluate(() => window.cycleCreate), { patientId: 'new-patient', doctorId: 'doctor', placementId: null });
     await createCycle.getByRole('button', { name: 'Tutup', exact: true }).click();
     await expect(createCycle).toHaveCount(0);
@@ -190,13 +194,13 @@ try {
     await expect(invoiceList.getByText('Belum ada tagihan yang cocok.')).toBeVisible();
     await invoiceList.getByLabel('Cari pasien / nomor tagihan').fill('RM-TEST');
     await expect(invoiceList.getByRole('row').filter({ hasText: 'RM-TEST' })).toHaveCount(1);
-    await invoiceList.getByRole('combobox', { name: 'Status', exact: true }).selectOption('paid');
+    await selectOption(invoiceList.getByRole('combobox', { name: 'Status', exact: true }), 'paid');
     await expect(invoiceList.getByText('Belum ada tagihan yang cocok.')).toBeVisible();
-    await invoiceList.getByRole('combobox', { name: 'Status', exact: true }).selectOption('');
+    await selectOption(invoiceList.getByRole('combobox', { name: 'Status', exact: true }), '');
     await page.getByRole('button', { name: 'Buat tagihan', exact: true }).click();
     const invoiceForm = page.getByRole('form', { name: 'Buat tagihan baru', exact: true });
-    await invoiceForm.getByRole('combobox', { name: 'Pasien', exact: true }).selectOption('patient');
-    await invoiceForm.getByRole('combobox', { name: 'Penempatan', exact: true }).selectOption('placement');
+    await selectOption(invoiceForm.getByRole('combobox', { name: 'Pasien', exact: true }), 'patient');
+    await selectOption(invoiceForm.getByRole('combobox', { name: 'Penempatan', exact: true }), 'placement');
     await invoiceForm.getByLabel('Layanan', { exact: true }).fill('Layanan Uji');
     await invoiceForm.getByLabel('Qty', { exact: true }).fill('2');
     await invoiceForm.getByLabel('Harga satuan (Rp)', { exact: true }).fill('1234.56');
@@ -268,6 +272,9 @@ try {
     await expect(invoiceEditor.getByLabel('Alasan perubahan')).toHaveValue('Koreksi biaya');
     assert.deepEqual(await page.evaluate(() => window.billingWrites.at(-1)), { action: 'payment', id: 'invoice', expectedVersion: 13, reason: 'Koreksi biaya', coveredAmount: '100.25', lines: [{ roomItemId: null, kind: 'item', description: 'Perlengkapan', quantity: 1, unitPrice: '1234.56' }] });
     await invoiceEditor.getByRole('button', { name: 'Batal', exact: true }).click();
+    await invoiceDetail.getByRole('button', { name: 'Saran hasil verifikasi', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Ditolak', exact: true }).click();
+    await expect(invoiceDetail.getByLabel('Hasil verifikasi klaim')).toHaveValue('Ditolak');
     await invoiceDetail.getByLabel('Hasil verifikasi klaim').fill('Ditolak');
     await invoiceDetail.getByLabel('Alasan verifikasi').fill('Berkas sintetis');
     await invoiceDetail.getByRole('button', { name: 'Simpan verifikasi klaim', exact: true }).click();
@@ -324,8 +331,8 @@ try {
     assert.equal(await page.evaluate(() => window.taskReads.at(-1).offset), 2);
     await page.getByRole('button', { name: 'Buat tugas', exact: true }).click();
     const taskForm = page.locator('form').filter({ has: page.getByRole('button', { name: 'Simpan tugas', exact: true }) });
-    await taskForm.getByLabel('Penempatan pasien').selectOption('placement');
-    await taskForm.getByLabel('Perawat PIC').selectOption('nurse');
+    await selectOption(taskForm.getByLabel('Penempatan pasien'), 'placement');
+    await selectOption(taskForm.getByLabel('Perawat PIC'), 'nurse');
     await taskForm.getByLabel('Judul', { exact: true }).fill('Tugas Baru');
     await taskForm.getByLabel('Waktu mulai').fill('2026-11-02T08:30');
     await taskForm.getByLabel('Waktu selesai').fill('2026-11-02T09:30');
@@ -337,7 +344,7 @@ try {
     const taskCard = taskBoard.getByRole('article').filter({ hasText: 'Tugas Uji' });
     await taskCard.getByRole('button', { name: 'Pindahkan', exact: true }).click();
     const moveTask = page.getByRole('dialog', { name: 'Pindahkan Tugas Uji', exact: true });
-    await moveTask.getByLabel('Status tujuan').selectOption('in_progress');
+    await selectOption(moveTask.getByLabel('Status tujuan'), 'in_progress');
     await moveTask.getByRole('button', { name: 'Konfirmasi pindahkan', exact: true }).click();
     await expect(taskCard.getByRole('status')).toHaveText('Menyimpan...');
     await expect(moveTask.getByRole('button', { name: 'Konfirmasi pindahkan', exact: true })).toBeDisabled();
@@ -348,7 +355,7 @@ try {
     await expect(page.getByRole('alert')).toContainText('Tugas berubah.');
     await expect(todo.getByRole('article').filter({ hasText: 'Tugas Uji' })).toBeVisible();
     await taskCard.getByRole('button', { name: 'Pindahkan', exact: true }).click();
-    await moveTask.getByLabel('Status tujuan').selectOption('in_progress');
+    await selectOption(moveTask.getByLabel('Status tujuan'), 'in_progress');
     await moveTask.getByRole('button', { name: 'Konfirmasi pindahkan', exact: true }).click();
     await expect(moveTask).toHaveCount(0);
     await expect(page.locator('#task-task')).toBeFocused();
@@ -376,7 +383,33 @@ try {
         await page.screenshot({ path: path.join(projectRoot, '.local/evidence', 'shadcn-tasks-' + width + '.png'), fullPage: true, animations: 'disabled' });
     }
     assert.deepEqual(pageErrors, []);
-    console.log('PASS shell, calendar, dashboard, billing and tasks: responsive layouts, roles, payloads, drafts, dialogs, focus and conflict recovery');
+    await page.getByText('Filter lanjutan', { exact: true }).click();
+    const patientDropdown = page.getByRole('combobox', { name: 'Pasien', exact: true });
+    await patientDropdown.focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+    await expect(patientDropdown).toBeFocused();
+    await expect(patientDropdown).toHaveAttribute('data-value', 'fixture-patient-11');
+    await page.getByRole('button', { name: 'Terapkan filter', exact: true }).click();
+    assert.equal(await page.evaluate(() => window.lastNavigation), '/tasks?patientId=fixture-patient-11');
+    await selectOption(patientDropdown, '');
+    await expect(patientDropdown).toHaveText('Semua pasien');
+    for (const width of [390, 1440]) {
+        await page.setViewportSize({ width, height: 1000 });
+        await patientDropdown.click();
+        const listbox = page.getByRole('listbox');
+        await expect(listbox).toBeVisible();
+        const menuBox = await listbox.boundingBox();
+        assert.ok(menuBox.x >= 0 && menuBox.x + menuBox.width <= width + 1, 'Dropdown must fit viewport at ' + width);
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Open dropdown must not overflow page');
+        await page.screenshot({ path: path.join(projectRoot, '.local/evidence', 'shadcn-select-patient-' + width + '.png'), animations: 'disabled' });
+        await page.keyboard.press('Escape');
+        await expect(patientDropdown).toBeFocused();
+    }
+    assert.deepEqual(pageErrors, []);
+    console.log('PASS shadcn dropdowns: required fields, values, payloads, keyboard, focus, portals, suggestions and responsive menus; existing workflows remain intact');
 } finally {
     await browser?.close();
     await server.close();

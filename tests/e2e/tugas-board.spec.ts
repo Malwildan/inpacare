@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { selectOption, optionLabels } from '../select-option.mjs';
 
 const password = 'InpaCareDemo!2026';
 const evidence = path.resolve('.local/evidence');
@@ -100,8 +101,8 @@ async function titles(page: Page, label: string, prefix: string) {
 async function moveVia(page: Page, title: string, statusLabel: string, options: { before?: string; reason?: string } = {}) {
 	await card(page, title).getByRole('button', { name: 'Pindahkan' }).click();
 	const dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
-	await dialog.getByLabel('Status tujuan').selectOption({ label: statusLabel });
-	if (options.before) await dialog.getByLabel('Posisi').selectOption({ label: `Sebelum ${options.before}` });
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: statusLabel });
+	if (options.before) await selectOption(dialog.getByLabel('Posisi'), { label: `Sebelum ${options.before}` });
 	if (options.reason) await dialog.getByLabel('Alasan pembatalan').fill(options.reason);
 	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
 	return dialog;
@@ -284,16 +285,16 @@ test('allowed transitions and terminal restrictions hold for PIC and coordinator
 	await expect(mineCard).toBeVisible();
 	await mineCard.getByRole('button', { name: 'Pindahkan' }).click();
 	let dialog = dinaPage.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(mine)}`) });
-	expect(await dialog.getByLabel('Status tujuan').locator('option').allTextContents()).toEqual(['Sedang Dikerjakan']);
-	await dialog.getByLabel('Status tujuan').selectOption({ label: 'Sedang Dikerjakan' });
+	expect(await optionLabels(dialog.getByLabel('Status tujuan'))).toEqual(['Sedang Dikerjakan']);
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
 	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
 	await expect(dinaPage.locator('p.success')).toContainText(/dipindahkan/i);
 	await expect(column(dinaPage, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: mine })).toBeVisible();
 
 	await card(dinaPage, mine).getByRole('button', { name: 'Pindahkan' }).click();
 	dialog = dinaPage.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(mine)}`) });
-	expect(await dialog.getByLabel('Status tujuan').locator('option').allTextContents()).toEqual(['Selesai']);
-	await dialog.getByLabel('Status tujuan').selectOption({ label: 'Selesai' });
+	expect(await optionLabels(dialog.getByLabel('Status tujuan'))).toEqual(['Selesai']);
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Selesai' });
 	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
 	await expect(column(dinaPage, 'Selesai').locator('.task-card').filter({ hasText: mine })).toBeVisible();
 	await expect(card(dinaPage, mine).getByRole('button', { name: 'Pindahkan' })).toHaveCount(0);
@@ -337,7 +338,7 @@ test('Pindahkan dialog moves cards by keyboard and touch without dragging', asyn
 	const dialog = keyboardPage.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(keyboardTitle)}`) });
 	await expect(dialog).toBeVisible();
 	await dialog.getByLabel('Status tujuan').focus();
-	await dialog.getByLabel('Status tujuan').selectOption({ label: 'Selesai' });
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Selesai' });
 	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).focus();
 	await keyboardPage.keyboard.press('Enter');
 	await expect(column(keyboardPage, 'Selesai').locator('.task-card').filter({ hasText: keyboardTitle })).toBeVisible();
@@ -351,7 +352,7 @@ test('Pindahkan dialog moves cards by keyboard and touch without dragging', asyn
 	await touchCard.getByRole('button', { name: 'Pindahkan' }).tap();
 	const touchDialog = touchPage.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(touchTitle)}`) });
 	await expect(touchDialog).toBeVisible();
-	await touchDialog.getByLabel('Status tujuan').selectOption({ label: 'Selesai' });
+	await selectOption(touchDialog.getByLabel('Status tujuan'), { label: 'Selesai' });
 	await touchDialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).tap();
 	await expect(touchPage.locator('p.success')).toContainText(/dipindahkan/i);
 	await expect(column(touchPage, 'Selesai').locator('.task-card').filter({ hasText: touchTitle })).toBeVisible();
@@ -375,7 +376,7 @@ test('cancellation requires an explicit reason and preserves it on failure', asy
 
 	await todoCard.getByRole('button', { name: 'Pindahkan' }).click();
 	let dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
-	await dialog.getByLabel('Status tujuan').selectOption({ label: 'Dibatalkan' });
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Dibatalkan' });
 	await expect(dialog.getByLabel('Alasan pembatalan')).toBeVisible();
 	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
 	await expect(dialog).toBeVisible();
@@ -388,7 +389,7 @@ test('cancellation requires an explicit reason and preserves it on failure', asy
 
 	await card(page, title).getByRole('button', { name: 'Pindahkan' }).click();
 	dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
-	await dialog.getByLabel('Status tujuan').selectOption({ label: 'Dibatalkan' });
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Dibatalkan' });
 	await dialog.getByLabel('Alasan pembatalan').fill('Alasan uji pembatalan.');
 
 	let attempts = 0;
@@ -439,7 +440,7 @@ test('failed saves restore the confirmed card and prevent duplicate pending move
 		await page.route('**/api/v1/tasks/*/move', failure.handler);
 		await card(page, title).getByRole('button', { name: 'Pindahkan' }).click();
 		const dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
-		await dialog.getByLabel('Status tujuan').selectOption({ label: 'Sedang Dikerjakan' });
+		await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
 		await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
 		await expect(dialog.locator('p.error')).toBeVisible();
 		await expect(dialog).toBeVisible();
@@ -460,7 +461,7 @@ test('failed saves restore the confirmed card and prevent duplicate pending move
 	});
 	await card(page, title).getByRole('button', { name: 'Pindahkan' }).click();
 	const pendingDialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
-	await pendingDialog.getByLabel('Status tujuan').selectOption({ label: 'Sedang Dikerjakan' });
+	await selectOption(pendingDialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
 	await pendingDialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
 	await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: title }).locator('p[role="status"]')).toContainText('Menyimpan');
 	await expect(pendingDialog.getByRole('button', { name: 'Konfirmasi pindahkan' })).toBeDisabled();
@@ -569,11 +570,11 @@ test('filters disable position controls, append status moves, and explain filter
 	let dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(highTitle)}`) });
 	await expect(dialog.getByLabel('Posisi')).toHaveCount(0);
 	await expect(dialog).toContainText('Hapus filter untuk mengatur posisi.');
-	const firstOptions = await dialog.getByLabel('Status tujuan').locator('option').allTextContents();
+	const firstOptions = await optionLabels(dialog.getByLabel('Status tujuan'));
 	expect(firstOptions).toContain('Sedang Dikerjakan');
 	expect(firstOptions).not.toContain('Selesai');
 	await expect(page.locator('p.muted').filter({ hasText: 'Urutan dinonaktifkan saat filter aktif.' })).toBeVisible();
-	await dialog.getByLabel('Status tujuan').selectOption({ label: 'Sedang Dikerjakan' });
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
 	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
 	await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: highTitle })).toBeVisible();
 
@@ -581,11 +582,11 @@ test('filters disable position controls, append status moves, and explain filter
 	await expect(card(page, normalTitle)).toBeVisible();
 	await card(page, normalTitle).getByRole('button', { name: 'Pindahkan' }).click();
 	dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(normalTitle)}`) });
-	const secondOptions = await dialog.getByLabel('Status tujuan').locator('option').allTextContents();
+	const secondOptions = await optionLabels(dialog.getByLabel('Status tujuan'));
 	expect(secondOptions).toContain('Sedang Dikerjakan');
 	expect(secondOptions).not.toContain('Selesai');
 	await expect(dialog.getByLabel('Posisi')).toHaveCount(0);
-	await dialog.getByLabel('Status tujuan').selectOption({ label: 'Sedang Dikerjakan' });
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
 	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
 	await expect(page.locator('p.success')).toContainText(/filter status/i);
 	await expect(card(page, normalTitle)).toHaveCount(0);
@@ -688,7 +689,7 @@ test('card details restore focus and retain management forms', async ({ browser 
 	await expect(coordinatorPage.getByRole('dialog')).toContainText(revised);
 
 	detail = coordinatorPage.getByRole('dialog', { name: new RegExp(escape(revised)) });
-	await detail.getByLabel('Alihkan ke perawat').selectOption({ label: 'Bima Pratama' });
+	await selectOption(detail.getByLabel('Alihkan ke perawat'), { label: 'Bima Pratama' });
 	await detail.getByLabel('Alasan pengalihan').fill('Pengalihan uji peran.');
 	await detail.getByRole('button', { name: 'Alihkan PIC' }).click();
 	await expect(coordinatorPage.locator('p.success')).toContainText(/berhasil/i);
