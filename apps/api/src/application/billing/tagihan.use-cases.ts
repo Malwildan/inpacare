@@ -91,9 +91,9 @@ export class TagihanUseCases {
       throw DomainError.validation(
         "Pasien tanpa BPJS tidak dapat menggunakan nilai jaminan.",
       );
-    const payable = subtractInvoiceAmounts(total, covered),
-      invoiceId = id();
-    await this.uow.run(async (tx) => {
+    const payable = subtractInvoiceAmounts(total, covered);
+    const invoiceId = await this.uow.run(async (tx) => {
+      const invoiceId = await tx.billing.nextId();
       await tx.billing.createInvoice({
         id: invoiceId,
         patientId: input.patientId,
@@ -130,6 +130,7 @@ export class TagihanUseCases {
           lines,
         },
       });
+      return invoiceId;
     });
     return {
       id: invoiceId,
