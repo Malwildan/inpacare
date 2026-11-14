@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { dailyRateValue, displayDailyRate, formatDailyRateInput, parseDailyRate, updateDailyRateInput } from './daily-rate';
+import { moneyInputValue, money, formatMoneyInput, parseMoneyInput, updateMoneyInput } from './currency';
 
-describe('daily rate amounts', () => {
+describe('rupiah amounts', () => {
     it.each([
         ['250000', '250000'],
         ['250.000', '250000'],
@@ -12,11 +12,11 @@ describe('daily rate amounts', () => {
         ['250.000,', '250000'],
         ['9.007.199.254.740.993,01', '9007199254740993.01']
     ])('parses %s as an exact API decimal string', (input, expected) => {
-        expect(parseDailyRate(input)).toBe(expected);
+        expect(parseMoneyInput(input)).toBe(expected);
     });
 
     it.each(['', '-100', 'abc100', '1e3', '1.23', '1..000', '1,234', '1,2,3', 'Rp'])('rejects invalid amount %s', (input) => {
-        expect(parseDailyRate(input)).toBeNull();
+        expect(parseMoneyInput(input)).toBeNull();
     });
 
     it.each([
@@ -30,20 +30,44 @@ describe('daily rate amounts', () => {
         ['1,234', '1,234'],
         ['1..000', '1..000']
     ])('formats editable input %s without dropping invalid characters or decimals', (input, expected) => {
-        expect(formatDailyRateInput(input)).toBe(expected);
+        expect(formatMoneyInput(input)).toBe(expected);
     });
 
     it.each(['0', '250000.50', '0.01', '9007199254740993.01'])('round trips stored amount %s through editing', (value) => {
-        expect(parseDailyRate(dailyRateValue(value))).toBe(value);
+        expect(parseMoneyInput(moneyInputValue(value))).toBe(value);
     });
 
     it('displays stored decimals as rupiah without losing precision', () => {
-        expect(displayDailyRate('250000.50')).toBe('Rp 250.000,50');
-        expect(displayDailyRate('9007199254740993.01')).toBe('Rp 9.007.199.254.740.993,01');
+        expect(money('250000.50')).toBe('Rp 250.000,50');
+        expect(money('9007199254740993.01')).toBe('Rp 9.007.199.254.740.993,01');
+    });
+
+    it.each([
+        ['0.00', 'Rp 0'],
+        ['250000', 'Rp 250.000'],
+        ['250000.50', 'Rp 250.000,50'],
+        ['-250000.50', '-Rp 250.000,50'],
+        [250000.5, 'Rp 250.000,50'],
+        [-250000.5, '-Rp 250.000,50'],
+        [250000, 'Rp 250.000'],
+        [0.1 + 0.2, 'Rp 0,30']
+    ])('uses the same rupiah display for %s', (value, expected) => {
+        expect(money(value)).toBe(expected);
+    });
+
+    it.each(['', '-100', 'abc100', '1,234', '1..000'])('keeps invalid bound input %s visible for validation', (value) => {
+        expect(moneyInputValue(value)).toBe(value);
+    });
+
+    it('formats replaced and reset canonical values without retaining the previous display', () => {
+        expect(moneyInputValue('250000.50')).toBe('250.000,50');
+        expect(moneyInputValue('12.05')).toBe('12,05');
+        expect(moneyInputValue('0')).toBe('0');
+        expect(moneyInputValue('')).toBe('');
     });
 });
 
-describe('daily rate input selection', () => {
+describe('rupiah input selection', () => {
     it.each([
         ['1000', 4, '', '1.000', 5],
         ['12.3000', 4, '', '123.000', 3],
@@ -61,7 +85,7 @@ describe('daily rate input selection', () => {
                 this.selectionEnd = end ?? 0;
             }
         };
-        updateDailyRateInput(input, inputType);
+        updateMoneyInput(input, inputType);
         expect(input.value).toBe(expected);
         expect(input.selectionStart).toBe(expectedCursor);
         expect(input.selectionEnd).toBe(expectedCursor);

@@ -99,7 +99,14 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	await selectOption(form.getByLabel('Pasien'), 'PT-012');
 	await form.getByLabel('Layanan').fill(`Rebuild E2E ${Date.now()}`);
 	await form.getByLabel('Qty').fill('1');
-	await form.getByLabel('Harga satuan (Rp)').fill('1250');
+	const price = form.getByLabel('Harga satuan (Rp)');
+	for (const invalid of ['-100', '1,234']) {
+		await price.fill(invalid);
+		await expect(price).toHaveValue(invalid);
+		expect(await price.evaluate((input: HTMLInputElement) => input.validity.valid)).toBe(false);
+	}
+	await price.fill('1250');
+	await expect(price).toHaveValue('1.250');
 	const created = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/v1/invoices');
 	await form.getByRole('button', { name: 'Simpan tagihan' }).click();
 	const invoiceId = (await (await created).json()).id as string;
@@ -121,14 +128,16 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	await detail.getByRole('button', { name: 'Ubah tagihan', exact: true }).click();
 	await expect(editor.getByLabel('Deskripsi')).toHaveValue(updatedDescription);
 	await editor.getByLabel('Jumlah', { exact: true }).fill('2');
-	await editor.getByLabel('Harga satuan', { exact: true }).fill('1250.25');
-	await editor.getByLabel('Jumlah jaminan BPJS (Rp)').fill('300.25');
+	await editor.getByLabel('Harga satuan', { exact: true }).fill('1.250,25');
+	await editor.getByLabel('Jumlah jaminan BPJS (Rp)').fill('300,25');
+	await expect(editor.getByLabel('Harga satuan', { exact: true })).toHaveValue('1.250,25');
 	await editor.getByLabel('Alasan perubahan').fill('Koreksi rincian dan jaminan bersama.');
 	const edited = page.waitForResponse(response => response.request().method() === 'PATCH' && new URL(response.url()).pathname === `/api/v1/invoices/${invoiceId}`);
 	await editor.getByRole('button', { name: 'Simpan perubahan', exact: true }).click();
 	const editResponse = await edited;
 	expect(editResponse.status()).toBe(200);
 	expect(editResponse.request().postDataJSON().coveredAmount).toBe('300.25');
+	expect(editResponse.request().postDataJSON().lines[0].unitPrice).toBe('1250.25');
 	expect(await editResponse.json()).toMatchObject({ totalAmount: '2500.50', coveredAmount: '300.25', payableAmount: '2200.25' });
 	await expect(editor).toHaveCount(0);
 

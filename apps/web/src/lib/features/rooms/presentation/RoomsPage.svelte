@@ -4,7 +4,8 @@ import type { Rooms, RoomsPageData, Room, RoomItem, EditRoom } from '$lib/featur
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
 import { Plus } from 'lucide-svelte';
-import { dailyRateValue, displayDailyRate, parseDailyRate, updateDailyRateInput } from './daily-rate';
+import { money } from '$lib/shared/format';
+import MoneyInput from '$lib/shared/ui/MoneyInput.svelte';
 import { Alert, AlertDescription } from '$lib/shared/ui/alert/index.js';
 import { Badge, type BadgeVariant } from '$lib/shared/ui/badge/index.js';
 import { Button } from '$lib/shared/ui/button/index.js';
@@ -84,10 +85,6 @@ function roomById(id: string | null | undefined): Room | null {
 function itemById(room: Room | null, id: string | null | undefined): RoomItem | null {
     if (!room || !id) return null;
     return room.items.find((item: RoomItem) => item.id === id) ?? null;
-}
-
-function money(value: string): string {
-    return 'Rp ' + Number(value).toLocaleString('id-ID');
 }
 
 function statusLabel(room: Room): string {
@@ -315,7 +312,7 @@ async function removeItemConfirmed() {
             <DialogTitle>Tambah ruangan</DialogTitle>
             <DialogDescription>Lengkapi data ruangan baru. Kolom bertanda wajib tidak boleh kosong.</DialogDescription>
         </DialogHeader>
-        <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); const dailyRate = parseDailyRate(formText(f, 'dailyRate') || '0'); if (dailyRate === null) { error = 'Masukkan tarif harian yang valid (maksimal 2 angka desimal).'; return; } void submit(() => roomService.create({ name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), picId: formText(f, 'picId') || null, dailyRate })); }}>
+        <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); const dailyRate = formText(f, 'dailyRate') || '0'; void submit(() => roomService.create({ name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), picId: formText(f, 'picId') || null, dailyRate })); }}>
             {#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
             <FieldGroup class="grid gap-4 sm:grid-cols-2">
                 <Field>
@@ -334,11 +331,7 @@ async function removeItemConfirmed() {
                     <FieldLabel for="room-pic">PIC</FieldLabel>
                     <FormSelect id="room-pic" name="picId" class="w-full" options={[{ value: "", label: "Pilih perawat" }, ...(nurses).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} />
                 </Field>
-                <Field class="sm:col-span-2">
-                    <FieldLabel for="room-daily-rate">Tarif harian (Rp)</FieldLabel>
-                    <Input id="room-daily-rate" name="dailyRate" inputmode="decimal" value="0" placeholder="250.000" onfocus={(event) => { if (event.currentTarget.value === '0') event.currentTarget.select(); }} oninput={(event) => updateDailyRateInput(event.currentTarget, event instanceof InputEvent ? event.inputType : '')} aria-describedby="create-rate-hint" class="h-11 px-3 text-base md:text-base" />
-                    <small class="text-muted-foreground" id="create-rate-hint">Rupiah. Contoh: 250.000 atau 250.000,50</small>
-                </Field>
+                <MoneyInput id="room-daily-rate" label="Tarif harian (Rp)" name="dailyRate" value="0" class="sm:col-span-2" hint="Contoh: 250.000 atau 250.000,50" />
             </FieldGroup>
             <DialogFooter>
                 <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (createOpen = false)}>Batal</Button>
@@ -356,7 +349,7 @@ async function removeItemConfirmed() {
         </DialogHeader>
         {#if editRoom}
             {@const room = editRoom}
-            <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); const dailyRate = parseDailyRate(formText(f, 'dailyRate')); if (dailyRate === null) { error = 'Masukkan tarif harian yang valid (maksimal 2 angka desimal).'; return; } void submit(() => roomService.update(room.id, { name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), status: formText(f, 'status') as EditRoom['status'], picId: formText(f, 'picId') || null, dailyRate, expectedVersion: room.version })); }}>
+            <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); const dailyRate = formText(f, 'dailyRate'); void submit(() => roomService.update(room.id, { name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), status: formText(f, 'status') as EditRoom['status'], picId: formText(f, 'picId') || null, dailyRate, expectedVersion: room.version })); }}>
                 {#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
                 <FieldGroup class="grid gap-4 sm:grid-cols-2">
                     <Field>
@@ -379,11 +372,7 @@ async function removeItemConfirmed() {
                         <FieldLabel for="room-edit-pic">PIC</FieldLabel>
                         <FormSelect id="room-edit-pic" name="picId" value={room.picId ?? ''} class="w-full" options={[{ value: "", label: "Tidak ditentukan" }, ...(nurses).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} />
                     </Field>
-                    <Field>
-                        <FieldLabel for="room-edit-daily-rate">Tarif harian (Rp)</FieldLabel>
-                        <Input id="room-edit-daily-rate" name="dailyRate" inputmode="decimal" required value={dailyRateValue(room.dailyRate)} oninput={(event) => updateDailyRateInput(event.currentTarget, event instanceof InputEvent ? event.inputType : '')} aria-describedby="edit-rate-hint" class="h-11 px-3 text-base md:text-base" />
-                        <small class="text-muted-foreground" id="edit-rate-hint">Rupiah. Contoh: 250.000 atau 250.000,50</small>
-                    </Field>
+                    <MoneyInput id="room-edit-daily-rate" label="Tarif harian (Rp)" name="dailyRate" value={room.dailyRate} required hint="Contoh: 250.000 atau 250.000,50" />
                 </FieldGroup>
                 <DialogFooter>
                     <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (editOpen = false)}>Batal</Button>
@@ -416,7 +405,7 @@ async function removeItemConfirmed() {
                 </div>
                 <div class="flex min-w-0 flex-col gap-1">
                     <dt class="text-[13px] text-muted-foreground">Tarif harian</dt>
-                    <dd class="text-sm font-semibold">{displayDailyRate(room.dailyRate)}</dd>
+                    <dd class="text-sm font-semibold">{money(room.dailyRate)}</dd>
                 </div>
                 <div class="flex min-w-0 flex-col gap-1">
                     <dt class="text-[13px] text-muted-foreground">Total biaya inventaris</dt>
@@ -476,10 +465,7 @@ async function removeItemConfirmed() {
                         <FieldLabel for="item-quantity">Jumlah</FieldLabel>
                         <Input id="item-quantity" name="quantity" type="number" min={1} value="1" required class="h-11 px-3 text-base md:text-base" />
                     </Field>
-                    <Field>
-                        <FieldLabel for="item-unit-price">Harga satuan</FieldLabel>
-                        <Input id="item-unit-price" name="unitPrice" type="number" min={0} step="0.01" value="0" required class="h-11 px-3 text-base md:text-base" />
-                    </Field>
+                    <MoneyInput id="item-unit-price" label="Harga satuan" name="unitPrice" value="0" required />
                 </FieldGroup>
                 {#if room.items.length}
                     <div class="flex flex-col gap-1 rounded-lg bg-muted/60 p-3">
@@ -522,10 +508,7 @@ async function removeItemConfirmed() {
                         <FieldLabel for="item-edit-quantity">Jumlah</FieldLabel>
                         <Input id="item-edit-quantity" name="quantity" type="number" min={1} required value={item.quantity} class="h-11 px-3 text-base md:text-base" />
                     </Field>
-                    <Field>
-                        <FieldLabel for="item-edit-unit-price">Harga satuan</FieldLabel>
-                        <Input id="item-edit-unit-price" name="unitPrice" type="number" min={0} step="0.01" required value={item.unitPrice} class="h-11 px-3 text-base md:text-base" />
-                    </Field>
+                    <MoneyInput id="item-edit-unit-price" label="Harga satuan" name="unitPrice" value={item.unitPrice} required />
                 </FieldGroup>
                 <DialogFooter>
                     <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (itemEditOpen = false)}>Batal</Button>
