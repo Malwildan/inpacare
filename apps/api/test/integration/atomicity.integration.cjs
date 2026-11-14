@@ -176,6 +176,54 @@ test("concurrent room creation allocates unique IDs beyond RG-999 and releases f
   assert.equal(afterFailure.id, "RG-1008");
 });
 
+async function newRecapPatient(name) {
+  const patientId = newId();
+  await ds.query(
+    "INSERT INTO patients(id,medical_record_no,name,birth_date,gender) VALUES($1,$2,$3,'2000-01-01','L')",
+    [patientId, `RECAP-${patientId}`, name],
+  );
+  return patientId;
+}
+
+test("new recaps continue CY numbering without rewriting archived or legacy recaps", { skip: !enabled }, async () => {
+  const patientId = await newRecapPatient("Numbered recap patient");
+  const input = { patientId, doctorId: doctor.id, placementId: null };
+  const first = await useCases.cycles.create(nurse, input);
+  assert.equal(first.id, "CY-001");
+  await useCases.cycles.remove(nurse, first.id, { expectedVersion: 1, reason: "Synthetic archived recap" });
+
+  const legacyId = newId();
+  await ds.query(
+    "INSERT INTO cycles(id,patient_id,doctor_id,nurse_id,status,deleted_at) VALUES('CY-009',$1,$2,$3,'pending',now()),($4,$1,$2,$3,'released',NULL)",
+    [patientId, doctor.id, nurse.id, legacyId],
+  );
+  const next = await useCases.cycles.create(nurse, input);
+  assert.equal(next.id, "CY-010");
+  assert.equal((await useCases.cycles.detail(nurse, legacyId)).id, legacyId);
+  await useCases.cycles.remove(nurse, next.id, { expectedVersion: 1, reason: "Synthetic archived recap" });
+  assert.equal((await useCases.cycles.create(nurse, input)).id, "CY-011");
+});
+
+test("parallel recap creation uses unique CY IDs and still prevents duplicate active recaps", { skip: !enabled }, async () => {
+  const fixturePatientId = await newRecapPatient("Upper-bound recap fixture");
+  await ds.query("INSERT INTO cycles(id,patient_id,doctor_id,nurse_id,deleted_at) VALUES('CY-999',$1,$2,$3,now())", [fixturePatientId, doctor.id, nurse.id]);
+  const patients = await Promise.all(Array.from({ length: 8 }, (_, index) => newRecapPatient(`Parallel recap patient ${index}`)));
+  const created = await Promise.all(patients.map(patientId => useCases.cycles.create(nurse, { patientId, doctorId: doctor.id })));
+  assert.deepEqual(created.map(cycle => cycle.id).sort(), [
+    "CY-1000", "CY-1001", "CY-1002", "CY-1003", "CY-1004", "CY-1005", "CY-1006", "CY-1007",
+  ]);
+  const competingInput = { patientId: await newRecapPatient("Competing recap patient"), doctorId: doctor.id };
+  const results = await Promise.allSettled([
+    useCases.cycles.create(nurse, competingInput), useCases.cycles.create(nurse, competingInput),
+  ]);
+  const successful = results.filter(result => result.status === "fulfilled");
+  const rejected = results.filter(result => result.status === "rejected");
+  assert.equal(successful.length, 1);
+  assert.equal(successful[0].value.id, "CY-1008");
+  assert.equal(rejected.length, 1);
+  assert.equal(rejected[0].reason.code, "CONFLICT");
+});
+
 test("room edits save while preserving peak capacity and version checks", { skip: !enabled }, async () => {
   const room = await useCases.rooms.create(nurse, {
     name: `Room edit ${newId()}`,

@@ -164,6 +164,11 @@ try {
     assert.deepEqual(pageErrors, []);
 
     await page.goto(server.resolvedUrls.local[0] + '?surface=dashboard', { waitUntil: 'domcontentloaded' });
+    const legacyCycleRow = page.getByRole('row').filter({ hasText: 'Pasien Uji' });
+    const readableCycleRow = page.getByRole('row').filter({ hasText: 'Pasien Berikutnya' });
+    await expect(legacyCycleRow.locator('.cell-meta').first()).toHaveText('RM-TEST');
+    await expect(legacyCycleRow).not.toContainText('00000000-0000-4000-8000-000000000001');
+    await expect(readableCycleRow.locator('.cell-meta').first()).toHaveText('CY-009 · RM-NEXT');
     for (const width of [390, 768, 1440]) {
         await page.setViewportSize({ width, height: 1000 });
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Dashboard page overflow at ' + width + 'px');
@@ -185,7 +190,7 @@ try {
     await expect(createCycle).toHaveCount(0);
     await expect(addCycle).toBeFocused();
 
-    await page.getByRole('button', { name: 'Lihat detail', exact: true }).click();
+    await legacyCycleRow.getByRole('button', { name: 'Lihat detail', exact: true }).click();
     const detailCycle = page.getByRole('dialog', { name: 'Detail siklus inpatient care', exact: true });
     const deleteCycle = detailCycle.getByRole('button', { name: 'Hapus rekap', exact: true });
     await deleteCycle.click();
@@ -211,8 +216,8 @@ try {
     await expect(removeCycle).toHaveCount(0);
     await expect(detailCycle).toHaveCount(0);
     assert.deepEqual(await page.evaluate(() => window.cycleRemovals), [
-        { id: 'cycle', expectedVersion: 11, reason: 'Koreksi data ganda' },
-        { id: 'cycle', expectedVersion: 11, reason: 'Koreksi data ganda' }
+        { id: '00000000-0000-4000-8000-000000000001', expectedVersion: 11, reason: 'Koreksi data ganda' },
+        { id: '00000000-0000-4000-8000-000000000001', expectedVersion: 11, reason: 'Koreksi data ganda' }
     ]);
     assert.deepEqual(pageErrors, []);
     await page.goto(server.resolvedUrls.local[0] + '?surface=billing', { waitUntil: 'domcontentloaded' });
