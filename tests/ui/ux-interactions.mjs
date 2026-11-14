@@ -184,7 +184,45 @@ try {
         { id: 'cycle', expectedVersion: 11, reason: 'Koreksi data ganda' }
     ]);
     assert.deepEqual(pageErrors, []);
-    console.log('PASS shell, calendar and dashboard: responsive layouts, roles, payloads, drafts, dialogs, focus and conflict recovery');
+    await page.goto(server.resolvedUrls.local[0] + '?surface=billing', { waitUntil: 'domcontentloaded' });
+    const invoiceList = page.getByRole('region', { name: 'Daftar tagihan', exact: true });
+    await invoiceList.getByLabel('Cari pasien / nomor tagihan').fill('tidak cocok');
+    await expect(invoiceList.getByText('Belum ada tagihan yang cocok.')).toBeVisible();
+    await invoiceList.getByLabel('Cari pasien / nomor tagihan').fill('RM-TEST');
+    await expect(invoiceList.getByRole('row').filter({ hasText: 'RM-TEST' })).toHaveCount(1);
+    await invoiceList.getByRole('combobox', { name: 'Status', exact: true }).selectOption('paid');
+    await expect(invoiceList.getByText('Belum ada tagihan yang cocok.')).toBeVisible();
+    await invoiceList.getByRole('combobox', { name: 'Status', exact: true }).selectOption('');
+    await page.getByRole('button', { name: 'Buat tagihan', exact: true }).click();
+    const invoiceForm = page.getByRole('form', { name: 'Buat tagihan baru', exact: true });
+    await invoiceForm.getByRole('combobox', { name: 'Pasien', exact: true }).selectOption('patient');
+    await invoiceForm.getByRole('combobox', { name: 'Penempatan', exact: true }).selectOption('placement');
+    await invoiceForm.getByLabel('Layanan', { exact: true }).fill('Layanan Uji');
+    await invoiceForm.getByLabel('Qty', { exact: true }).fill('2');
+    await invoiceForm.getByLabel('Harga satuan (Rp)', { exact: true }).fill('1234.56');
+    await invoiceForm.getByLabel('Jumlah jaminan BPJS (Rp)').fill('100.25');
+    for (const width of [390, 768, 1440]) {
+        await page.setViewportSize({ width, height: 1000 });
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Invoice creation overflow at ' + width + 'px');
+        await page.screenshot({ path: path.join(projectRoot, '.local/evidence', 'shadcn-billing-create-' + width + '.png'), fullPage: true, animations: 'disabled' });
+    }
+    await invoiceForm.getByRole('button', { name: 'Simpan tagihan', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('Tagihan gagal tersimpan.');
+    await expect(invoiceForm.getByLabel('Harga satuan (Rp)', { exact: true })).toHaveValue('1234.56');
+    await expect(invoiceForm.getByLabel('Layanan', { exact: true })).toHaveValue('Layanan Uji');
+    assert.deepEqual(await page.evaluate(() => window.invoiceCreate), { patientId: 'patient', placementId: 'placement', coveredAmount: '100.25', lines: [{ description: 'Layanan Uji', quantity: 2, unitPrice: '1234.56' }] });
+    await invoiceForm.getByRole('button', { name: 'Batal', exact: true }).click();
+    await invoiceList.getByRole('button', { name: 'Lihat detail', exact: true }).click();
+    const invoiceDetail = page.getByRole('region', { name: 'Rincian tagihan', exact: true });
+    await expect(invoiceDetail.getByText('Tagihan dibuat · Admisi Uji')).toBeVisible();
+    await expect(invoiceDetail.getByText('Dibayar pasien:', { exact: false })).toContainText('200.000,25');
+    for (const width of [390, 768, 1440]) {
+        await page.setViewportSize({ width, height: 1000 });
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Invoice detail overflow at ' + width + 'px');
+        await page.screenshot({ path: path.join(projectRoot, '.local/evidence', 'shadcn-billing-detail-' + width + '.png'), fullPage: true, animations: 'disabled' });
+    }
+    assert.deepEqual(pageErrors, []);
+    console.log('PASS shell, calendar, dashboard and billing: responsive layouts, roles, payloads, drafts, dialogs, focus and conflict recovery');
 } finally {
     await browser?.close();
     await server.close();
