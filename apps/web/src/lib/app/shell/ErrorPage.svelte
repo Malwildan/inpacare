@@ -1,4 +1,22 @@
-<script lang="ts">let {status,message}: {status:number;message:string|undefined}=$props();</script>
+<script lang="ts">
+import { Button } from '$lib/shared/ui/button/index.js';
+import { Card, CardContent, CardHeader } from '$lib/shared/ui/card/index.js';
+let { status, message }: { status: number; message: string | undefined } = $props();
+</script>
 <svelte:head><title>{status} · InpaCare</title></svelte:head>
-<main class="error-page"><a href="/login" class="brand">RSI <span>InpaCare</span></a><span class="status">{status}</span><h1>{status===403?'Akses terbatas':status===404?'Halaman tidak ditemukan':'Layanan belum tersedia'}</h1><p>{message??'Silakan coba kembali beberapa saat lagi.'}</p><div><a class="button primary" href="/dashboard">Kembali ke aplikasi</a><a class="button" href="/login">Halaman masuk</a></div></main>
-<style>.error-page{max-width:560px;margin:12vh auto;padding:32px;text-align:center}.brand{display:block;color:var(--primary);font-size:25px;font-weight:700;margin-bottom:48px}.brand span{font-size:14px;margin-left:9px;color:var(--muted)}.status{font-size:64px;color:var(--muted);font-weight:650;font-variant-numeric:tabular-nums}.error-page h1{font-size:26px;letter-spacing:-.02em;margin:12px 0}.error-page p{font-size:15px;line-height:1.7;margin-bottom:24px}.error-page>div{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}</style>
+<main class="flex min-h-screen items-center justify-center bg-background p-4 sm:p-8">
+    <Card class="w-full max-w-xl text-center">
+        <CardHeader class="gap-4">
+            <a href="/login" class="text-xl font-bold tracking-tight text-primary">InpaCare <span class="text-xs font-medium text-muted-foreground">RSI</span></a>
+            <p class="text-5xl font-semibold tabular-nums text-muted-foreground">{status}</p>
+            <h1 class="text-2xl font-semibold tracking-tight">{status === 403 ? 'Akses terbatas' : status === 404 ? 'Halaman tidak ditemukan' : 'Layanan belum tersedia'}</h1>
+        </CardHeader>
+        <CardContent class="space-y-6">
+            <p class="break-words text-sm leading-relaxed text-muted-foreground">{message ?? 'Silakan coba kembali beberapa saat lagi.'}</p>
+            <div class="flex flex-wrap justify-center gap-3">
+                <Button href="/dashboard" class="min-h-11">Kembali ke aplikasi</Button>
+                <Button href="/login" variant="outline" class="min-h-11">Halaman masuk</Button>
+            </div>
+        </CardContent>
+    </Card>
+</main>

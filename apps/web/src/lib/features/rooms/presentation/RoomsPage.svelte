@@ -5,127 +5,558 @@ import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
 import { Plus } from 'lucide-svelte';
 import { dailyRateValue, displayDailyRate, parseDailyRate, updateDailyRateInput } from './daily-rate';
+import { Alert, AlertDescription } from '$lib/shared/ui/alert/index.js';
+import { Badge, type BadgeVariant } from '$lib/shared/ui/badge/index.js';
+import { Button } from '$lib/shared/ui/button/index.js';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle
+} from '$lib/shared/ui/alert-dialog/index.js';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '$lib/shared/ui/dialog/index.js';
+import { Field, FieldGroup, FieldLabel } from '$lib/shared/ui/field/index.js';
+import { Input } from '$lib/shared/ui/input/index.js';
+import FormSelect from '$lib/shared/ui/form-select.svelte';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
+
 let { data, roomService }: {
     data: RoomsPageData;
     roomService: Rooms;
 } = $props();
+
+/* Filters stay local state so the listing behaves exactly as before: no URL round trip. */
 let query = $state('');
 let classFilter = $state('');
 let statusFilter = $state('');
-let creating = $state(false);
-let editing = $state<string | null>(null);
-let viewing = $state<string | null>(null);
-let addingTo = $state<string | null>(null);
-let editingItem = $state<{
-    roomId: string;
-    item: RoomItem;
-} | null>(null);
+
 let busy = $state(false);
 let error = $state('');
 let success = $state('');
-let rooms = $derived(data.rooms.filter((room: Room) => (!query || (room.name + ' ' + room.id).toLocaleLowerCase().includes(query.toLocaleLowerCase())) &&
+
+/* One controlled dialog per task. Targeted rows are stored by id so the dialog body
+   always renders the current server copy instead of a stale object after invalidateAll(). */
+let createOpen = $state(false);
+let viewId = $state<string | null>(null);
+let viewOpen = $state(false);
+let editId = $state<string | null>(null);
+let editOpen = $state(false);
+let addItemId = $state<string | null>(null);
+let addItemOpen = $state(false);
+let itemEditTarget = $state<{ roomId: string; itemId: string } | null>(null);
+let itemEditOpen = $state(false);
+let removeRoomId = $state<string | null>(null);
+let removeItemTarget = $state<{ roomId: string; itemId: string } | null>(null);
+let removeOpen = $state(false);
+
+const isNurse = $derived(data.user.role === 'PERAWAT');
+const nurses = $derived(data.reference.staff.filter((staff) => staff.role === 'PERAWAT'));
+const classes = $derived([...new Set(data.rooms.map((room: Room) => room.roomClass))]);
+const available = $derived(data.rooms.filter((room: Room) => room.status === 'available' && room.occupants === 0).length);
+const occupied = $derived(data.rooms.filter((room: Room) => room.status === 'available' && room.occupants > 0).length);
+const maintenance = $derived(data.rooms.filter((room: Room) => room.status === 'maintenance').length);
+const rooms = $derived(data.rooms.filter((room: Room) => (!query || (room.name + ' ' + room.id).toLocaleLowerCase().includes(query.toLocaleLowerCase())) &&
     (!classFilter || room.roomClass === classFilter) && (!statusFilter ||
     (statusFilter === 'occupied' ? room.status === 'available' && room.occupants > 0 :
         statusFilter === 'available' ? room.status === 'available' && room.occupants === 0 : room.status === statusFilter))));
-let classes = $derived([...new Set(data.rooms.map((room: Room) => room.roomClass))]);
-let available = $derived(data.rooms.filter((room: Room) => room.status === 'available' && room.occupants === 0).length);
-let occupied = $derived(data.rooms.filter((room: Room) => room.status === 'available' && room.occupants > 0).length);
+
+const anyDialogOpen = $derived(createOpen || viewOpen || editOpen || addItemOpen || itemEditOpen || removeOpen);
+
+const viewRoom = $derived(roomById(viewId));
+const editRoom = $derived(roomById(editId));
+const addItemRoom = $derived(roomById(addItemId));
+const itemEditRoom = $derived(roomById(itemEditTarget?.roomId));
+const itemEditItem = $derived(itemById(itemEditRoom, itemEditTarget?.itemId));
+const removeRoom = $derived(roomById(removeRoomId));
+const removeItemRoom = $derived(roomById(removeItemTarget?.roomId));
+const removeItem = $derived(itemById(removeItemRoom, removeItemTarget?.itemId));
+
+function roomById(id: string | null | undefined): Room | null {
+    if (!id) return null;
+    return data.rooms.find((room: Room) => room.id === id) ?? null;
+}
+
+function itemById(room: Room | null, id: string | null | undefined): RoomItem | null {
+    if (!room || !id) return null;
+    return room.items.find((item: RoomItem) => item.id === id) ?? null;
+}
+
+function money(value: string): string {
+    return 'Rp ' + Number(value).toLocaleString('id-ID');
+}
+
+function statusLabel(room: Room): string {
+    return room.status === 'maintenance' ? 'Maintenance' : room.occupants > 0 ? 'Occupied' : 'Available';
+}
+
+function statusTone(room: Room): BadgeVariant {
+    if (room.status === 'maintenance') return 'destructive';
+    return room.occupants > 0 ? 'info' : 'success';
+}
+
+function startAction() {
+    error = '';
+    success = '';
+}
+
 async function submit(operation: () => Promise<unknown>) {
+    if (busy) return false;
     busy = true;
     error = '';
     success = '';
     try {
         await operation();
         await invalidateAll();
-        creating = false;
-        editing = null;
-        addingTo = null;
+        createOpen = false;
+        editOpen = false;
+        addItemOpen = false;
+        itemEditOpen = false;
         success = 'Perubahan berhasil disimpan.';
-    }
-    catch (e) {
+        return true;
+    } catch (e) {
         error = sessionFailure(e);
-    }
-    finally {
+        return false;
+    } finally {
         busy = false;
     }
 }
-async function removeRoom(room: Room) {
-    if (!confirm(`Hapus ruangan ${room.name}?`))
-        return;
-    await submit(() => roomService.remove(room.id, { expectedVersion: room.version }));
+
+function openCreate() {
+    startAction();
+    createOpen = true;
 }
-async function removeItem(room: Room, item: RoomItem) {
-    if (!confirm(`Hapus item ${item.name} dari ruangan?`))
-        return;
-    await submit(() => roomService.removeItem(room.id, item.id, { expectedVersion: room.version }));
+
+function openView(id: string) {
+    startAction();
+    viewId = id;
+    viewOpen = true;
+}
+
+function openEdit(id: string) {
+    startAction();
+    editId = id;
+    editOpen = true;
+}
+
+function openAddItem(roomId: string) {
+    startAction();
+    addItemId = roomId;
+    addItemOpen = true;
+}
+
+function openItemEdit(roomId: string, itemId: string) {
+    startAction();
+    itemEditTarget = { roomId, itemId };
+    itemEditOpen = true;
+}
+
+function openRemoveRoom(room: Room) {
+    startAction();
+    removeItemTarget = null;
+    removeRoomId = room.id;
+    removeOpen = true;
+}
+
+function openRemoveItem(room: Room, item: RoomItem) {
+    startAction();
+    removeRoomId = null;
+    removeItemTarget = { roomId: room.id, itemId: item.id };
+    removeOpen = true;
+}
+
+async function removeRoomConfirmed() {
+    const room = removeRoom;
+    if (!room) return;
+    if (await submit(() => roomService.remove(room.id, { expectedVersion: room.version }))) {
+        removeOpen = false;
+        if (viewId === room.id) viewOpen = false;
+    }
+}
+
+async function removeItemConfirmed() {
+    const room = removeItemRoom;
+    const item = removeItem;
+    if (!room || !item) return;
+    if (await submit(() => roomService.removeItem(room.id, item.id, { expectedVersion: room.version }))) {
+        removeOpen = false;
+    }
 }
 </script>
 
 <svelte:head><title>Manajemen Ruangan | InpaCare</title></svelte:head>
-<section class="page-heading">
-	<div><h1 class="page-title">Manajemen Ruangan</h1><p class="page-subtitle">Kelola data, inventaris, dan ketersediaan ruangan rawat inap.</p></div>
-	{#if data.user.role === 'PERAWAT'}<button class="button primary" aria-expanded={creating} onclick={() => { creating = !creating; editing = null; error = ''; }}><Plus size={16} aria-hidden="true"/> Tambah ruangan</button>{/if}
-</section>
-{#if error}<p class="error" role="alert">{error}</p>{/if}
-{#if success}<p class="success" role="status">{success}</p>{/if}
-<section class="stats" aria-label="Ringkasan ruangan">
-	<div class="stat"><strong>{data.rooms.length}</strong><span>Total ruangan</span></div>
-	<div class="stat"><strong>{available}</strong><span>Available</span></div>
-	<div class="stat"><strong>{occupied}</strong><span>Occupied</span></div>
-	<div class="stat"><strong>{data.rooms.filter((room: Room) => room.status === 'maintenance').length}</strong><span>Maintenance</span></div>
-</section>
-{#if creating}
-	<section class="panel form-panel"><h2>Tambah ruangan</h2>
-		<form class="form-grid" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); const dailyRate=parseDailyRate(formText(f,'dailyRate') || '0'); if(dailyRate===null){error='Masukkan tarif harian yang valid (maksimal 2 angka desimal).';return;} void submit(()=>roomService.create({name:formText(f,'name'),roomClass:formText(f,'roomClass'),capacity:Number(formText(f,'capacity')),picId:formText(f,'picId') || null,dailyRate})); }}>
-			<label class="field">Nama ruangan<input name="name" maxlength="80" required placeholder="Contoh: Melati 01" /></label>
-			<label class="field">Tipe<input name="roomClass" maxlength="40" required placeholder="Kelas I" /></label>
-			<label class="field">Kapasitas<input name="capacity" type="number" min="1" max="20" value="1" required /></label>
-			<label class="field">PIC<select name="picId"><option value="">Pilih perawat</option>{#each data.reference.staff.filter((s) => s.role === 'PERAWAT') as nurse}<option value={nurse.id}>{nurse.name}</option>{/each}</select></label>
-			<label class="field">Tarif harian<span class="rate-input"><span aria-hidden="true">Rp</span><input name="dailyRate" inputmode="decimal" value="0" placeholder="250.000" onfocus={(event) => { if (event.currentTarget.value === '0') event.currentTarget.select(); }} oninput={(event) => updateDailyRateInput(event.currentTarget, event instanceof InputEvent ? event.inputType : '')} aria-describedby="create-rate-hint" /></span><small class="muted" id="create-rate-hint">Rupiah. Contoh: 250.000 atau 250.000,50</small></label>
-			<div class="form-actions"><button class="button primary" disabled={busy}>Simpan ruangan</button><button class="button secondary" type="button" onclick={() => creating = false}>Batal</button></div>
-		</form>
-	</section>
-{/if}
-<section class="panel">
-	<div class="panel-header"><div><h2>Daftar ruangan</h2><span class="muted">{rooms.length} dari {data.rooms.length} ruangan</span></div></div>
-	<div class="filters">
-		<label class="field search-field">Cari ID atau nama ruangan<input type="search" bind:value={query} placeholder="Cari ruangan..." /></label>
-		<label class="field">Tipe<select bind:value={classFilter}><option value="">Semua tipe</option>{#each classes as type}<option value={type}>{type}</option>{/each}</select></label>
-		<label class="field">Status<select bind:value={statusFilter}><option value="">Semua status</option><option value="available">Available</option><option value="occupied">Occupied</option><option value="maintenance">Maintenance</option></select></label>
-	</div>
-	<div class="table-wrap"><table class="data-table"><thead><tr><th>ID / nama ruangan</th><th>Tipe</th><th>PIC</th><th>Biaya inventaris</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
-		{#each rooms as room (room.id)}
-			<tr>
-				<td><strong>{room.name}</strong><span class="cell-meta">{room.id} · {room.occupants}/{room.capacity} tempat terisi</span></td>
-				<td>{room.roomClass}</td><td>{room.picName ?? 'Belum ditentukan'}</td><td>Rp {Number(room.totalCost).toLocaleString('id-ID')}</td>
-				<td><span class="badge {room.status === 'maintenance' ? 'maintenance' : room.occupants > 0 ? 'occupied' : 'available'}">{room.status === 'maintenance' ? 'Maintenance' : room.occupants > 0 ? 'Occupied' : 'Available'}</span></td>
-				<td><div class="actions"><button class="button secondary small" aria-expanded={viewing===room.id} onclick={() => { viewing=viewing===room.id?null:room.id; editing=null; addingTo=null; creating=false; }}>Lihat</button>
-				{#if data.user.role === 'PERAWAT'}<button class="button secondary small" aria-expanded={editing === room.id} onclick={() => { editing=editing===room.id?null:room.id; viewing=null; creating=false; addingTo=null; error=''; }}>Ubah</button><button class="button secondary small" aria-expanded={addingTo === room.id} onclick={() => { addingTo=addingTo===room.id?null:room.id; viewing=null; editing=null; creating=false; error=''; }}><Plus size={14} aria-hidden="true"/> Item</button><button class="button danger small" disabled={busy || room.occupants>0} title={room.occupants>0?'Kosongkan penempatan aktif sebelum menghapus':''} onclick={() => void removeRoom(room)}>Hapus</button>{/if}</div></td>
-			</tr>
-			{#if viewing===room.id}<tr><td colspan="6"><div class="room-detail">
-				<div class="detail-grid"><div class="detail-item"><span>Tipe</span><strong>{room.roomClass}</strong></div><div class="detail-item"><span>Kapasitas</span><strong>{room.capacity} pasien</strong></div><div class="detail-item"><span>Tarif harian</span><strong>{displayDailyRate(room.dailyRate)}</strong></div><div class="detail-item"><span>Total biaya inventaris</span><strong>Rp {Number(room.totalCost).toLocaleString('id-ID')}</strong></div></div>
-				<h3>Perlengkapan dan fasilitas</h3>{#if room.items.length}<div class="item-list">{#each room.items as item}<div class="room-item"><span>{item.name} · {item.category} · {item.quantity} × Rp {Number(item.unitPrice).toLocaleString('id-ID')}</span>{#if data.user.role==='PERAWAT'}<button class="text-link" onclick={()=>editingItem={roomId:room.id,item}}>Ubah</button><button class="text-link danger-link" onclick={()=>void removeItem(room,item)}>Hapus</button>{/if}</div>{/each}</div>{:else}<p class="muted">Belum ada item yang dicatat.</p>{/if}
-				{#if editingItem?.roomId===room.id}<form class="inline-edit" onsubmit={(event)=>{event.preventDefault();const f=new FormData(event.currentTarget);void submit(()=>roomService.updateItem(room.id,editingItem!.item.id,{name:formText(f,'name'),category:formText(f,'category'),quantity:Number(formText(f,'quantity')),unitPrice:String(formText(f,'unitPrice')),expectedVersion:room.version}));}}><label class="field">Nama<input name="name" required value={editingItem.item.name}/></label><label class="field">Kategori<input name="category" required value={editingItem.item.category}/></label><label class="field">Jumlah<input name="quantity" type="number" min="1" required value={editingItem.item.quantity}/></label><label class="field">Harga satuan<input name="unitPrice" type="number" min="0" step="0.01" required value={editingItem.item.unitPrice}/></label><div class="form-actions"><button class="button primary" disabled={busy}>Simpan item</button><button type="button" class="button secondary" onclick={()=>editingItem=null}>Batal</button></div></form>{/if}
-			</div></td></tr>{/if}
-			{#if editing === room.id}<tr><td colspan="6"><form class="inline-edit" onsubmit={(event) => { event.preventDefault(); const f=new FormData(event.currentTarget); const dailyRate=parseDailyRate(formText(f,'dailyRate')); if(dailyRate===null){error='Masukkan tarif harian yang valid (maksimal 2 angka desimal).';return;} void submit(()=>roomService.update(room.id,{name:formText(f,'name'),roomClass:formText(f,'roomClass'),capacity:Number(formText(f,'capacity')),status:formText(f,'status') as EditRoom['status'],picId:formText(f,'picId') || null,dailyRate,expectedVersion:room.version})); }}>
-				<label class="field">Nama<input name="name" required value={room.name} /></label><label class="field">Tipe<input name="roomClass" required value={room.roomClass} /></label>
-				<label class="field">Kapasitas<input name="capacity" type="number" min="1" max="20" required value={room.capacity} /></label>
-				<label class="field">Status<select name="status" value={room.status}><option value="available">Available</option><option value="maintenance">Maintenance</option></select></label>
-				<label class="field">PIC<select name="picId"><option value="">Tidak ditentukan</option>{#each data.reference.staff.filter((s) => s.role === 'PERAWAT') as nurse}<option value={nurse.id} selected={nurse.id===room.picId}>{nurse.name}</option>{/each}</select></label>
-				<label class="field">Tarif harian<span class="rate-input"><span aria-hidden="true">Rp</span><input name="dailyRate" inputmode="decimal" required value={dailyRateValue(room.dailyRate)} onfocus={(event) => { if (event.currentTarget.value === '0') event.currentTarget.select(); }} oninput={(event) => updateDailyRateInput(event.currentTarget, event instanceof InputEvent ? event.inputType : '')} aria-describedby="edit-rate-hint" /></span><small class="muted" id="edit-rate-hint">Rupiah. Contoh: 250.000 atau 250.000,50</small></label>
-				<div class="form-actions"><button class="button primary" disabled={busy}>Simpan</button><button class="button secondary" type="button" onclick={() => editing=null}>Batal</button></div>
-			</form></td></tr>{/if}
-			{#if addingTo === room.id}<tr><td colspan="6"><form class="inline-edit" onsubmit={(event) => { event.preventDefault(); const f=new FormData(event.currentTarget); void submit(()=>roomService.addItem(room.id,{name:formText(f,'name'),category:formText(f,'category'),quantity:Number(formText(f,'quantity')),unitPrice:formText(f,'unitPrice')})); }}>
-				<label class="field">Nama item<input name="name" required /></label><label class="field">Kategori<input name="category" required placeholder="Perlengkapan / alat" /></label>
-				<label class="field">Jumlah<input name="quantity" type="number" min="1" value="1" required /></label><label class="field">Harga satuan<input name="unitPrice" type="number" min="0" step="0.01" value="0" required /></label>
-				<div class="form-actions"><button class="button primary" disabled={busy}>Tambah item</button><button class="button secondary" type="button" onclick={() => addingTo=null}>Batal</button></div>
-				<div class="item-list">{#each room.items as item}<span>{item.name} · {item.quantity} × Rp {Number(item.unitPrice).toLocaleString('id-ID')}</span>{/each}</div>
-			</form></td></tr>{/if}
-		{:else}<tr><td colspan="6" class="empty">Tidak ada ruangan yang cocok dengan filter.</td></tr>{/each}
-	</tbody></table></div>
-</section>
-<style>
-	.rate-input{position:relative;display:block}.rate-input>span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}.rate-input input{padding-left:42px;font-variant-numeric:tabular-nums}
-	.form-panel h2{margin-bottom:20px}.form-grid,.inline-edit{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:18px}.inline-edit{padding:16px 0}.cell-meta{display:block;font-size:12px;color:var(--muted);margin-top:4px}.actions{display:flex;gap:8px;flex-wrap:wrap}.item-list{grid-column:1/-1;display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:13px}.room-detail{padding:16px 0}.room-detail h3{font-size:15px;margin:24px 0 12px}.form-actions{grid-column:1/-1}.search-field{min-width:200px;flex:2}
-	@media(max-width:900px){.form-grid,.inline-edit{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.form-grid,.inline-edit{grid-template-columns:1fr}.page-heading{align-items:flex-start}.actions{flex-direction:column}}
-</style>
+
+<div class="flex flex-col gap-6">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+        <div class="min-w-0">
+            <h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Manajemen Ruangan</h1>
+            <p class="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed text-muted-foreground">Kelola data, inventaris, dan ketersediaan ruangan rawat inap.</p>
+        </div>
+        {#if isNurse}
+            <Button size="lg" class="h-11 shrink-0 px-4 text-sm" onclick={openCreate}>
+                <Plus aria-hidden="true" /> Tambah ruangan
+            </Button>
+        {/if}
+    </header>
+
+    {#if error && !anyDialogOpen}
+        <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>
+    {/if}
+    {#if success}
+        <Alert role="status" class="border-success/30 bg-success-soft text-success">
+            <AlertDescription class="font-medium text-success">{success}</AlertDescription>
+        </Alert>
+    {/if}
+
+    <section aria-label="Ringkasan ruangan" class="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Card>
+            <CardHeader class="gap-0.5">
+                <CardTitle class="text-2xl font-semibold tabular-nums">{data.rooms.length}</CardTitle>
+                <CardDescription class="text-[13px]">Total ruangan</CardDescription>
+            </CardHeader>
+        </Card>
+        <Card>
+            <CardHeader class="gap-0.5">
+                <CardTitle class="text-2xl font-semibold tabular-nums">{available}</CardTitle>
+                <CardDescription class="text-[13px]">Available</CardDescription>
+            </CardHeader>
+        </Card>
+        <Card>
+            <CardHeader class="gap-0.5">
+                <CardTitle class="text-2xl font-semibold tabular-nums">{occupied}</CardTitle>
+                <CardDescription class="text-[13px]">Occupied</CardDescription>
+            </CardHeader>
+        </Card>
+        <Card>
+            <CardHeader class="gap-0.5">
+                <CardTitle class="text-2xl font-semibold tabular-nums">{maintenance}</CardTitle>
+                <CardDescription class="text-[13px]">Maintenance</CardDescription>
+            </CardHeader>
+        </Card>
+    </section>
+
+    <Card class="gap-0 py-0">
+        <CardHeader class="gap-1 border-b px-4 py-4 sm:px-5">
+            <CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Daftar ruangan</CardTitle>
+            <CardDescription>{rooms.length} dari {data.rooms.length} ruangan</CardDescription>
+        </CardHeader>
+        <CardContent class="px-0">
+            <div class="flex flex-col gap-3 border-b px-4 py-4 sm:grid sm:grid-cols-2 sm:items-end sm:px-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                <Field class="sm:col-span-2 lg:col-span-1">
+                    <FieldLabel for="room-filter-query">Cari ID atau nama ruangan</FieldLabel>
+                    <Input id="room-filter-query" type="search" bind:value={query} placeholder="Cari ruangan..." class="h-11 px-3 text-base md:text-base" />
+                </Field>
+                <Field>
+                    <FieldLabel for="room-filter-class">Tipe</FieldLabel>
+                    <FormSelect id="room-filter-class" bind:value={classFilter} class="w-full" options={[{ value: "", label: "Semua tipe" }, ...(classes).map((type) => ({ value: type, label: (type) }))]} />
+                </Field>
+                <Field>
+                    <FieldLabel for="room-filter-status">Status</FieldLabel>
+                    <FormSelect id="room-filter-status" bind:value={statusFilter} class="w-full" options={[{ value: "", label: "Semua status" }, { value: "available", label: "Available" }, { value: "occupied", label: "Occupied" }, { value: "maintenance", label: "Maintenance" }]} />
+                </Field>
+            </div>
+
+            <Table>
+                <TableHeader>
+                    <TableRow class="bg-muted/60 hover:bg-muted/60">
+                        <TableHead class="px-4 sm:px-5">ID / nama ruangan</TableHead>
+                        <TableHead class="hidden md:table-cell">Tipe</TableHead>
+                        <TableHead class="hidden md:table-cell">PIC</TableHead>
+                        <TableHead class="hidden md:table-cell">Biaya inventaris</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead class="px-4 text-right sm:px-5">Aksi</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {#each rooms as room (room.id)}
+                        <TableRow>
+                            <TableCell class="px-4 align-top whitespace-normal sm:px-5">
+                                <span class="block text-sm font-semibold text-foreground">{room.name}</span>
+                                <span class="mt-1 block text-xs text-muted-foreground">{room.id} · {room.occupants}/{room.capacity} tempat terisi</span>
+                            </TableCell>
+                            <TableCell class="hidden align-top md:table-cell">{room.roomClass}</TableCell>
+                            <TableCell class="hidden align-top md:table-cell">{room.picName ?? 'Belum ditentukan'}</TableCell>
+                            <TableCell class="hidden align-top tabular-nums md:table-cell">{money(room.totalCost)}</TableCell>
+                            <TableCell class="align-top"><Badge variant={statusTone(room)}>{statusLabel(room)}</Badge></TableCell>
+                            <TableCell class="px-4 align-top sm:px-5">
+                                <div class="flex flex-wrap justify-end gap-2">
+                                    <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openView(room.id)}>Lihat</Button>
+                                    {#if isNurse}
+                                        <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openEdit(room.id)}>Ubah</Button>
+                                        <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openAddItem(room.id)}><Plus aria-hidden="true" /> Item</Button>
+                                        <Button
+                                            variant="destructive"
+                                            class="h-11 px-3 text-[13px]"
+                                            disabled={busy || room.occupants > 0}
+                                            title={room.occupants > 0 ? 'Kosongkan penempatan aktif sebelum menghapus' : undefined}
+                                            onclick={() => openRemoveRoom(room)}>Hapus</Button>
+                                    {/if}
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    {:else}
+                        <TableRow class="hover:bg-transparent">
+                            <TableCell colspan={6} class="px-4 py-11 text-center text-sm whitespace-normal text-muted-foreground sm:px-5">Tidak ada ruangan yang cocok dengan filter.</TableCell>
+                        </TableRow>
+                    {/each}
+                </TableBody>
+            </Table>
+        </CardContent>
+    </Card>
+</div>
+
+<Dialog bind:open={createOpen}>
+    <DialogContent class="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+            <DialogTitle>Tambah ruangan</DialogTitle>
+            <DialogDescription>Lengkapi data ruangan baru. Kolom bertanda wajib tidak boleh kosong.</DialogDescription>
+        </DialogHeader>
+        <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); const dailyRate = parseDailyRate(formText(f, 'dailyRate') || '0'); if (dailyRate === null) { error = 'Masukkan tarif harian yang valid (maksimal 2 angka desimal).'; return; } void submit(() => roomService.create({ name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), picId: formText(f, 'picId') || null, dailyRate })); }}>
+            {#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
+            <FieldGroup class="grid gap-4 sm:grid-cols-2">
+                <Field>
+                    <FieldLabel for="room-name">Nama ruangan</FieldLabel>
+                    <Input id="room-name" name="name" maxlength={80} required placeholder="Contoh: Melati 01" class="h-11 px-3 text-base md:text-base" />
+                </Field>
+                <Field>
+                    <FieldLabel for="room-class">Tipe</FieldLabel>
+                    <Input id="room-class" name="roomClass" maxlength={40} required placeholder="Kelas I" class="h-11 px-3 text-base md:text-base" />
+                </Field>
+                <Field>
+                    <FieldLabel for="room-capacity">Kapasitas</FieldLabel>
+                    <Input id="room-capacity" name="capacity" type="number" min={1} max={20} value="1" required class="h-11 px-3 text-base md:text-base" />
+                </Field>
+                <Field>
+                    <FieldLabel for="room-pic">PIC</FieldLabel>
+                    <FormSelect id="room-pic" name="picId" class="w-full" options={[{ value: "", label: "Pilih perawat" }, ...(nurses).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} />
+                </Field>
+                <Field class="sm:col-span-2">
+                    <FieldLabel for="room-daily-rate">Tarif harian (Rp)</FieldLabel>
+                    <Input id="room-daily-rate" name="dailyRate" inputmode="decimal" value="0" placeholder="250.000" onfocus={(event) => { if (event.currentTarget.value === '0') event.currentTarget.select(); }} oninput={(event) => updateDailyRateInput(event.currentTarget, event instanceof InputEvent ? event.inputType : '')} aria-describedby="create-rate-hint" class="h-11 px-3 text-base md:text-base" />
+                    <small class="text-muted-foreground" id="create-rate-hint">Rupiah. Contoh: 250.000 atau 250.000,50</small>
+                </Field>
+            </FieldGroup>
+            <DialogFooter>
+                <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (createOpen = false)}>Batal</Button>
+                <Button type="submit" class="h-11 px-4" disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan ruangan'}</Button>
+            </DialogFooter>
+        </form>
+    </DialogContent>
+</Dialog>
+
+<Dialog bind:open={editOpen}>
+    <DialogContent class="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+            <DialogTitle>Ubah ruangan</DialogTitle>
+            <DialogDescription>{editRoom ? `${editRoom.name} · ${editRoom.id}` : 'Perbarui data ruangan.'}</DialogDescription>
+        </DialogHeader>
+        {#if editRoom}
+            {@const room = editRoom}
+            <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); const dailyRate = parseDailyRate(formText(f, 'dailyRate')); if (dailyRate === null) { error = 'Masukkan tarif harian yang valid (maksimal 2 angka desimal).'; return; } void submit(() => roomService.update(room.id, { name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), status: formText(f, 'status') as EditRoom['status'], picId: formText(f, 'picId') || null, dailyRate, expectedVersion: room.version })); }}>
+                {#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
+                <FieldGroup class="grid gap-4 sm:grid-cols-2">
+                    <Field>
+                        <FieldLabel for="room-edit-name">Nama</FieldLabel>
+                        <Input id="room-edit-name" name="name" required value={room.name} class="h-11 px-3 text-base md:text-base" />
+                    </Field>
+                    <Field>
+                        <FieldLabel for="room-edit-class">Tipe</FieldLabel>
+                        <Input id="room-edit-class" name="roomClass" required value={room.roomClass} class="h-11 px-3 text-base md:text-base" />
+                    </Field>
+                    <Field>
+                        <FieldLabel for="room-edit-capacity">Kapasitas</FieldLabel>
+                        <Input id="room-edit-capacity" name="capacity" type="number" min={1} max={20} required value={room.capacity} class="h-11 px-3 text-base md:text-base" />
+                    </Field>
+                    <Field>
+                        <FieldLabel for="room-edit-status">Status</FieldLabel>
+                        <FormSelect id="room-edit-status" name="status" value={room.status} class="w-full" options={[{ value: "available", label: "Available" }, { value: "maintenance", label: "Maintenance" }]} />
+                    </Field>
+                    <Field>
+                        <FieldLabel for="room-edit-pic">PIC</FieldLabel>
+                        <FormSelect id="room-edit-pic" name="picId" value={room.picId ?? ''} class="w-full" options={[{ value: "", label: "Tidak ditentukan" }, ...(nurses).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} />
+                    </Field>
+                    <Field>
+                        <FieldLabel for="room-edit-daily-rate">Tarif harian (Rp)</FieldLabel>
+                        <Input id="room-edit-daily-rate" name="dailyRate" inputmode="decimal" required value={dailyRateValue(room.dailyRate)} oninput={(event) => updateDailyRateInput(event.currentTarget, event instanceof InputEvent ? event.inputType : '')} aria-describedby="edit-rate-hint" class="h-11 px-3 text-base md:text-base" />
+                        <small class="text-muted-foreground" id="edit-rate-hint">Rupiah. Contoh: 250.000 atau 250.000,50</small>
+                    </Field>
+                </FieldGroup>
+                <DialogFooter>
+                    <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (editOpen = false)}>Batal</Button>
+                    <Button type="submit" class="h-11 px-4" disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan'}</Button>
+                </DialogFooter>
+            </form>
+        {/if}
+    </DialogContent>
+</Dialog>
+
+<Dialog bind:open={viewOpen}>
+    <DialogContent class="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+            <DialogTitle>Detail ruangan</DialogTitle>
+            <DialogDescription>{viewRoom ? `${viewRoom.name} · ${viewRoom.roomClass} · ${viewRoom.capacity} tempat` : 'Informasi ruangan dan inventaris.'}</DialogDescription>
+        </DialogHeader>
+        {#if viewRoom}
+            {@const room = viewRoom}
+            {#if error && !addItemOpen && !itemEditOpen}
+                <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>
+            {/if}
+            <dl class="grid grid-cols-2 gap-4">
+                <div class="flex min-w-0 flex-col gap-1">
+                    <dt class="text-[13px] text-muted-foreground">Tipe</dt>
+                    <dd class="text-sm font-semibold">{room.roomClass}</dd>
+                </div>
+                <div class="flex min-w-0 flex-col gap-1">
+                    <dt class="text-[13px] text-muted-foreground">Kapasitas</dt>
+                    <dd class="text-sm font-semibold">{room.capacity} pasien</dd>
+                </div>
+                <div class="flex min-w-0 flex-col gap-1">
+                    <dt class="text-[13px] text-muted-foreground">Tarif harian</dt>
+                    <dd class="text-sm font-semibold">{displayDailyRate(room.dailyRate)}</dd>
+                </div>
+                <div class="flex min-w-0 flex-col gap-1">
+                    <dt class="text-[13px] text-muted-foreground">Total biaya inventaris</dt>
+                    <dd class="text-sm font-semibold">{money(room.totalCost)}</dd>
+                </div>
+            </dl>
+            <section class="flex flex-col gap-3">
+                <h3 class="text-[15px] font-semibold">Perlengkapan dan fasilitas</h3>
+                {#if room.items.length}
+                    <ul class="flex flex-col divide-y divide-border rounded-lg border">
+                        {#each room.items as item (item.id)}
+                            <li class="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5">
+                                <span class="min-w-0 text-sm text-foreground">{item.name} · {item.category} · {item.quantity} × {money(item.unitPrice)}</span>
+                                {#if isNurse}
+                                    <div class="flex items-center gap-1">
+                                        <Button variant="link" class="h-11 px-2 text-[13px]" onclick={() => openItemEdit(room.id, item.id)}>Ubah</Button>
+                                        <Button variant="link" class="h-11 px-2 text-[13px] text-destructive" onclick={() => openRemoveItem(room, item)}>Hapus</Button>
+                                    </div>
+                                {/if}
+                            </li>
+                        {/each}
+                    </ul>
+                {:else}
+                    <p class="text-sm text-muted-foreground">Belum ada item yang dicatat.</p>
+                {/if}
+            </section>
+            <DialogFooter>
+                {#if isNurse}
+                    <Button variant="outline" class="h-11 px-4" onclick={() => openAddItem(room.id)}><Plus aria-hidden="true" /> Tambah item</Button>
+                {/if}
+                <Button class="h-11 px-4" onclick={() => (viewOpen = false)}>Tutup detail ruangan</Button>
+            </DialogFooter>
+        {/if}
+    </DialogContent>
+</Dialog>
+
+<Dialog bind:open={addItemOpen}>
+    <DialogContent class="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+            <DialogTitle>Tambah item</DialogTitle>
+            <DialogDescription>{addItemRoom ? `Catat perlengkapan baru untuk ${addItemRoom.name}.` : 'Catat perlengkapan baru.'}</DialogDescription>
+        </DialogHeader>
+        {#if addItemRoom}
+            {@const room = addItemRoom}
+            <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); void submit(() => roomService.addItem(room.id, { name: formText(f, 'name'), category: formText(f, 'category'), quantity: Number(formText(f, 'quantity')), unitPrice: formText(f, 'unitPrice') })); }}>
+                {#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
+                <FieldGroup class="grid gap-4 sm:grid-cols-2">
+                    <Field>
+                        <FieldLabel for="item-name">Nama item</FieldLabel>
+                        <Input id="item-name" name="name" required class="h-11 px-3 text-base md:text-base" />
+                    </Field>
+                    <Field>
+                        <FieldLabel for="item-category">Kategori</FieldLabel>
+                        <Input id="item-category" name="category" required placeholder="Perlengkapan / alat" class="h-11 px-3 text-base md:text-base" />
+                    </Field>
+                    <Field>
+                        <FieldLabel for="item-quantity">Jumlah</FieldLabel>
+                        <Input id="item-quantity" name="quantity" type="number" min={1} value="1" required class="h-11 px-3 text-base md:text-base" />
+                    </Field>
+                    <Field>
+                        <FieldLabel for="item-unit-price">Harga satuan</FieldLabel>
+                        <Input id="item-unit-price" name="unitPrice" type="number" min={0} step="0.01" value="0" required class="h-11 px-3 text-base md:text-base" />
+                    </Field>
+                </FieldGroup>
+                {#if room.items.length}
+                    <div class="flex flex-col gap-1 rounded-lg bg-muted/60 p-3">
+                        <span class="text-xs font-medium text-muted-foreground">Inventaris saat ini</span>
+                        {#each room.items as item (item.id)}
+                            <span class="text-[13px] text-foreground">{item.name} · {item.quantity} × {money(item.unitPrice)}</span>
+                        {/each}
+                    </div>
+                {/if}
+                <DialogFooter>
+                    <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (addItemOpen = false)}>Batal</Button>
+                    <Button type="submit" class="h-11 px-4" disabled={busy}>{busy ? 'Menyimpan…' : 'Tambah item'}</Button>
+                </DialogFooter>
+            </form>
+        {/if}
+    </DialogContent>
+</Dialog>
+
+<Dialog bind:open={itemEditOpen}>
+    <DialogContent class="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+            <DialogTitle>Ubah item</DialogTitle>
+            <DialogDescription>{itemEditItem ? `${itemEditItem.name} · ${itemEditRoom?.name ?? ''}` : 'Perbarui data item inventaris.'}</DialogDescription>
+        </DialogHeader>
+        {#if itemEditRoom && itemEditItem}
+            {@const room = itemEditRoom}
+            {@const item = itemEditItem}
+            <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); void submit(() => roomService.updateItem(room.id, item.id, { name: formText(f, 'name'), category: formText(f, 'category'), quantity: Number(formText(f, 'quantity')), unitPrice: String(formText(f, 'unitPrice')), expectedVersion: room.version })); }}>
+                {#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
+                <FieldGroup class="grid gap-4 sm:grid-cols-2">
+                    <Field>
+                        <FieldLabel for="item-edit-name">Nama</FieldLabel>
+                        <Input id="item-edit-name" name="name" required value={item.name} class="h-11 px-3 text-base md:text-base" />
+                    </Field>
+                    <Field>
+                        <FieldLabel for="item-edit-category">Kategori</FieldLabel>
+                        <Input id="item-edit-category" name="category" required value={item.category} class="h-11 px-3 text-base md:text-base" />
+                    </Field>
+                    <Field>
+                        <FieldLabel for="item-edit-quantity">Jumlah</FieldLabel>
+                        <Input id="item-edit-quantity" name="quantity" type="number" min={1} required value={item.quantity} class="h-11 px-3 text-base md:text-base" />
+                    </Field>
+                    <Field>
+                        <FieldLabel for="item-edit-unit-price">Harga satuan</FieldLabel>
+                        <Input id="item-edit-unit-price" name="unitPrice" type="number" min={0} step="0.01" required value={item.unitPrice} class="h-11 px-3 text-base md:text-base" />
+                    </Field>
+                </FieldGroup>
+                <DialogFooter>
+                    <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (itemEditOpen = false)}>Batal</Button>
+                    <Button type="submit" class="h-11 px-4" disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan item'}</Button>
+                </DialogFooter>
+            </form>
+        {/if}
+    </DialogContent>
+</Dialog>
+
+<AlertDialog bind:open={removeOpen}>
+    <AlertDialogContent onEscapeKeydown={(event) => { if (busy) event.preventDefault(); }}>
+        <AlertDialogHeader>
+            <AlertDialogTitle>{removeItemTarget ? 'Hapus item?' : 'Hapus ruangan?'}</AlertDialogTitle>
+            <AlertDialogDescription>
+                {#if removeItemTarget}
+                    Item {removeItem ? removeItem.name : 'ini'} akan dihapus dari ruangan {removeItemRoom?.name ?? 'ini'}. Tindakan ini tidak dapat dibatalkan.
+                {:else if removeRoom}
+                    Ruangan {removeRoom.name} ({removeRoom.id}) akan dihapus. Tindakan ini tidak dapat dibatalkan.
+                {:else}
+                    Data akan dihapus. Tindakan ini tidak dapat dibatalkan.
+                {/if}
+            </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+            <AlertDialogCancel class="h-11 px-4" disabled={busy}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+                variant="destructive"
+                class="h-11 px-4"
+                disabled={busy}
+                onclick={(event) => { event.preventDefault(); if (removeItemTarget) void removeItemConfirmed(); else void removeRoomConfirmed(); }}>Hapus</AlertDialogAction>
+        </AlertDialogFooter>
+    </AlertDialogContent>
+</AlertDialog>

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { selectOption } from '../select-option.mjs';
 
 test('task filters survive direct navigation, reload and history', async ({ page }) => {
  await page.goto('/login');
@@ -9,8 +10,8 @@ test('task filters survive direct navigation, reload and history', async ({ page
  await page.goto('/tasks?search=unmatched-refactor&status=todo&priority=high&roomId=R-001&patientId=PT-001&picId=U-DINA&from=2026-11-01&to=2026-11-03&page=1');
  await expect(page.getByLabel('Cari tugas atau pasien')).toHaveValue('unmatched-refactor');
  await page.getByText('Filter lanjutan').click();
- await expect(page.getByRole('combobox', { name: /^Status/ })).toHaveValue('todo');
- await expect(page.getByRole('combobox', { name: /^Prioritas/ })).toHaveValue('high');
+ await expect(page.getByRole('combobox', { name: /^Status/ })).toHaveAttribute('data-value', 'todo');
+ await expect(page.getByRole('combobox', { name: /^Prioritas/ })).toHaveAttribute('data-value', 'high');
  await page.reload();
  await expect(page.getByLabel('Cari tugas atau pasien')).toHaveValue('unmatched-refactor');
  await page.getByLabel('Cari tugas atau pasien').fill('second-filter');
@@ -35,8 +36,8 @@ test('calendar keeps an inclusive week and a failed placement form', async ({ pa
  await expect(page.getByRole('heading', { name: 'Kalender Ruangan', exact: true })).toBeVisible();
  await page.getByRole('button', { name: /Tempatkan pasien/ }).click();
  const form=page.locator('.form-panel form');
- await form.getByRole('combobox', { name: /^Pasien/ }).selectOption({ index: 1 });
- await form.getByRole('combobox', { name: /^Ruangan/ }).selectOption({ index: 1 });
+ await selectOption(form.getByRole('combobox', { name: /^Pasien/ }), { index: 1 });
+ await selectOption(form.getByRole('combobox', { name: /^Ruangan/ }), { index: 1 });
  await form.getByLabel('Tanggal masuk').fill('2026-11-03');
  await form.getByLabel('Tanggal keluar').fill('2026-11-04');
  await page.route('**/api/v1/placements', async route => {
@@ -116,7 +117,7 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  await page.goto(`/tasks?search=${encodeURIComponent(task.title)}`);
  await page.locator('.task-card').getByRole('button').first().click();
  const detail=page.getByRole('dialog');
- await detail.getByRole('combobox',{name:/Alihkan ke perawat/}).selectOption(bima.id);
+ await selectOption(detail.getByRole('combobox',{name:/Alihkan ke perawat/}), bima.id);
  await detail.getByLabel('Alasan pengalihan').fill('Pergantian shift sintetis');
  await detail.getByRole('button',{name:'Alihkan PIC',exact:true}).click();
  await expect(detail).toContainText(bima.name);
@@ -127,7 +128,6 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  await oldPic.goto(`/tasks?search=${encodeURIComponent(task.title)}`);
  await expect(oldPic.locator('.task-card')).toHaveCount(0);
  await oldPic.close();
- page.on('dialog',async dialog=>dialog.type()==='prompt'?dialog.accept('Alasan sintetis regresi'):dialog.accept());
  const cancelled=page.waitForResponse(response=>response.request().method()==='POST' && new URL(response.url()).pathname===`/api/v1/tasks/${task.id}/move`);
  await detail.getByRole('button',{name:'Batalkan dengan alasan'}).click();
  const cancelDialog=page.getByRole('dialog',{name:new RegExp(`Pindahkan ${task.title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}`)});
@@ -143,6 +143,9 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  await page.locator('.task-card').getByRole('button').first().click();
  const deleted=page.waitForResponse(response=>response.request().method()==='DELETE' && new URL(response.url()).pathname===`/api/v1/tasks/${removed.id}`);
  await page.getByRole('dialog').getByRole('button',{name:'Hapus logis dengan alasan'}).click();
+ const removal=page.getByRole('dialog',{name:'Hapus tugas?',exact:true});
+ await removal.getByLabel('Alasan penghapusan').fill('Alasan sintetis regresi');
+ await removal.getByRole('button',{name:'Konfirmasi hapus',exact:true}).click();
  const deletion=await deleted;
  expect(deletion.ok()).toBe(true);
  expect(deletion.request().postDataJSON()).toMatchObject({reason:'Alasan sintetis regresi',expectedVersion:expect.any(Number)});

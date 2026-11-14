@@ -1,12 +1,145 @@
 <script lang="ts">
-import Badge from '$lib/shared/ui/Badge.svelte';
-import { date } from '$lib/shared/format';
-import type { PatientPageData } from '$lib/features/patients';
-let { data }: {
-    data: PatientPageData;
-} = $props();
+	import { Badge, type BadgeVariant } from '$lib/shared/ui/badge/index.js';
+	import { Button } from '$lib/shared/ui/button/index.js';
+	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
+	import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
+	import { date } from '$lib/shared/format';
+	import type { PatientPageData } from '$lib/features/patients';
+
+	let { data }: {
+		data: PatientPageData;
+	} = $props();
+
+	const labels: Record<string, string> = {
+		pending: 'Pending',
+		assigned: 'Assigned',
+		in_care: 'In Care',
+		extend: 'Extend',
+		released: 'Pelepasan',
+		active: 'Aktif',
+		done: 'Selesai',
+		cancelled: 'Dibatalkan'
+	};
+
+	const tones: Record<string, BadgeVariant> = {
+		pending: 'warning',
+		assigned: 'info',
+		in_care: 'success',
+		extend: 'info',
+		released: 'outline',
+		active: 'success',
+		done: 'success',
+		cancelled: 'destructive'
+	};
+
+	function label(value: string): string {
+		return labels[value] ?? value;
+	}
+
+	function tone(value: string): BadgeVariant {
+		return tones[value] ?? 'outline';
+	}
 </script>
-<div class="page-heading"><div><h1 class="page-title">Ringkasan Pasien</h1><p class="page-subtitle">Informasi pasien dan keterkaitan rawat inap.</p></div><a href={data.user.role==='ADMISI'?'/invoices':'/dashboard'} class="button">Kembali</a></div>
-<section class="panel"><div class="panel-header"><h2>{data.context.patient.name}</h2><span class="badge">{data.context.patient.medicalRecordNo}</span></div><div class="detail-grid"><div class="detail-item"><span>Tanggal lahir</span><strong>{date(data.context.patient.birthDate)}</strong></div><div class="detail-item"><span>Jenis kelamin</span><strong>{data.context.patient.gender==='L'?'Laki-laki':'Perempuan'}</strong></div><div class="detail-item"><span>BPJS</span><strong>{data.context.patient.bpjs?'Terdaftar':'Tidak terdaftar'}</strong></div><div class="detail-item"><span>Nomor BPJS</span><strong>{data.context.patient.bpjsNumber??'—'}</strong></div></div></section>
-<section class="panel"><div class="panel-header"><h2>Riwayat Penempatan</h2><a href="/calendar" class="text-link">Lihat kalender</a></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Ruangan</th><th>Tanggal masuk</th><th>Tanggal selesai</th><th>Status</th></tr></thead><tbody>{#each data.context.placements as placement}<tr><td>{placement.roomName}</td><td>{date(placement.startsOn)}</td><td>{date(placement.endsOn)}</td><td><Badge value={placement.status}/></td></tr>{:else}<tr><td colspan="4" class="empty">Belum ada penempatan.</td></tr>{/each}</tbody></table></div></section>
-{#if data.user.role!=='ADMISI'}<section class="panel"><div class="panel-header"><h2>Tim Perawatan</h2></div>{#each data.context.cycles as cycle}<div class="detail-grid"><div class="detail-item"><span>Dokter</span><strong>{cycle.doctorName}</strong></div><div class="detail-item"><span>Perawat</span><strong>{cycle.nurseName}</strong></div><div class="detail-item"><span>Status siklus</span><Badge value={cycle.status}/></div></div>{:else}<p class="empty">Belum ada rekap rawat inap.</p>{/each}</section>{/if}
+
+<svelte:head><title>Ringkasan Pasien | InpaCare</title></svelte:head>
+
+<div class="flex flex-col gap-6">
+	<header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+		<div class="min-w-0">
+			<h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Ringkasan Pasien</h1>
+			<p class="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed text-muted-foreground">Informasi pasien dan keterkaitan rawat inap.</p>
+		</div>
+		<Button variant="outline" class="h-11 shrink-0 px-4" href={data.user.role === 'ADMISI' ? '/invoices' : '/dashboard'}>Kembali</Button>
+	</header>
+
+	<Card>
+		<CardHeader class="flex-row flex-wrap items-center justify-between gap-3">
+			<div class="min-w-0">
+				<CardTitle role="heading" aria-level={2} class="text-[19px]">{data.context.patient.name}</CardTitle>
+				<CardDescription class="mt-1">Nomor rekam medis {data.context.patient.medicalRecordNo}</CardDescription>
+			</div>
+			<Badge variant="secondary">{data.context.patient.medicalRecordNo}</Badge>
+		</CardHeader>
+		<CardContent>
+			<dl class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+				<div class="flex min-w-0 flex-col gap-1">
+					<dt class="text-[13px] text-muted-foreground">Tanggal lahir</dt>
+					<dd class="text-sm font-semibold">{date(data.context.patient.birthDate)}</dd>
+				</div>
+				<div class="flex min-w-0 flex-col gap-1">
+					<dt class="text-[13px] text-muted-foreground">Jenis kelamin</dt>
+					<dd class="text-sm font-semibold">{data.context.patient.gender === 'L' ? 'Laki-laki' : 'Perempuan'}</dd>
+				</div>
+				<div class="flex min-w-0 flex-col gap-1">
+					<dt class="text-[13px] text-muted-foreground">BPJS</dt>
+					<dd class="text-sm font-semibold">{data.context.patient.bpjs ? 'Terdaftar' : 'Tidak terdaftar'}</dd>
+				</div>
+				<div class="flex min-w-0 flex-col gap-1">
+					<dt class="text-[13px] text-muted-foreground">Nomor BPJS</dt>
+					<dd class="text-sm font-semibold">{data.context.patient.bpjsNumber ?? '—'}</dd>
+				</div>
+			</dl>
+		</CardContent>
+	</Card>
+
+	<Card class="gap-0 py-0">
+		<CardHeader class="flex-row flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-5">
+			<CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Riwayat Penempatan</CardTitle>
+			<a class="text-sm font-semibold text-primary hover:underline" href="/calendar">Lihat kalender</a>
+		</CardHeader>
+		<CardContent class="px-0">
+			<Table>
+				<TableHeader>
+					<TableRow class="bg-muted/60 hover:bg-muted/60">
+						<TableHead class="px-4 sm:px-5">Ruangan</TableHead>
+						<TableHead>Tanggal masuk</TableHead>
+						<TableHead>Tanggal selesai</TableHead>
+						<TableHead class="px-4 sm:px-5">Status</TableHead>
+					</TableRow>
+				</TableHeader>
+				<TableBody>
+					{#each data.context.placements as placement}
+						<TableRow>
+							<TableCell class="px-4 align-top font-medium whitespace-normal sm:px-5">{placement.roomName}</TableCell>
+							<TableCell class="align-top whitespace-normal">{date(placement.startsOn)}</TableCell>
+							<TableCell class="align-top whitespace-normal">{date(placement.endsOn)}</TableCell>
+							<TableCell class="px-4 align-top sm:px-5"><Badge variant={tone(placement.status)}>{label(placement.status)}</Badge></TableCell>
+						</TableRow>
+					{:else}
+						<TableRow class="hover:bg-transparent">
+							<TableCell colspan={4} class="px-4 py-11 text-center text-sm whitespace-normal text-muted-foreground sm:px-5">Belum ada penempatan.</TableCell>
+						</TableRow>
+					{/each}
+				</TableBody>
+			</Table>
+		</CardContent>
+	</Card>
+
+	{#if data.user.role !== 'ADMISI'}
+		<Card>
+			<CardHeader>
+				<CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Tim Perawatan</CardTitle>
+			</CardHeader>
+			<CardContent class="flex flex-col gap-5">
+				{#each data.context.cycles as cycle}
+					<dl class="grid grid-cols-1 gap-5 sm:grid-cols-3">
+						<div class="flex min-w-0 flex-col gap-1">
+							<dt class="text-[13px] text-muted-foreground">Dokter</dt>
+							<dd class="text-sm font-semibold">{cycle.doctorName}</dd>
+						</div>
+						<div class="flex min-w-0 flex-col gap-1">
+							<dt class="text-[13px] text-muted-foreground">Perawat</dt>
+							<dd class="text-sm font-semibold">{cycle.nurseName}</dd>
+						</div>
+						<div class="flex min-w-0 flex-col gap-1">
+							<dt class="text-[13px] text-muted-foreground">Status siklus</dt>
+							<dd><Badge variant={tone(cycle.status)}>{label(cycle.status)}</Badge></dd>
+						</div>
+					</dl>
+				{:else}
+					<p class="text-sm text-muted-foreground">Belum ada rekap rawat inap.</p>
+				{/each}
+			</CardContent>
+		</Card>
+	{/if}
+</div>

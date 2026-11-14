@@ -1,9 +1,17 @@
 <script lang="ts">
+import { Button } from '$lib/shared/ui/button/index.js';
+import { Card } from '$lib/shared/ui/card/index.js';
+import { Input } from '$lib/shared/ui/input/index.js';
+import FormSelect from '$lib/shared/ui/form-select.svelte';
+import { Textarea } from '$lib/shared/ui/textarea/index.js';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
 import { goto, invalidateAll } from '$app/navigation';
 import type { Tasks, TasksPageData, Task, TaskHistory, NewTask, BoardStatus, TaskBoard } from '$lib/features/tasks';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
-import Modal from '$lib/shared/ui/Modal.svelte';
+import Modal from '$lib/shared/ui/dialog-frame.svelte';
+import StatusBadge from '$lib/shared/ui/status-badge.svelte';
+import { Badge } from '$lib/shared/ui/badge/index.js';
 import { Plus } from 'lucide-svelte';
 let { data, tasks }: {
     data: TasksPageData;
@@ -24,6 +32,9 @@ let history = $state<TaskHistory[]>([]);
 let busy = $state(false);
 let error = $state('');
 let notice = $state('');
+let deletingTask = $state<Task | null>(null);
+let deletionOpen = $state(false);
+let deletionReason = $state('');
 const coordinator = $derived(data.user?.role === 'PERAWAT' && data.user?.coordinator);
 let board = $state<TaskBoard>({ todo: { items: [], total: 0, error: false, filtered: false }, in_progress: { items: [], total: 0, error: false, filtered: false }, done: { items: [], total: 0, error: false, filtered: false }, cancelled: { items: [], total: 0, error: false, filtered: false } });
 let generation = 0;
@@ -174,13 +185,26 @@ async function reassign(event: SubmitEvent) {
     const saved = await submit(() => tasks.reassign(task.id, { expectedVersion: task.version, picId: formText(form, 'picId'), reason: formText(form, 'reason') }));
     if (saved && selected?.id === task.id) await open(task.id);
 }
-async function removeTask() {
-    const task = selected;
-    if (!task) return;
-    const reason = prompt('Alasan penghapusan logis:');
-    if (!reason?.trim()) return;
+function startTaskDelete() {
+    if (!selected) return;
+    if (deletingTask?.id !== selected.id) deletionReason = '';
+    deletingTask = selected;
+    deletionOpen = true;
+    error = '';
+}
+async function removeTask(event: SubmitEvent) {
+    event.preventDefault();
+    const task = deletingTask;
+    if (!task || busy) return;
+    const reason = deletionReason.trim();
+    if (!reason) { error = 'Alasan penghapusan wajib diisi.'; return; }
     const removed = await submit(() => tasks.remove(task.id, { expectedVersion: task.version, reason }));
-    if (removed && selected?.id === task.id) selected = null;
+    if (removed) {
+        deletionOpen = false;
+        deletingTask = null;
+        deletionReason = '';
+        if (selected?.id === task.id) selected = null;
+    }
 }
 async function updateTask(event: SubmitEvent) {
     event.preventDefault();
@@ -201,61 +225,87 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 </script>
 
 <svelte:head><title>Tugas Perawatan | InpaCare</title></svelte:head>
-<section class="page-heading"><div><h1 class="page-title">Tugas Perawatan</h1><p class="page-subtitle">Tugas pasien dengan PIC, rentang waktu, prioritas, dan riwayat perubahan.</p></div>{#if coordinator}<button class="button primary" aria-expanded={creating} onclick={()=>{creating=!creating;error='';}}><Plus size={16} aria-hidden="true"/> Buat tugas</button>{/if}</section>
+<div class="tasks-page flex min-w-0 flex-col gap-6">
+<section class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="page-title">Tugas Perawatan</h1><p class="page-subtitle">Tugas pasien dengan PIC, rentang waktu, prioritas, dan riwayat perubahan.</p></div>{#if coordinator}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-expanded={creating} onclick={()=>{creating=!creating;error='';}}><Plus size={16} aria-hidden="true"/> Buat tugas</Button>{/if}</section>
 {#if error}<p class="error" role="alert">{error}</p>{/if}{#if notice}<p class="success" role="status">{notice}</p>{/if}
 
-{#if creating&&coordinator}<section class="panel form-panel"><h2>Buat tugas perawatan</h2><form class="form-grid" onsubmit={createTask}>
-	<label class="field">Penempatan pasien<select name="placementId" required><option value="">Pilih pasien / ruangan</option>{#each placements as p}<option value={p.id}>{p.patientName} · {p.roomName} ({p.startsOn}–{p.endsOn})</option>{/each}</select></label>
-	<label class="field">Perawat PIC<select name="picId" required><option value="">Pilih PIC aktif</option>{#each data.reference.staff.filter((u)=>u.role==='PERAWAT'&&u.active) as nurse}<option value={nurse.id}>{nurse.name}</option>{/each}</select></label>
-	<label class="field">Judul<input name="title" required maxlength="150" /></label><label class="field">Prioritas<select name="priority"><option value="normal">Normal</option><option value="high">Tinggi</option><option value="low">Rendah</option></select></label>
-	<label class="field">Waktu mulai<input name="startsAt" type="datetime-local" required /></label><label class="field">Waktu selesai<input name="endsAt" type="datetime-local" required /></label>
-	<label class="field">Deskripsi<textarea name="description" rows="2"></textarea></label><label class="field">Catatan awal<textarea name="notes" rows="2"></textarea></label>
-	<div class="form-actions"><button class="button primary" disabled={busy}>Simpan tugas</button><button class="button secondary" type="button" onclick={()=>creating=false}>Batal</button></div>
-</form></section>{/if}
-<section class="panel filter-panel"><form class="filters task-filters" onsubmit={(event)=>{event.preventDefault();void filterTasks();}}><label class="field search-field">Cari tugas atau pasien<input type="search" bind:value={search} placeholder="Nama pasien, nomor RM, judul tugas" /></label><details class="advanced"><summary>Filter lanjutan</summary><div class="filters"><label class="field">Status<select bind:value={statusFilter}><option value="">Semua status</option>{#each statuses as [key,label]}<option value={key}>{label}</option>{/each}</select></label><label class="field">Prioritas<select bind:value={priorityFilter}><option value="">Semua prioritas</option><option value="high">Tinggi</option><option value="normal">Normal</option><option value="low">Rendah</option></select></label><label class="field">Ruangan<select bind:value={roomFilter}><option value="">Semua ruangan</option>{#each data.reference.rooms as room}<option value={room.id}>{room.name}</option>{/each}</select></label><label class="field">Pasien<select bind:value={patientFilter}><option value="">Semua pasien</option>{#each data.reference.patients as patient}<option value={patient.id}>{patient.name}</option>{/each}</select></label><label class="field">PIC<select bind:value={picFilter}><option value="">Semua PIC</option>{#each data.reference.staff.filter((s)=>s.role==='PERAWAT') as nurse}<option value={nurse.id}>{nurse.name}</option>{/each}</select></label><label class="field">Dari tanggal<input type="date" bind:value={fromFilter}/></label><label class="field">Sampai tanggal<input type="date" bind:value={toFilter}/></label></div></details><button class="button" type="submit">Terapkan filter</button></form>{#if filtered}<div class="applied"><span>Filter aktif:</span>{#each Object.entries(data.filters).filter(([,value])=>value) as [key,value]}<button class="button small" onclick={()=>{ const q = new URLSearchParams(window.location.search); q.delete(key); q.delete('page'); void goto(`/tasks?${q}`, { keepFocus: true, noScroll: true }); }}>{key}: {value} - Hapus</button>{/each}<button class="text-link" onclick={()=>goto('/tasks')}>Hapus semua</button></div>{/if}</section>
+{#if creating&&coordinator}<Card class="gap-4 p-5 sm:p-6 form-panel"><h2>Buat tugas perawatan</h2><form class="form-grid" onsubmit={createTask}>
+	<label class="field">Penempatan pasien<FormSelect name="placementId" required options={[{ value: "", label: "Pilih pasien / ruangan" }, ...(placements).map((p) => ({ value: p.id, label: (p.patientName) + " · " + (p.roomName) + " (" + (p.startsOn) + "–" + (p.endsOn) + ")" }))]} /></label>
+	<label class="field">Perawat PIC<FormSelect name="picId" required options={[{ value: "", label: "Pilih PIC aktif" }, ...(data.reference.staff.filter((u)=>u.role==='PERAWAT'&&u.active)).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label>
+	<label class="field">Judul<Input class="h-11 text-base md:text-sm" name="title" required maxlength={150} /></label><label class="field">Prioritas<FormSelect name="priority" options={[{ value: "normal", label: "Normal" }, { value: "high", label: "Tinggi" }, { value: "low", label: "Rendah" }]} /></label>
+	<label class="field">Waktu mulai<Input class="h-11 text-base md:text-sm" name="startsAt" type="datetime-local" required /></label><label class="field">Waktu selesai<Input class="h-11 text-base md:text-sm" name="endsAt" type="datetime-local" required /></label>
+	<label class="field">Deskripsi<Textarea name="description" rows={2}></Textarea></label><label class="field">Catatan awal<Textarea name="notes" rows={2}></Textarea></label>
+	<div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>Simpan tugas</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={()=>creating=false}>Batal</Button></div>
+</form></Card>{/if}
+<Card class="gap-4 p-5 sm:p-6 filter-panel"><form class="filters task-filters" onsubmit={(event)=>{event.preventDefault();void filterTasks();}}><label class="field search-field">Cari tugas atau pasien<Input class="h-11 text-base md:text-sm" type="search" bind:value={search} placeholder="Nama pasien, nomor RM, judul tugas" /></label><details class="advanced"><summary>Filter lanjutan</summary><div class="filters"><label class="field">Status<FormSelect bind:value={statusFilter} options={[{ value: "", label: "Semua status" }, ...(statuses).map(([key,label]) => ({ value: key, label: (label) }))]} /></label><label class="field">Prioritas<FormSelect bind:value={priorityFilter} options={[{ value: "", label: "Semua prioritas" }, { value: "high", label: "Tinggi" }, { value: "normal", label: "Normal" }, { value: "low", label: "Rendah" }]} /></label><label class="field">Ruangan<FormSelect bind:value={roomFilter} options={[{ value: "", label: "Semua ruangan" }, ...(data.reference.rooms).map((room) => ({ value: room.id, label: (room.name) }))]} /></label><label class="field">Pasien<FormSelect bind:value={patientFilter} options={[{ value: "", label: "Semua pasien" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) }))]} /></label><label class="field">PIC<FormSelect bind:value={picFilter} options={[{ value: "", label: "Semua PIC" }, ...(data.reference.staff.filter((s)=>s.role==='PERAWAT')).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label><label class="field">Dari tanggal<Input class="h-11 text-base md:text-sm" type="date" bind:value={fromFilter}/></label><label class="field">Sampai tanggal<Input class="h-11 text-base md:text-sm" type="date" bind:value={toFilter}/></label></div></details><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="submit">Terapkan filter</Button></form>{#if filtered}<div class="applied"><span>Filter aktif:</span>{#each Object.entries(data.filters).filter(([,value])=>value) as [key,value]}<Button variant="default" class="h-auto min-h-11 max-w-full min-w-0 whitespace-normal break-words px-3 py-2 text-left no-underline hover:no-underline" onclick={()=>{ const q = new URLSearchParams(window.location.search); q.delete(key); q.delete('page'); void goto(`/tasks?${q}`, { keepFocus: true, noScroll: true }); }}>{key}: {value} - Hapus</Button>{/each}<Button variant="link" class="h-11 px-4 no-underline hover:no-underline text-link" onclick={()=>goto('/tasks')}>Hapus semua</Button></div>{/if}</Card>
 <div class="task-board" role="region" aria-label="Papan tugas perawatan" ondragleave={(event)=>{if (!event.currentTarget.contains(event.relatedTarget as Node)) dragTarget=null;}}>
  {#each statuses as [key,label]}
   {@const status = key as BoardStatus}
   {@const column = board[status]}
   <section class="task-column" aria-label={label} ondragover={(e)=>dragOver(e,status)} ondrop={drop}>
-   <div class="column-heading" tabindex="-1" id={`heading-${status}`}><strong>{label}</strong><span>{column.error ? 'Gagal dimuat' : `${column.items.length} / ${column.total}`}</span></div>
+   <div class="column-heading" tabindex="-1" id={`heading-${status}`}><strong>{label}</strong><Badge variant="outline" class="shrink-0 tabular-nums">{column.error ? 'Gagal dimuat' : `${column.items.length} / ${column.total}`}</Badge></div>
    {#if column.filtered}<p class="empty">Disembunyikan oleh filter status.</p>
    {:else}
     {#each column.items as task (task.id)}
      {#if dragTarget?.status===status && dragTarget.before===task.id}<div class="drop-marker" aria-label="Posisi penyisipan"></div>{/if}
-     <article class:dragging={dragTask?.id===task.id} class="task-card" draggable={canOperate(task) && !pending.includes(task.id)} ondragstart={(e)=>dragStart(e,task)} ondragend={endDrag} ondragover={(e)=>{e.stopPropagation();dragOver(e,status,task.id);}} ondrop={drop}>
-      <button id={`task-${task.id}`} class="card-open" onclick={(event)=>openCard(task,event)}><strong class="card-title">{task.title}</strong><span>{task.patientName} - {task.roomName}</span><span class="badge {task.priority}">Prioritas {task.priority==='high'?'Tinggi':task.priority==='low'?'Rendah':'Normal'}</span><span>{local(task.startsAt)} - {local(task.endsAt)}</span><span>PIC: {task.picName}</span></button>
-      {#if pending.includes(task.id)}<p role="status">Menyimpan...</p>{:else if canOperate(task) && statuses.some(([key])=>allowed(task,key as BoardStatus))}<button class="button small move-button" onclick={()=>startMove(task)}>Pindahkan</button>{/if}
-     </article>
+     <Card role="article" class={`task-card mb-2 gap-2 overflow-visible p-3 [overflow-wrap:anywhere] ${dragTask?.id===task.id ? 'opacity-50' : ''}`} draggable={canOperate(task) && !pending.includes(task.id)} ondragstart={(e)=>dragStart(e,task)} ondragend={endDrag} ondragover={(e)=>{e.stopPropagation();dragOver(e,status,task.id);}} ondrop={drop}>
+      <Button variant="ghost" id={`task-${task.id}`} class="card-open h-auto min-h-11 w-full flex-col items-start gap-1.5 whitespace-normal p-1 text-left font-normal hover:bg-accent/50" onclick={(event)=>openCard(task,event)}><strong class="card-title">{task.title}</strong><span>{task.patientName} - {task.roomName}</span><StatusBadge value={task.priority} label={`Prioritas ${task.priority==='high'?'Tinggi':task.priority==='low'?'Rendah':'Normal'}`} /><span>{local(task.startsAt)} - {local(task.endsAt)}</span><span>PIC: {task.picName}</span></Button>
+      {#if pending.includes(task.id)}<p role="status">Menyimpan...</p>{:else if canOperate(task) && statuses.some(([key])=>allowed(task,key as BoardStatus))}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline move-button" onclick={()=>startMove(task)}>Pindahkan</Button>{/if}
+     </Card>
     {:else}{#if !column.error}<p class="empty">Tidak ada tugas.</p>{/if}{/each}
     {#if dragTarget?.status===status && !dragTarget.before}<div class="drop-marker" aria-label="Posisi penyisipan di akhir"></div>{/if}
-    {#if column.error}<p class="error" role="alert">Daftar gagal dimuat. <button class="text-link" onclick={()=>loadMore(status)}>Coba lagi</button></p>{:else if column.items.length < column.total}<button class="button small" disabled={loading.includes(status)} onclick={()=>loadMore(status)}>{loading.includes(status) ? 'Memuat...' : 'Muat lebih banyak'}</button>{/if}
-    {#if status==='todo' && coordinator}<button class="button small add-card" onclick={()=>{creating=true;error='';}}>+ Tambah tugas</button>{/if}
+    {#if column.error}<p class="error" role="alert">Daftar gagal dimuat. <Button variant="link" class="h-11 px-4 no-underline hover:no-underline text-link" onclick={()=>loadMore(status)}>Coba lagi</Button></p>{:else if column.items.length < column.total}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" disabled={loading.includes(status)} onclick={()=>loadMore(status)}>{loading.includes(status) ? 'Memuat...' : 'Muat lebih banyak'}</Button>{/if}
+    {#if status==='todo' && coordinator}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline add-card" onclick={()=>{creating=true;error='';}}>+ Tambah tugas</Button>{/if}
    {/if}
   </section>
  {/each}
 </div>
 <p class="muted">Tugas hanya dapat maju ke tahap berikutnya; tugas selesai atau dibatalkan tidak dapat dibuka kembali.{#if filtered} Urutan dinonaktifkan saat filter aktif. Perpindahan status ditambahkan di akhir daftar.{/if}</p>
-{#if moving}<Modal title={`Pindahkan ${moving.title}`} onclose={()=>moving=null}><form class="move-form" onsubmit={confirmMove}><label class="field">Status tujuan<select bind:value={destination} onchange={()=>beforeId=''}>{#each statuses as [key,label]}{#if allowed(moving,key as BoardStatus)}<option value={key}>{label}</option>{/if}{/each}</select></label>{#if !filtered}<label class="field">Posisi<select bind:value={beforeId}><option value="">Akhir daftar</option>{#each board[destination].items.filter(t=>t.id!==moving?.id) as anchor}<option value={anchor.id}>Sebelum {anchor.title}</option>{/each}</select></label>{:else}<p class="muted">Hapus filter untuk mengatur posisi.</p>{/if}{#if destination==='cancelled' && moving.status!=='cancelled'}<label class="field">Alasan pembatalan<textarea bind:value={reason} required maxlength="500"></textarea></label><p>Konfirmasi pembatalan tugas ini.</p>{/if}{#if error}<p class="error" role="alert">{error}</p>{/if}<div class="card-actions"><button class="button primary" disabled={pending.includes(moving.id)}>Konfirmasi pindahkan</button><button class="button secondary" type="button" onclick={()=>moving=null}>Batal</button></div></form></Modal>{/if}
-{#if selected}<Modal title={selected.title} onclose={closeDetail}><p class="task-context">{selected.patientName} · {selected.roomName} · {selected.picName}</p><p><strong>Status:</strong> {statusLabel(selected.status)} - <strong>Prioritas:</strong> {selected.priority}</p>{#if canOperate(selected) && statuses.some(([key])=>allowed(selected!,key as BoardStatus))}<button class="button small" onclick={()=>selected&&startMove(selected)}>Pindahkan</button>{/if}{#if error}<p class="error" role="alert">{error}</p>{/if}<p>{selected.description||'Tidak ada deskripsi.'}</p><p><strong>Pembuat:</strong> {selected.createdByName}</p><p><strong>Catatan:</strong> {selected.notes||'Belum ada catatan.'}</p><p class="muted">{local(selected.startsAt)} – {local(selected.endsAt)} · versi {selected!.version}</p>
-	{#if coordinator&&selected.status!=='done'&&selected.status!=='cancelled'}<details class="edit-task"><summary class="text-link">Ubah detail tugas</summary><form class="form-grid" onsubmit={updateTask}><label class="field">Judul<input name="title" value={selected.title} required maxlength="150"/></label><label class="field">Prioritas<select name="priority" value={selected.priority}><option value="low">Rendah</option><option value="normal">Normal</option><option value="high">Tinggi</option></select></label><label class="field">Mulai<input name="startsAt" type="datetime-local" value={localInput(selected.startsAt)} required/></label><label class="field">Selesai<input name="endsAt" type="datetime-local" value={localInput(selected.endsAt)} required/></label><label class="field full">Deskripsi<textarea name="description" rows="3">{selected.description}</textarea></label><div class="form-actions"><button class="button primary" disabled={busy}>Simpan detail</button></div></form></details>{/if}
-	{#if data.user.id===selected.picId||coordinator}<form class="inline-edit" onsubmit={addNote}><label class="field">Catatan tindakan<textarea name="notes" rows="2" maxlength="3000" required>{selected.notes}</textarea></label><button class="button secondary small" disabled={busy}>Simpan catatan</button></form>{/if}
-	{#if coordinator&&selected.status!=='done'&&selected.status!=='cancelled'}<form class="inline-edit" onsubmit={reassign}><label class="field">Alihkan ke perawat<select name="picId" required>{#each data.reference.staff.filter((u)=>u.role==='PERAWAT'&&u.active&&u.id!==selected?.picId) as nurse}<option value={nurse.id}>{nurse.name}</option>{/each}</select></label><label class="field">Alasan pengalihan<input name="reason" required maxlength="500" /></label><button class="button secondary small" disabled={busy}>Alihkan PIC</button></form><div class="card-actions"><button class="button danger small" disabled={busy||selected.status==='cancelled'} onclick={()=>selected&&changeStatus(selected,'cancelled')}>Batalkan dengan alasan</button><button class="button danger small" disabled={busy} onclick={removeTask}>Hapus logis dengan alasan</button></div>{/if}
+{#if moving}<Modal title={`Pindahkan ${moving.title}`} description="Pilih status tujuan dan posisi tugas. Pembatalan memerlukan alasan." onclose={()=>moving=null}><form class="move-form" onsubmit={confirmMove}><label class="field">Status tujuan<FormSelect bind:value={destination} onValueChange={()=>beforeId=''} options={[...(statuses).flatMap(([key,label]) => [...(moving && allowed(moving,key as BoardStatus) ? [{ value: key, label: (label) }] : [])])]} /></label>{#if !filtered}<label class="field">Posisi<FormSelect bind:value={beforeId} options={[{ value: "", label: "Akhir daftar" }, ...(board[destination].items.filter(t=>t.id!==moving?.id)).map((anchor) => ({ value: anchor.id, label: "Sebelum " + (anchor.title) }))]} /></label>{:else}<p class="muted">Hapus filter untuk mengatur posisi.</p>{/if}{#if destination==='cancelled' && moving.status!=='cancelled'}<label class="field">Alasan pembatalan<Textarea bind:value={reason} required maxlength={500}></Textarea></label><p>Konfirmasi pembatalan tugas ini.</p>{/if}{#if error}<p class="error" role="alert">{error}</p>{/if}<div class="card-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={pending.includes(moving.id)}>Konfirmasi pindahkan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={()=>moving=null}>Batal</Button></div></form></Modal>{/if}
+{#if selected}<Modal title={selected.title} description="Detail tugas, catatan tindakan dan riwayat perubahan." busy={busy || pending.includes(selected.id)} onclose={closeDetail}><p class="task-context">{selected.patientName} · {selected.roomName} · {selected.picName}</p><p><strong>Status:</strong> {statusLabel(selected.status)} - <strong>Prioritas:</strong> {selected.priority}</p>{#if canOperate(selected) && statuses.some(([key])=>allowed(selected!,key as BoardStatus))}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" onclick={()=>selected&&startMove(selected)}>Pindahkan</Button>{/if}{#if error}<p class="error" role="alert">{error}</p>{/if}<p>{selected.description||'Tidak ada deskripsi.'}</p><p><strong>Pembuat:</strong> {selected.createdByName}</p><p><strong>Catatan:</strong> {selected.notes||'Belum ada catatan.'}</p><p class="muted">{local(selected.startsAt)} – {local(selected.endsAt)} · versi {selected!.version}</p>
+	{#if coordinator&&selected.status!=='done'&&selected.status!=='cancelled'}<details class="edit-task"><summary class="text-link">Ubah detail tugas</summary><form class="form-grid" onsubmit={updateTask}><label class="field">Judul<Input class="h-11 text-base md:text-sm" name="title" value={selected.title} required maxlength={150}/></label><label class="field">Prioritas<FormSelect name="priority" value={selected.priority} options={[{ value: "low", label: "Rendah" }, { value: "normal", label: "Normal" }, { value: "high", label: "Tinggi" }]} /></label><label class="field">Mulai<Input class="h-11 text-base md:text-sm" name="startsAt" type="datetime-local" value={localInput(selected.startsAt)} required/></label><label class="field">Selesai<Input class="h-11 text-base md:text-sm" name="endsAt" type="datetime-local" value={localInput(selected.endsAt)} required/></label><label class="field full">Deskripsi<Textarea value={[(selected.description)].join("")} name="description" rows={3}></Textarea></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>Simpan detail</Button></div></form></details>{/if}
+	{#if data.user.id===selected.picId||coordinator}<form class="inline-edit" onsubmit={addNote}><label class="field">Catatan tindakan<Textarea value={[(selected.notes)].join("")} name="notes" rows={2} maxlength={3000} required></Textarea></label><Button variant="outline" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>Simpan catatan</Button></form>{/if}
+	{#if coordinator&&selected.status!=='done'&&selected.status!=='cancelled'}<form class="inline-edit" onsubmit={reassign}><label class="field">Alihkan ke perawat<FormSelect name="picId" required options={[...(data.reference.staff.filter((u)=>u.role==='PERAWAT'&&u.active&&u.id!==selected?.picId)).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label><label class="field">Alasan pengalihan<Input class="h-11 text-base md:text-sm" name="reason" required maxlength={500} /></label><Button variant="outline" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>Alihkan PIC</Button></form><div class="card-actions"><Button variant="destructive" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||selected.status==='cancelled'} onclick={()=>selected&&changeStatus(selected,'cancelled')}>Batalkan dengan alasan</Button><Button variant="destructive" class="h-11 px-4 no-underline hover:no-underline" disabled={busy} onclick={startTaskDelete}>Hapus logis dengan alasan</Button></div>{/if}
 	<h3>Riwayat tugas</h3><ol class="history-list">{#each history as item}<li><strong>{item.action}</strong> · {item.actorName} <time>{local(item.createdAt)}</time>{#if item.reason}<p>{item.reason}</p>{/if}<details><summary>Nilai sebelum dan sesudah</summary><p>Sebelum</p><pre class="audit-values">{JSON.stringify(item.before,null,2)}</pre><p>Sesudah</p><pre class="audit-values">{JSON.stringify(item.after,null,2)}</pre></details></li>{:else}<li class="muted">Belum ada riwayat.</li>{/each}</ol></Modal>{/if}
+
+{#if deletionOpen && deletingTask}
+    <Modal title="Hapus tugas?" description="Catat alasan penghapusan logis tugas untuk riwayat perubahan." {busy} onclose={() => deletionOpen = false}>
+        <form onsubmit={removeTask}>
+            <p>Tugas <strong>{deletingTask.title}</strong> akan dihapus secara logis. Riwayat perubahan tetap tersimpan.</p>
+            {#if error}<p class="error" role="alert">{error}</p>{/if}
+            <label class="field">Alasan penghapusan<Textarea bind:value={deletionReason} maxlength={500} required /></label>
+            <div class="form-actions">
+                <Button variant="destructive" type="submit" class="h-11" disabled={busy}>Konfirmasi hapus</Button>
+                <Button variant="outline" type="button" class="h-11" disabled={busy} onclick={() => deletionOpen = false}>Batal</Button>
+            </div>
+        </form>
+    </Modal>
+{/if}
+</div>
 
 <style>
 .audit-values { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; font-size: 0.8rem; }
-.task-board{display:flex;gap:12px;overflow-x:auto;align-items:flex-start;background:#eaf0ef;padding:12px;border-radius:12px;max-width:100%}
-.task-column{flex:0 0 292px;min-width:0;min-height:140px;max-height:70vh;overflow-y:auto;background:#f2f5f4;border-radius:12px;padding:10px}
-.column-heading{position:sticky;top:-10px;z-index:1;background:#f2f5f4;display:flex;justify-content:space-between;gap:8px;padding:10px 2px;font-size:13px}.column-heading span{color:var(--muted)}
-.task-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px;overflow-wrap:anywhere}.task-card.dragging{opacity:.5}.card-open{display:flex;flex-direction:column;gap:6px;text-align:left;width:100%;border:0;background:transparent;color:inherit;cursor:pointer;font:inherit;padding:2px}.card-open span{font-size:12px}.card-title{font-size:14px}.card-open:focus-visible{outline:2px solid var(--primary, #16745c);outline-offset:3px}.move-button{margin-top:8px}.drop-marker{height:48px;border:2px dashed #397b6a;border-radius:8px;margin-bottom:8px}.card-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}.filter-panel{padding:12px}.advanced{min-width:0}.advanced summary{cursor:pointer}.advanced .filters{margin-top:12px}.applied{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.applied .button{white-space:normal;overflow-wrap:anywhere;text-align:left;max-width:100%;min-width:0}.move-form{display:grid;gap:12px}.add-card{margin-top:8px}
-.task-context{margin:-8px 0 20px;font-size:13px}.edit-task{margin:20px 0;border-top:1px solid var(--border);padding-top:14px}.edit-task summary{cursor:pointer}.task-filters{align-items:end}
-.inline-edit{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:20px 0}
-.inline-edit .field{flex:1;min-width:0}
-.history-list{padding-left:20px}
-.history-list li{padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
-.history-list time{display:block;color:var(--muted);font-size:12px;margin-top:4px}
-.history-list p{margin:4px 0}
-
-@media(max-width:620px){.inline-edit{align-items:stretch;flex-direction:column}}
+.task-board { display:flex; gap:16px; overflow-x:auto; align-items:flex-start; background:var(--muted); padding:16px; border-radius:12px; max-width:100%; }
+.task-column { flex:0 0 292px; min-width:0; min-height:140px; max-height:70vh; overflow-y:auto; background:var(--muted); padding:0 4px 4px; }
+.column-heading { position:sticky; top:0; z-index:1; background:var(--muted); display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 2px 16px; font-size:13px; }
+.card-title { font-size:14px; font-weight:600; }
+.tasks-page :global(.card-open > span) { font-size:12px; }
+.drop-marker { height:48px; border:2px dashed var(--primary); border-radius:8px; margin-bottom:8px; }
+.card-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
+.advanced { min-width:0; }
+.advanced summary { cursor:pointer; min-height:44px; display:flex; align-items:center; }
+.advanced .filters { margin-top:12px; }
+.applied { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.move-form { display:grid; gap:12px; }
+.task-context { margin:0 0 12px; font-size:13px; }
+.edit-task { margin:20px 0; border-top:1px solid var(--border); padding-top:14px; }
+.edit-task summary { cursor:pointer; min-height:44px; }
+.task-filters { align-items:end; }
+.inline-edit { display:flex; align-items:end; gap:12px; flex-wrap:wrap; margin:20px 0; }
+.inline-edit .field { flex:1; min-width:0; }
+.history-list { padding-left:20px; }
+.history-list li { padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; }
+.history-list time { display:block; color:var(--muted-foreground); font-size:12px; margin-top:4px; }
+.history-list p { margin:4px 0; }
+@media(max-width:620px) { .inline-edit { align-items:stretch; flex-direction:column; } }
 </style>
