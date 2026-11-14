@@ -128,7 +128,7 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 	.calendar thead th strong{font-size:14px;color:var(--text);margin-top:4px}
 	.calendar .room-head,.calendar .room-name{width:176px;position:sticky;left:0;z-index:1}
 	.calendar .room-name{background:var(--surface)}
-	.room-name strong,.room-name span{display:block}
+	.room-name strong,.room-name span{display:block;overflow-wrap:anywhere}
 	.room-name strong{font-size:13px;font-weight:600}
 	.room-name span{margin-top:6px;color:var(--muted);font-size:12px;font-weight:400}
 	.calendar td{height:96px;background:var(--surface)}
