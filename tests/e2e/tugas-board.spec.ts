@@ -720,11 +720,11 @@ test('card details restore focus and retain management forms', async ({ browser 
 	await createTask(coordinatorPage, ref, deleteTitle, dina);
 	await coordinatorPage.goto(`/tasks?search=${encodeURIComponent(deletePrefix)}`);
 	await openDetails(coordinatorPage, deleteTitle);
-	coordinatorPage.once('dialog', async dialog => {
-		expect(dialog.type()).toBe('prompt');
-		await dialog.accept('Alasan hapus dari detail.');
-	});
 	await coordinatorPage.getByRole('dialog', { name: new RegExp(escape(deleteTitle)) }).getByRole('button', { name: 'Hapus logis dengan alasan' }).click();
+	const removal = coordinatorPage.getByRole('dialog', { name: 'Hapus tugas?', exact: true });
+	await removal.getByLabel('Alasan penghapusan').fill('Alasan hapus dari detail.');
+	await removal.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();
+	await expect(removal).toHaveCount(0);
 	await expect(coordinatorPage.locator('p.success')).toContainText(/berhasil/i);
 	await expect(coordinatorPage.locator('.task-card').filter({ hasText: deleteTitle })).toHaveCount(0);
 

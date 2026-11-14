@@ -127,7 +127,6 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  await oldPic.goto(`/tasks?search=${encodeURIComponent(task.title)}`);
  await expect(oldPic.locator('.task-card')).toHaveCount(0);
  await oldPic.close();
- page.on('dialog',async dialog=>dialog.type()==='prompt'?dialog.accept('Alasan sintetis regresi'):dialog.accept());
  const cancelled=page.waitForResponse(response=>response.request().method()==='POST' && new URL(response.url()).pathname===`/api/v1/tasks/${task.id}/move`);
  await detail.getByRole('button',{name:'Batalkan dengan alasan'}).click();
  const cancelDialog=page.getByRole('dialog',{name:new RegExp(`Pindahkan ${task.title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}`)});
@@ -143,6 +142,9 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  await page.locator('.task-card').getByRole('button').first().click();
  const deleted=page.waitForResponse(response=>response.request().method()==='DELETE' && new URL(response.url()).pathname===`/api/v1/tasks/${removed.id}`);
  await page.getByRole('dialog').getByRole('button',{name:'Hapus logis dengan alasan'}).click();
+ const removal=page.getByRole('dialog',{name:'Hapus tugas?',exact:true});
+ await removal.getByLabel('Alasan penghapusan').fill('Alasan sintetis regresi');
+ await removal.getByRole('button',{name:'Konfirmasi hapus',exact:true}).click();
  const deletion=await deleted;
  expect(deletion.ok()).toBe(true);
  expect(deletion.request().postDataJSON()).toMatchObject({reason:'Alasan sintetis regresi',expectedVersion:expect.any(Number)});
