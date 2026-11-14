@@ -4,7 +4,6 @@ import path from 'node:path';
 
 const password = 'InpaCareDemo!2026';
 const evidence = path.resolve('.local/evidence');
-const origin = 'http://127.0.0.1:18088';
 const coordinator = 'USR-COORD';
 const dina = 'USR-NURSE-1';
 const bima = 'USR-NURSE-2';
@@ -37,7 +36,7 @@ async function api<T = unknown>(page: Page, method: string, path: string, body?:
 	const csrf = (await page.context().cookies()).find(cookie => cookie.name === 'csrf_token')?.value ?? '';
 	const response = await page.request.fetch(`/api/v1${path}`, {
 		method,
-		headers: { 'x-csrf-token': csrf, origin },
+		headers: { 'x-csrf-token': csrf, origin: new URL(page.url()).origin },
 		data: body as Record<string, unknown> | undefined
 	});
 	const text = await response.text();

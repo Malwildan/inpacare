@@ -340,12 +340,14 @@ try {
     await moveTask.getByLabel('Status tujuan').selectOption('in_progress');
     await moveTask.getByRole('button', { name: 'Konfirmasi pindahkan', exact: true }).click();
     await expect(taskCard.getByRole('status')).toHaveText('Menyimpan...');
-    await page.keyboard.press('Escape');
-    await expect(moveTask).toBeVisible();
     await expect(moveTask.getByRole('button', { name: 'Konfirmasi pindahkan', exact: true })).toBeDisabled();
+    await page.keyboard.press('Escape');
+    await expect(moveTask).toHaveCount(0);
+    await expect(taskCard.getByRole('status')).toHaveText('Menyimpan...');
     await page.evaluate(() => window.rejectTaskMove());
-    await expect(moveTask.getByRole('alert')).toContainText('Tugas berubah.');
+    await expect(page.getByRole('alert')).toContainText('Tugas berubah.');
     await expect(todo.getByRole('article').filter({ hasText: 'Tugas Uji' })).toBeVisible();
+    await taskCard.getByRole('button', { name: 'Pindahkan', exact: true }).click();
     await moveTask.getByRole('button', { name: 'Konfirmasi pindahkan', exact: true }).click();
     await expect(moveTask).toHaveCount(0);
     await expect(page.locator('#task-task')).toBeFocused();

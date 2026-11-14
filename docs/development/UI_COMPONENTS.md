@@ -24,6 +24,7 @@ Import components from their own `index.js`, for example `$lib/shared/ui/button/
 - Feature actions generally use 44px targets. Tables and the room schedule scroll inside their containers on narrow screens.
 - Badge variants carry status text as well as color. Never rely on color alone.
 - Controlled reason dialogs keep drafts on rejection and dismissal. Busy dialogs prevent dismissal and duplicate writes. Successful writes refresh server data; errors must not present unsaved changes as saved.
+- The task move dialog retains the settled board behavior: it can be dismissed while its request finishes. The board keeps the card pending and prevents another move of that card until the response arrives.
 - Preserve decimal-string money, `expectedVersion`, roles and date/time serialization when changing markup. The API owns calculations, authorization and mutation rules.
 - Card Title is a generic container. Use a real heading or give it `role="heading"` and the appropriate `aria-level` when it names a section.
 - Registry overlays use portals. Scope layout CSS deliberately; a Svelte selector attached to a parent does not automatically style DOM created inside another component or portal.
