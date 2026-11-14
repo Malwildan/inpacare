@@ -64,7 +64,7 @@
 	<main class="flex flex-col items-center justify-center bg-background px-10 pb-7 pt-12 max-[900px]:px-7 max-[700px]:justify-start max-[700px]:px-6 max-[700px]:pb-6 max-[700px]:pt-9">
 		<Card class="w-full max-w-[440px] gap-0 border-border/70 py-0 shadow-sm">
 			<CardHeader class="gap-2 px-6 pt-6">
-				<CardTitle class="text-[27px] leading-tight tracking-[-0.025em] max-[700px]:text-[25px]">
+				<CardTitle role="heading" aria-level={2} class="text-[27px] leading-tight tracking-[-0.025em] max-[700px]:text-[25px]">
 					Selamat datang kembali
 				</CardTitle>
 				<CardDescription class="text-[15px] leading-relaxed">
