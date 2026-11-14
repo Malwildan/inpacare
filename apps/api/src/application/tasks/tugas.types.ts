@@ -1,5 +1,12 @@
-import { TaskChanges } from "../../domain/tasks/tugas-perawatan";
+import { TaskChanges, TaskStatus } from "../../domain/tasks/tugas-perawatan";
+export interface MoveTaskInput {
+  expectedVersion: number;
+  status: TaskStatus;
+  beforeTaskId: string | null;
+  reason?: string;
+}
 export interface TaskFilters {
+  order?: "board";
   search?: string;
   status?: string;
   priority?: string;

@@ -195,7 +195,7 @@ async function main(): Promise<void> {
           pic = i % 3 === 0 ? "USR-NURSE-2" : "USR-NURSE-1";
         const title = titles[i % 5];
         await manager.query(
-          "INSERT INTO tasks(id,patient_id,room_id,placement_id,pic_id,created_by,title,description,starts_at,ends_at,priority,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",
+          "INSERT INTO tasks(id,patient_id,room_id,placement_id,pic_id,created_by,title,description,starts_at,ends_at,priority,status,board_position) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)",
           [
             id,
             patient,
@@ -209,6 +209,7 @@ async function main(): Promise<void> {
             new Date(at.getTime() + 45 * 60_000),
             i % 4 === 0 ? "high" : "normal",
             status,
+            i + 1,
           ],
         );
         await manager.query(

@@ -8,6 +8,7 @@ test('task filters survive direct navigation, reload and history', async ({ page
  await expect(page).toHaveURL(/\/dashboard$/);
  await page.goto('/tasks?search=unmatched-refactor&status=todo&priority=high&roomId=R-001&patientId=PT-001&picId=U-DINA&from=2026-11-01&to=2026-11-03&page=1');
  await expect(page.getByLabel('Cari tugas atau pasien')).toHaveValue('unmatched-refactor');
+ await page.getByText('Filter lanjutan').click();
  await expect(page.getByRole('combobox', { name: /^Status/ })).toHaveValue('todo');
  await expect(page.getByRole('combobox', { name: /^Prioritas/ })).toHaveValue('high');
  await page.reload();
@@ -61,7 +62,7 @@ test('patient context renders after direct navigation and reload', async ({ page
 test('a rejected task update preserves the draft and sends a single versioned write', async ({ page }) => {
  await signIn(page,'dina');
  await page.goto('/tasks');
- await page.locator('.task-card').first().getByRole('button',{name:'Riwayat / catatan'}).click();
+ await page.locator('.task-card').first().getByRole('button').first().click();
  const dialog=page.getByRole('dialog');
  await expect(dialog).toBeVisible();
  await dialog.getByLabel('Catatan tindakan').fill('Draft survives a stale version');
@@ -113,7 +114,7 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  }
  const task=await createTask(`Refactor reason ${Date.now()}`);
  await page.goto(`/tasks?search=${encodeURIComponent(task.title)}`);
- await page.locator('.task-card').getByRole('button',{name:'Riwayat / catatan'}).click();
+ await page.locator('.task-card').getByRole('button').first().click();
  const detail=page.getByRole('dialog');
  await detail.getByRole('combobox',{name:/Alihkan ke perawat/}).selectOption(bima.id);
  await detail.getByLabel('Alasan pengalihan').fill('Pergantian shift sintetis');
@@ -127,8 +128,11 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  await expect(oldPic.locator('.task-card')).toHaveCount(0);
  await oldPic.close();
  page.on('dialog',async dialog=>dialog.type()==='prompt'?dialog.accept('Alasan sintetis regresi'):dialog.accept());
- const cancelled=page.waitForResponse(response=>response.request().method()==='PATCH' && new URL(response.url()).pathname===`/api/v1/tasks/${task.id}`);
+ const cancelled=page.waitForResponse(response=>response.request().method()==='POST' && new URL(response.url()).pathname===`/api/v1/tasks/${task.id}/move`);
  await detail.getByRole('button',{name:'Batalkan dengan alasan'}).click();
+ const cancelDialog=page.getByRole('dialog',{name:new RegExp(`Pindahkan ${task.title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}`)});
+ await cancelDialog.getByLabel('Alasan pembatalan').fill('Alasan sintetis regresi');
+ await cancelDialog.getByRole('button',{name:'Konfirmasi pindahkan'}).click();
  const cancellation=await cancelled;
  expect(cancellation.ok()).toBe(true);
  expect(cancellation.request().postDataJSON().reason).toBe('Alasan sintetis regresi');
@@ -136,7 +140,7 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  await expect(page.locator('.task-column').filter({has:page.getByText(task.title,{exact:true})})).toContainText('Dibatalkan');
  const removed=await createTask(`Refactor delete ${Date.now()}`);
  await page.goto(`/tasks?search=${encodeURIComponent(removed.title)}`);
- await page.locator('.task-card').getByRole('button',{name:'Riwayat / catatan'}).click();
+ await page.locator('.task-card').getByRole('button').first().click();
  const deleted=page.waitForResponse(response=>response.request().method()==='DELETE' && new URL(response.url()).pathname===`/api/v1/tasks/${removed.id}`);
  await page.getByRole('dialog').getByRole('button',{name:'Hapus logis dengan alasan'}).click();
  const deletion=await deleted;

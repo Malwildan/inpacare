@@ -12,6 +12,7 @@ export function createHttpTasks(http: HttpClient): TasksRepository {
         history: async (id) => (await http.request<Schemas['TaskHistoryPage']>(`${path(id)}/history`)).items,
         create: input => http.request<Schemas['Task']>('/tasks', { method: 'POST', body: JSON.stringify(input satisfies Schemas['NewTask']) }),
         update: (id, input) => http.request<Schemas['Task']>(path(id), { method: 'PATCH', body: JSON.stringify(input satisfies Schemas['UpdateTask']) }),
+        move: (id, input) => http.request<Schemas['Task']>(`${path(id)}/move`, { method: 'POST', body: JSON.stringify(input satisfies Schemas['MoveTask']) }),
         reassign: (id, input) => http.request<Schemas['Task']>(`${path(id)}/reassign`, { method: 'POST', body: JSON.stringify(input satisfies Schemas['ReassignTask']) }),
         remove: (id, input) => http.request(path(id), { method: 'DELETE', body: JSON.stringify(input satisfies Schemas['ReasonBody']) })
     };

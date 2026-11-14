@@ -14,6 +14,7 @@ import { CreateTaskDto } from "./dto/create-task.dto";
 import { ReasonDto, ReassignTaskDto } from "./dto/task-action.dto";
 import { TaskFilterDto } from "./dto/task-filter.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
+import { MoveTaskDto } from "./dto/move-task.dto";
 import { TugasUseCases } from "../../../application/tasks/tugas.use-cases";
 @Controller("tasks")
 export class TugasController {
@@ -95,5 +96,11 @@ export class TugasController {
     d: ReassignTaskDto,
   ) {
     return this.tasks.reassign(a, id, d);
+  }
+  @Post(":id/move")
+  @HttpCode(200)
+  @Roles("PERAWAT")
+  pindahkanTugas(@CurrentActor() a: Actor, @Param("id") id: string, @Body() d: MoveTaskDto) {
+    return this.tasks.move(a, id, d);
   }
 }

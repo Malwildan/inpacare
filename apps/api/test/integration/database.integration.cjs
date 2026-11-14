@@ -133,7 +133,7 @@ test(
       );
       assert.deepEqual(
         history.rows.map((row) => row.name),
-        ["Baseline1793577600000", "RebuildDelta1793577600001", "AuditAlignment1793577600002"],
+        ["Baseline1793577600000", "RebuildDelta1793577600001", "AuditAlignment1793577600002", "TaskBoardPosition1793577600003"],
       );
       const deltaFields = await client.query(
         `SELECT table_name,column_name FROM information_schema.columns WHERE table_schema=current_schema() AND ((table_name='cycles' AND column_name='deleted_at') OR (table_name='invoices' AND column_name='claim_verified') OR (table_name='invoice_lines' AND column_name='room_item_id')) ORDER BY table_name,column_name`,
@@ -358,6 +358,9 @@ test(
       await client.query(
         `INSERT INTO tasks(id,patient_id,room_id,placement_id,pic_id,created_by,title,starts_at,ends_at,priority) VALUES('TK-LEGACY','PT-LEGACY','RG-LEGACY','PL-LEGACY','LEGACY-NR','LEGACY-DR','legacy task','2026-01-01T00:00:00Z','2026-01-01T01:00:00Z','normal')`,
       );
+      await client.query(`INSERT INTO tasks(id,patient_id,room_id,placement_id,pic_id,created_by,title,starts_at,ends_at,priority) VALUES
+        ('TK-B','PT-LEGACY','RG-LEGACY','PL-LEGACY','LEGACY-NR','LEGACY-DR','b','2025-01-01T00:00:00Z','2025-01-01T01:00:00Z','normal'),
+        ('TK-A','PT-LEGACY','RG-LEGACY','PL-LEGACY','LEGACY-NR','LEGACY-DR','a','2025-01-01T00:00:00Z','2025-01-01T01:00:00Z','normal')`);
       const before = await client.query(
         `SELECT u.id,u.password_hash,p.birth_date::text AS birth_date,r.daily_rate::text AS daily_rate,c.doctor_id,c.nurse_id,t.id AS task_id FROM users u CROSS JOIN patients p CROSS JOIN rooms r CROSS JOIN cycles c CROSS JOIN tasks t WHERE u.id='LEGACY-DR' AND p.id='PT-LEGACY' AND r.id='RG-LEGACY' AND c.id='CY-LEGACY' AND t.id='TK-LEGACY'`,
       );
@@ -367,6 +370,8 @@ test(
       const adopted = runCli("adopt", adoptDb, tempCwd);
       assertCliSucceeded(adopted, "baseline adoption");
       client = await connect(adoptDb);
+      const board = await client.query("SELECT id FROM tasks WHERE id IN ('TK-A','TK-B','TK-LEGACY') ORDER BY board_position,id");
+      assert.deepEqual(board.rows.map(row => row.id), ['TK-A', 'TK-B', 'TK-LEGACY']);
       const after = await client.query(
         `SELECT u.id,u.password_hash,p.birth_date::text AS birth_date,r.daily_rate::text AS daily_rate,c.doctor_id,c.nurse_id,t.id AS task_id,r.pic_nurse_id AS room_pic_nurse_id,c.doctor_profile_id,c.nurse_profile_id,m.doctor_profile_id,t.pic_nurse_id AS task_pic_nurse_id FROM users u CROSS JOIN patients p CROSS JOIN rooms r CROSS JOIN cycles c CROSS JOIN tasks t CROSS JOIN medical_records m WHERE u.id='LEGACY-DR' AND p.id='PT-LEGACY' AND r.id='RG-LEGACY' AND c.id='CY-LEGACY' AND t.id='TK-LEGACY' AND m.id='MR-LEGACY'`,
       );
@@ -418,7 +423,7 @@ test(
       );
       assert.deepEqual(
         migrationRows.rows.map((row) => row.name),
-        ["Baseline1793577600000", "RebuildDelta1793577600001", "AuditAlignment1793577600002"],
+        ["Baseline1793577600000", "RebuildDelta1793577600001", "AuditAlignment1793577600002", "TaskBoardPosition1793577600003"],
       );
       const repeatedAdopt = runCli("adopt", adoptDb, tempCwd);
       assertCliSucceeded(repeatedAdopt, "repeat baseline adoption");

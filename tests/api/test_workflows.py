@@ -220,6 +220,46 @@ class Workflows(unittest.TestCase):
         self.assertEqual(set(page["counts"]), {"todo", "in_progress", "done", "cancelled"})
         self.assertEqual(sum(page["counts"].values()), page["total"])
 
+    def test_task_board_move_order_scope_and_concurrency(self) -> None:
+        first = self.create_task(f"Board {self.tag} first")
+        second = self.create_task(f"Board {self.tag} second")
+        hidden = self.create_task(f"Board {self.tag} hidden", "USR-NURSE-2")
+        path = f"/tasks/{second['id']}/move"
+        self.assert_error(self.dina.request("POST", path, {"expectedVersion": 1, "status": "todo", "beforeTaskId": hidden["id"]}), 404, "NOT_FOUND")
+        status, moved = self.dina.request("POST", path, {"expectedVersion": 1, "status": "todo", "beforeTaskId": first["id"]})
+        self.assertEqual(status, 200, moved)
+        self.assertEqual(moved["version"], 2)
+        status, page = self.dina.request("GET", f"/tasks?status=todo&order=board&search={self.tag}")
+        self.assertEqual(status, 200, page)
+        self.assertEqual([item["id"] for item in page["items"]], [second["id"], first["id"]])
+        history = self.dina.request("GET", f"/tasks/{second['id']}/history")[1]
+        self.assertTrue(any(row["action"] == "reordered" for row in history["items"]))
+        status, unchanged = self.dina.request("POST", path, {"expectedVersion": 2, "status": "todo", "beforeTaskId": first["id"]})
+        self.assertEqual(status, 200, unchanged)
+        self.assertEqual(unchanged["version"], 2)
+        self.assertEqual(self.dina.request("GET", f"/tasks/{second['id']}/history")[1]["total"], history["total"])
+        peers = [Api(), Api()]
+        for client in peers:
+            self.assertEqual(client.sign_in("dina")[0], 200)
+        command = {"expectedVersion": 2, "status": "in_progress", "beforeTaskId": None}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(lambda client: client.request("POST", path, command), peers))
+        self.assertEqual(sorted(status for status, _ in results), [200, 409], results)
+        self.assertEqual(self.dina.request("GET", f"/tasks/{second['id']}/history")[1]["total"], history["total"] + 1)
+        self.assert_error(self.dina.request("POST", path, {"expectedVersion": 3, "status": "done", "beforeTaskId": first["id"]}), 404, "NOT_FOUND")
+        self.assert_error(self.dina.request("POST", path, {"expectedVersion": 3, "status": "in_progress", "beforeTaskId": second["id"]}), 422, "VALIDATION_FAILED")
+        self.assert_error(self.dina.request("POST", path, {"expectedVersion": 3, "status": "todo", "beforeTaskId": None}), 422, "VALIDATION_FAILED")
+        self.assert_error(self.rina.request("POST", f"/tasks/{first['id']}/move", {"expectedVersion": 1, "status": "done", "beforeTaskId": None}), 422, "VALIDATION_FAILED")
+        self.assert_error(self.rina.request("POST", f"/tasks/{first['id']}/move", {"expectedVersion": 1, "status": "cancelled", "beforeTaskId": None, "reason": "  "}), 422, "VALIDATION_FAILED")
+        status, completed = self.dina.request("POST", path, {"expectedVersion": 3, "status": "done", "beforeTaskId": None})
+        self.assertEqual(status, 200, completed)
+        self.assert_error(self.dina.request("POST", path, {"expectedVersion": 4, "status": "in_progress", "beforeTaskId": None}), 422, "VALIDATION_FAILED")
+        status, legacy = self.rina.request("PATCH", f"/tasks/{first['id']}", {"expectedVersion": 1, "status": "in_progress"})
+        self.assertEqual(status, 200, legacy)
+        status, page = self.rina.request("GET", f"/tasks?status=in_progress&order=board&search={self.tag}")
+        self.assertEqual(status, 200, page)
+        self.assertEqual([item["id"] for item in page["items"]], [first["id"]])
+
     def test_task_cancel_requires_reason_and_logical_delete_preserves_history(self) -> None:
         task = self.create_task(f"Tes delete {self.tag}")
         task_id = task["id"]
