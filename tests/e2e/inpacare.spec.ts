@@ -134,11 +134,14 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await card.getByRole('button',{name:new RegExp(title)}).click();
 	const detail=pic.getByRole('dialog');
 	await expect(detail).toContainText(title);
-	await expect(detail).toContainText('created');
-	await expect(detail).toContainText('Pembuat:');
-	await expect(detail).toContainText('Rina');
-	await pic.getByText('Nilai sebelum dan sesudah', {exact:true}).first().click();
-	await expect(pic.locator('.audit-values').filter({hasText:'created_by'}).first()).toContainText(title);
+	await expect(detail.locator('.detail-grid > div').filter({hasText:'Dibuat oleh'})).toContainText('Rina Saputra');
+	const creation=detail.locator('.history-list > li').filter({hasText:'Tugas dibuat'});
+	await expect(creation).toContainText('Rina Saputra');
+	await creation.getByText('Nilai sebelum dan sesudah', {exact:true}).click();
+	await expect(creation.locator('.audit-row').filter({has:pic.getByText('Judul',{exact:true})}).locator(':scope > *')).toHaveText([
+		'Judul', 'Sebelum:Belum ada data', `Sesudah:${title}`
+	]);
+	await expect(creation.locator('.audit-row').filter({hasText:'Dibuat oleh'})).toContainText('Rina Saputra');
 	await pic.getByLabel('Catatan tindakan').fill('Pemeriksaan diselesaikan melalui alur E2E.');
 	await pic.getByRole('button',{name:'Simpan catatan'}).click();
 	await expect(detail).toContainText('Pemeriksaan diselesaikan melalui alur E2E.');
@@ -156,7 +159,7 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await expect(persistedColumn.getByText('Sedang Dikerjakan',{exact:true})).toBeVisible();
 	await persistedColumn.getByRole('button',{name:new RegExp(title)}).click();
 	await expect(pic.getByRole('dialog')).toContainText('Pemeriksaan diselesaikan melalui alur E2E.');
-	await expect(pic.getByRole('dialog')).toContainText('updated');
+	await expect(pic.getByRole('dialog').locator('.history-list')).toContainText('Detail atau status diperbarui');
 	await pic.screenshot({path:path.join(evidence,'task-detail.png'),fullPage:true});
 	expectNoBrowserErrors(coordinator);
 	expectNoBrowserErrors(pic);

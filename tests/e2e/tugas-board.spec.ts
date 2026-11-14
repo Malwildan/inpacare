@@ -88,8 +88,8 @@ async function openDetails(page: Page, title: string) {
 }
 
 async function headingCounts(page: Page, label: string) {
-	const text = await column(page, label).locator('.column-heading > span').innerText();
-	const [loaded, total] = text.split('/').map(value => Number(value.trim()));
+	const loaded = await column(page, label).locator('.task-card').count();
+	const total = Number(await column(page, label).locator('.column-heading [data-slot="badge"]').innerText());
 	return { loaded, total };
 }
 
@@ -190,27 +190,70 @@ test('a delayed pagination response cannot restore a moved card', async ({ brows
 	} finally { release(); await page.close(); }
 });
 
-test('a cancelled task can be reordered without a new cancellation reason', async ({ browser }) => {
+test('terminal cards stay readable in Detail and cannot be moved or dragged', async ({ browser }) => {
 	const author = await browser.newPage();
 	await signIn(author, 'rina');
 	const ref = await reference(author);
-	const prefix = unique('Batal urut');
-	const first = await createTask(author, ref, `${prefix} A`);
-	const second = await createTask(author, ref, `${prefix} B`);
-	const existing = await api<{ items: Task[] }>(author, 'GET', '/tasks?status=cancelled&order=board&limit=1');
-	const anchor = existing.items[0]?.id ?? null;
-	await moveApi(author, first, 'cancelled', anchor, 'Tidak diperlukan');
-	await moveApi(author, second, 'cancelled', anchor, 'Tidak diperlukan');
+	const prefix = unique('Terminal hanya detail');
+	const cancelled = await createTask(author, ref, `${prefix} dibatalkan`);
+	const cancelledTask = await moveApi(author, cancelled, 'cancelled', null, 'Perawatan tidak lagi diperlukan.');
+	const completed = await createTask(author, ref, `${prefix} selesai`);
+	const inProgress = await moveApi(author, completed, 'in_progress');
+	await moveApi(author, inProgress, 'done');
 	const pic = await browser.newPage();
 	await signIn(pic, 'dina');
-	await pic.goto('/tasks');
-	const dialog = await moveVia(pic, second.title, 'Dibatalkan', { before: first.title });
-	await expect(dialog).toHaveCount(0);
-	await pic.reload();
-	expect(await titles(pic, 'Dibatalkan', prefix)).toEqual([second.title, first.title]);
-	const saved = await api<Task>(pic, 'GET', `/tasks/${second.id}`);
-	expect(saved.status).toBe('cancelled');
-	expect(saved.version).toBe(3);
+	await pic.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
+	const longAuditValue = `Nilai audit panjang ${'rincian perawatan '.repeat(24)}`;
+	await pic.route(`**/api/v1/tasks/${cancelledTask.id}/history`, route => route.fulfill({
+		contentType: 'application/json',
+		body: JSON.stringify({ items: [{ id: 'history-fixture', actorId: coordinator, actorName: 'Rina', action: 'updated', reason: 'Perawatan tidak lagi diperlukan.', before: null, after: { title: 'Judul audit', status: 'cancelled', priority: 'high', picId: dina, pic_nurse_id: dina, created_by: coordinator, starts_at: '2026-11-14T12:00:00.000Z', version: 3, emptyValue: null, isVerified: false, futureMeta: { unknownKey: longAuditValue } }, createdAt: new Date().toISOString() }] })
+	}));
+	for (const [title, label] of [[`${prefix} dibatalkan`, 'Dibatalkan'], [`${prefix} selesai`, 'Selesai']]) {
+		const terminalCard = card(pic, title);
+		await expect(terminalCard).toBeVisible();
+		await expect(terminalCard).toHaveAttribute('draggable', 'false');
+		await expect(terminalCard.getByRole('button', { name: 'Pindahkan' })).toHaveCount(0);
+		const detailButton = terminalCard.getByRole('button', { name: 'Detail', exact: true });
+		await detailButton.click();
+		const dialog = pic.getByRole('dialog', { name: title });
+		await expect(dialog).toBeVisible();
+		await expect(dialog.getByRole('button', { name: 'Pindahkan' })).toHaveCount(0);
+		if (label === 'Dibatalkan') await expect(dialog).toContainText('Perawatan tidak lagi diperlukan.');
+		await dialog.locator('.audit-disclosure summary').first().click();
+		await expect(dialog.locator('.audit-row').first()).toBeVisible();
+		const auditText = (await dialog.locator('.audit-row').allTextContents()).join('\n');
+		expect(auditText).toContain('Status');
+		if (label === 'Dibatalkan') {
+			expect(auditText).toContain('Belum ada data');
+			expect(auditText).toContain('Judul');
+			expect(auditText).toContain('Dibuat oleh');
+			expect(auditText).toContain('Waktu mulai');
+			expect(auditText).toContain('14 Nov 2026');
+			expect(auditText).toContain('Versi');
+			expect(auditText).toContain('Dibatalkan');
+			expect(auditText).toContain('Tinggi');
+			expect(auditText).toContain(ref.staff.find(staff => staff.id === dina)!.name);
+			expect(auditText).not.toContain(dina);
+			expect(auditText).not.toContain(coordinator);
+			expect(auditText).toContain(longAuditValue);
+			expect(auditText).toContain('Unknown Key');
+			expect(auditText).toContain('Tidak');
+		}
+		expect(auditText).not.toContain('{');
+		expect(auditText).not.toContain('null');
+		if (label === 'Dibatalkan') {
+			await mkdir(evidence, { recursive: true });
+			await dialog.locator('.audit-disclosure').scrollIntoViewIfNeeded();
+			await pic.screenshot({ path: path.join(evidence, 'tugas-board-history.png'), animations: 'disabled' });
+			await pic.setViewportSize({ width: 390, height: 844 });
+			await dialog.locator('.audit-row').first().scrollIntoViewIfNeeded();
+			expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+			await pic.screenshot({ path: path.join(evidence, 'tugas-board-history-mobile.png'), animations: 'disabled' });
+			await pic.setViewportSize({ width: 1440, height: 1000 });
+		}
+		await dialog.getByRole('button', { name: 'Tutup' }).click();
+		await expect(detailButton).toBeFocused();
+	}
 	await pic.close();
 	await author.close();
 });
@@ -268,6 +311,106 @@ test('pointer drag saves status and same-list order across reload and a second s
 	await author.close();
 });
 
+test('native drag keeps insertion targets still and uses the final pointer in card margins', async ({ browser }) => {
+	const author = await browser.newPage();
+	await signIn(author, 'rina');
+	const ref = await reference(author);
+	const prefix = unique('Drop hitbox');
+	const [source, first, second] = await Promise.all([
+		createTask(author, ref, `${prefix} source`),
+		createTask(author, ref, `${prefix} first`),
+		createTask(author, ref, `${prefix} second`)
+	]);
+	const existing = await api<{ items: Task[] }>(author, 'GET', '/tasks?status=in_progress&order=board&limit=1');
+	const existingTodo = await api<{ items: Task[] }>(author, 'GET', '/tasks?status=todo&order=board&limit=1');
+	await moveApi(author, source, 'todo', existingTodo.items[0]?.id ?? null);
+	await moveApi(author, first, 'in_progress', existing.items[0]?.id ?? null);
+	await moveApi(author, second, 'in_progress', first.id);
+
+	const pic = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+	await signIn(pic, 'dina');
+	await pic.goto('/tasks');
+	const sourceCard = card(pic, source.title);
+	const targetColumn = column(pic, 'Sedang Dikerjakan');
+	const firstCard = card(pic, second.title);
+	const secondCard = card(pic, first.title);
+	await expect(firstCard).toBeVisible();
+	await expect(secondCard).toBeVisible();
+	const sourceBox = await sourceCard.boundingBox();
+	const firstBox = await firstCard.boundingBox();
+	const secondBox = await secondCard.boundingBox();
+	expect(sourceBox).not.toBeNull();
+	expect(firstBox).not.toBeNull();
+	expect(secondBox).not.toBeNull();
+
+	await pic.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + sourceBox!.height / 2);
+	await pic.mouse.down();
+	await pic.mouse.move(firstBox!.x + firstBox!.width / 2, firstBox!.y + 5, { steps: 12 });
+	await pic.waitForTimeout(250);
+	const stationaryTargetY = await firstCard.evaluate(element => element.getBoundingClientRect().y);
+	expect(Math.abs(stationaryTargetY - firstBox!.y)).toBeLessThan(2);
+
+	// The browser pointer finishes in the inter-card margin, near the next card.
+	const finalPoint = await secondCard.boundingBox();
+	expect(finalPoint).not.toBeNull();
+	const finalX = finalPoint!.x + finalPoint!.width / 2;
+	const finalY = finalPoint!.y - 2;
+	await pic.mouse.move(finalX, finalY, { steps: 5 });
+	await pic.mouse.up();
+	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([
+		second.title,
+		source.title,
+		first.title
+	]);
+	await expect(targetColumn.locator('.task-card').filter({ hasText: source.title })).toBeVisible();
+
+	const blankSource = await createTask(author, ref, `${prefix} blank`);
+	await moveApi(author, blankSource, 'in_progress', first.id);
+	await pic.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
+	const blankSourceCard = card(pic, blankSource.title);
+	const emptyDoneColumn = column(pic, 'Selesai');
+	await expect(blankSourceCard).toBeVisible();
+	await blankSourceCard.scrollIntoViewIfNeeded();
+	const blankSourceBox = await blankSourceCard.boundingBox();
+	const emptyColumnBox = await emptyDoneColumn.boundingBox();
+	expect(blankSourceBox).not.toBeNull();
+	expect(emptyColumnBox).not.toBeNull();
+	await pic.mouse.move(blankSourceBox!.x + blankSourceBox!.width / 2, blankSourceBox!.y + blankSourceBox!.height / 2);
+	await pic.mouse.down();
+	await pic.mouse.move(emptyColumnBox!.x + 2, emptyColumnBox!.y + 130, { steps: 12 });
+	await pic.mouse.up();
+	await expect(emptyDoneColumn.locator('.task-card').filter({ hasText: blankSource.title })).toBeVisible();
+
+	await pic.goto('/tasks');
+	const ownCard = card(pic, source.title);
+	await expect(ownCard).toBeVisible();
+	await ownCard.scrollIntoViewIfNeeded();
+	const ownBox = await ownCard.boundingBox();
+	expect(ownBox).not.toBeNull();
+	const beforeNoOp = await api<Task>(pic, 'GET', `/tasks/${source.id}`);
+	let ownMoveRequests = 0;
+	pic.on('request', request => {
+		if (request.method() === 'POST' && request.url().includes(`/tasks/${source.id}/move`)) ownMoveRequests++;
+	});
+	await pic.mouse.move(ownBox!.x + ownBox!.width / 2, ownBox!.y + ownBox!.height / 2);
+	await pic.mouse.down();
+	await pic.mouse.move(ownBox!.x + ownBox!.width / 2 + 24, ownBox!.y + ownBox!.height / 2, { steps: 4 });
+	await expect(ownCard).toHaveClass(/opacity-50/);
+	await pic.mouse.move(ownBox!.x + ownBox!.width / 2, ownBox!.y + ownBox!.height / 2, { steps: 4 });
+	await pic.mouse.up();
+	await expect(ownCard).not.toHaveClass(/opacity-50/);
+	expect(ownMoveRequests).toBe(0);
+	await expect.poll(async () => (await api<Task>(pic, 'GET', `/tasks/${source.id}`)).version).toBe(beforeNoOp.version);
+	expect(await titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([
+		second.title,
+		source.title,
+		first.title
+	]);
+
+	await pic.close();
+	await author.close();
+});
+
 test('allowed transitions and terminal restrictions hold for PIC and coordinator', async ({ browser }) => {
 	const coordinatorPage = await browser.newPage();
 	await signIn(coordinatorPage, 'rina');
@@ -283,6 +426,8 @@ test('allowed transitions and terminal restrictions hold for PIC and coordinator
 	await dinaPage.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
 	const mineCard = card(dinaPage, mine);
 	await expect(mineCard).toBeVisible();
+	await expect(mineCard.getByRole('button', { name: 'Detail', exact: true })).toBeVisible();
+	await expect(mineCard.getByRole('button', { name: 'Pindahkan' })).toBeVisible();
 	await mineCard.getByRole('button', { name: 'Pindahkan' }).click();
 	let dialog = dinaPage.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(mine)}`) });
 	expect(await optionLabels(dialog.getByLabel('Status tujuan'))).toEqual(['Sedang Dikerjakan']);
@@ -303,7 +448,10 @@ test('allowed transitions and terminal restrictions hold for PIC and coordinator
 	await dinaPage.getByRole('button', { name: 'Tutup' }).click();
 
 	await coordinatorPage.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
-	await expect(column(coordinatorPage, 'Belum Dikerjakan').locator('.task-card').filter({ hasText: other })).toBeVisible();
+	const coordinatorOther = card(coordinatorPage, other);
+	await expect(coordinatorOther).toBeVisible();
+	await expect(coordinatorOther.getByRole('button', { name: 'Detail', exact: true })).toBeVisible();
+	await expect(coordinatorOther.getByRole('button', { name: 'Pindahkan' })).toBeVisible();
 	await moveVia(coordinatorPage, other, 'Sedang Dikerjakan');
 	await expect(column(coordinatorPage, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: other })).toBeVisible();
 
@@ -410,7 +558,7 @@ test('cancellation requires an explicit reason and preserves it on failure', asy
 	await expect(column(page, 'Dibatalkan').locator('.task-card').filter({ hasText: title })).toBeVisible();
 	await openButton(page, title).click();
 	await expect(page.getByRole('dialog')).toContainText('Alasan uji pembatalan.');
-	await expect(page.getByRole('dialog')).toContainText('updated');
+	await expect(page.getByRole('dialog')).toContainText('Detail atau status diperbarui');
 	await page.close();
 });
 
@@ -516,43 +664,6 @@ test('drag cancellation and invalid destinations make no saved change', async ({
 	await page.close();
 });
 
-test('terminal lists allow position-only reordering that persists', async ({ browser }) => {
-	const coordinatorPage = await browser.newPage();
-	await signIn(coordinatorPage, 'rina');
-	const ref = await reference(coordinatorPage);
-	const prefix = unique('Selesai urut');
-	const firstTitle = `${prefix} D`;
-	const secondTitle = `${prefix} E`;
-	const first = await createTask(coordinatorPage, ref, firstTitle, dina);
-	const second = await createTask(coordinatorPage, ref, secondTitle, dina);
-	const doneFirst = await api<{ items: Task[] }>(coordinatorPage, 'GET', '/tasks?status=done&order=board&limit=1');
-	const anchor = doneFirst.items[0]?.id ?? null;
-	const firstProgress = await moveApi(coordinatorPage, first, 'in_progress');
-	const secondProgress = await moveApi(coordinatorPage, second, 'in_progress');
-	await moveApi(coordinatorPage, firstProgress, 'done', anchor);
-	await moveApi(coordinatorPage, secondProgress, 'done', anchor);
-
-	const pic = await browser.newPage();
-	await signIn(pic, 'dina');
-	await pic.goto('/tasks');
-	await expect(pic.locator('.task-board')).toBeVisible();
-	expect(await titles(pic, 'Selesai', prefix)).toEqual([firstTitle, secondTitle]);
-
-	await card(pic, secondTitle).dragTo(card(pic, firstTitle));
-	await expect.poll(() => titles(pic, 'Selesai', prefix)).toEqual([secondTitle, firstTitle]);
-	await expect(pic.getByRole('dialog')).toHaveCount(0);
-
-	await pic.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
-	await expect.poll(() => titles(pic, 'Selesai', prefix)).toEqual([secondTitle, firstTitle]);
-	const firstDetail = await api<Task>(pic, 'GET', `/tasks/${first.id}`);
-	const secondDetail = await api<Task>(pic, 'GET', `/tasks/${second.id}`);
-	expect([firstDetail.status, secondDetail.status]).toEqual(['done', 'done']);
-	expect(secondDetail.version).toBeGreaterThan(firstDetail.version);
-
-	await pic.close();
-	await coordinatorPage.close();
-});
-
 test('filters disable position controls, append status moves, and explain filtered lists', async ({ browser }) => {
 	const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 	await signIn(page, 'rina');
@@ -617,11 +728,23 @@ test('each list reports truthful totals and loads additional cards independently
 		initial[status] = await headingCounts(page, labels[status]);
 		expect(initial[status].total).toBe(totals[status]);
 		expect(initial[status].loaded).toBe(Math.min(50, totals[status]));
+		await expect(column(page, labels[status]).locator('.column-heading [data-slot="badge"]')).toHaveText(String(totals[status]));
+		await expect(column(page, labels[status]).locator('.column-heading .sr-only')).toHaveText(`${initial[status].loaded} dari ${totals[status]} tugas dimuat`);
 	}
 	const growing = statuses.find(status => totals[status] > 50);
 	expect(growing).toBeTruthy();
 	const growingLabel = labels[growing!];
 	if (totals[growing!] <= 50) throw new Error('expected a status with more than 50 tasks');
+	// The last loaded card is not the last saved card when another page exists.
+	const lastLoaded = column(page, growingLabel).locator('.task-card').last();
+	const lastLoadedId = await lastLoaded.getAttribute('data-task-id');
+	expect(lastLoadedId).toBeTruthy();
+	await lastLoaded.dragTo(column(page, growingLabel).locator('.column-heading'));
+	await expect.poll(async () => {
+		const tail = await api<{ items: Task[] }>(page, 'GET', `/tasks?status=${growing}&order=board&limit=1&offset=${totals[growing!] - 1}`);
+		return tail.items[0]?.id;
+	}).toBe(lastLoadedId);
+	await expect(column(page, growingLabel).locator('.task-card[data-task-id="' + lastLoadedId + '"]')).toHaveCount(0);
 	await column(page, growingLabel).getByRole('button', { name: 'Muat lebih banyak' }).click();
 	await expect.poll(() => headingCounts(page, growingLabel)).toEqual({ loaded: Math.min(initial[growing!].loaded + 50, totals[growing!]), total: totals[growing!] });
 	for (const status of statuses.filter(status => status !== growing)) {
@@ -642,7 +765,7 @@ test('list failure, empty, and filtered states are distinct and retryable', asyn
 	expect(todoTotal).toBeGreaterThan(50);
 	await page.route(/\/api\/v1\/tasks\?.*status=todo.*offset=50/, route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'SERVER', message: 'Daftar gagal dimuat.' } }) }));
 	await column(page, 'Belum Dikerjakan').getByRole('button', { name: 'Muat lebih banyak' }).click();
-	await expect(column(page, 'Belum Dikerjakan').locator('.column-heading > span')).toHaveText('Gagal dimuat');
+	await expect(column(page, 'Belum Dikerjakan').locator('.column-heading [data-slot="badge"]')).toHaveText('Gagal dimuat');
 	await expect(column(page, 'Belum Dikerjakan').getByRole('alert')).toContainText('Daftar gagal dimuat');
 	await page.unroute(/\/api\/v1\/tasks\?.*status=todo.*offset=50/);
 	await column(page, 'Belum Dikerjakan').getByRole('button', { name: 'Coba lagi' }).click();
@@ -789,6 +912,12 @@ test('board geometry, long content, mobile overflow, and evidence screenshots', 
 
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.evaluate(() => document.fonts.ready);
+	await longCard.getByRole('button', { name: 'Detail', exact: true }).click();
+	const mobileDetail = page.getByRole('dialog', { name: longTitle });
+	await expect(mobileDetail).toBeVisible();
+	expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+	await page.screenshot({ path: path.join(evidence, 'tugas-board-detail-mobile.png'), animations: 'disabled' });
+	await mobileDetail.getByRole('button', { name: 'Tutup' }).click();
 	const mobile = await page.evaluate(() => {
 		const board = document.querySelector<HTMLElement>('.task-board')!;
 		const columns = [...document.querySelectorAll<HTMLElement>('.task-column')];
