@@ -159,7 +159,7 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 .placement-page :global(.calendar thead th strong){font-size:14px;color:var(--foreground);margin-top:4px}
 .placement-page :global(.calendar .room-head),.placement-page :global(.calendar .room-name){width:176px;position:sticky;left:0;z-index:1}
 .placement-page :global(.calendar .room-name){background:var(--card)}
-.placement-page :global(.room-name strong),.placement-page :global(.room-name span){display:block}
+.placement-page :global(.room-name strong),.placement-page :global(.room-name span){display:block;overflow-wrap:anywhere}
 .placement-page :global(.room-name strong){font-size:13px;font-weight:600}
 .placement-page :global(.room-name span){margin-top:6px;color:var(--muted-foreground);font-size:12px;font-weight:400}
 .placement-page :global(.calendar td){height:96px;background:var(--card)}

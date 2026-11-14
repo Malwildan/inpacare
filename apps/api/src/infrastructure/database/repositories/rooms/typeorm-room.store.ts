@@ -73,7 +73,7 @@ export class TypeOrmRoomStore implements RoomStore {
   }
   async capacityExceeded(roomId: string, capacity: number) {
     const cap = await this.manager.query(
-      `WITH e AS (SELECT starts_on day,1 change FROM placements WHERE room_id=$1 AND status='active' UNION ALL SELECT ends_on+1,-1 FROM placements WHERE room_id=$1 AND status='active'), d AS (SELECT day,sum(change) change FROM e GROUP BY day), o AS (SELECT sum(change) OVER(ORDER BY day) n FROM d) SELECT COALESCE(max(n),0)>$2 AS too_many FROM o`,
+      `WITH e AS (SELECT starts_on AS day,1 change FROM placements WHERE room_id=$1 AND status='active' UNION ALL SELECT ends_on+1,-1 FROM placements WHERE room_id=$1 AND status='active'), d AS (SELECT day,sum(change) change FROM e GROUP BY day), o AS (SELECT sum(change) OVER(ORDER BY day) n FROM d) SELECT COALESCE(max(n),0)>$2 AS too_many FROM o`,
       [roomId, capacity],
     );
     return !!cap[0]?.too_many;

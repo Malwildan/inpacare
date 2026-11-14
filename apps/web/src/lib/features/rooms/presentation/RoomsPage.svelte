@@ -4,6 +4,7 @@ import type { Rooms, RoomsPageData, Room, RoomItem, EditRoom } from '$lib/featur
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
 import { Plus } from 'lucide-svelte';
+import { dailyRateValue, displayDailyRate, parseDailyRate, updateDailyRateInput } from './daily-rate';
 import { Alert, AlertDescription } from '$lib/shared/ui/alert/index.js';
 import { Badge, type BadgeVariant } from '$lib/shared/ui/badge/index.js';
 import { Button } from '$lib/shared/ui/button/index.js';
@@ -314,7 +315,7 @@ async function removeItemConfirmed() {
             <DialogTitle>Tambah ruangan</DialogTitle>
             <DialogDescription>Lengkapi data ruangan baru. Kolom bertanda wajib tidak boleh kosong.</DialogDescription>
         </DialogHeader>
-        <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); void submit(() => roomService.create({ name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), picId: formText(f, 'picId') || null, dailyRate: formText(f, 'dailyRate') || '0' })); }}>
+        <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); const dailyRate = parseDailyRate(formText(f, 'dailyRate') || '0'); if (dailyRate === null) { error = 'Masukkan tarif harian yang valid (maksimal 2 angka desimal).'; return; } void submit(() => roomService.create({ name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), picId: formText(f, 'picId') || null, dailyRate })); }}>
             {#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
             <FieldGroup class="grid gap-4 sm:grid-cols-2">
                 <Field>
@@ -335,7 +336,8 @@ async function removeItemConfirmed() {
                 </Field>
                 <Field class="sm:col-span-2">
                     <FieldLabel for="room-daily-rate">Tarif harian (Rp)</FieldLabel>
-                    <Input id="room-daily-rate" name="dailyRate" type="number" min={0} step="0.01" value="0" class="h-11 px-3 text-base md:text-base" />
+                    <Input id="room-daily-rate" name="dailyRate" inputmode="decimal" value="0" placeholder="250.000" onfocus={(event) => { if (event.currentTarget.value === '0') event.currentTarget.select(); }} oninput={(event) => updateDailyRateInput(event.currentTarget, event instanceof InputEvent ? event.inputType : '')} aria-describedby="create-rate-hint" class="h-11 px-3 text-base md:text-base" />
+                    <small class="text-muted-foreground" id="create-rate-hint">Rupiah. Contoh: 250.000 atau 250.000,50</small>
                 </Field>
             </FieldGroup>
             <DialogFooter>
@@ -354,7 +356,7 @@ async function removeItemConfirmed() {
         </DialogHeader>
         {#if editRoom}
             {@const room = editRoom}
-            <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); void submit(() => roomService.update(room.id, { name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), status: formText(f, 'status') as EditRoom['status'], picId: formText(f, 'picId') || null, dailyRate: formText(f, 'dailyRate'), expectedVersion: room.version })); }}>
+            <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); const dailyRate = parseDailyRate(formText(f, 'dailyRate')); if (dailyRate === null) { error = 'Masukkan tarif harian yang valid (maksimal 2 angka desimal).'; return; } void submit(() => roomService.update(room.id, { name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), status: formText(f, 'status') as EditRoom['status'], picId: formText(f, 'picId') || null, dailyRate, expectedVersion: room.version })); }}>
                 {#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
                 <FieldGroup class="grid gap-4 sm:grid-cols-2">
                     <Field>
@@ -378,8 +380,9 @@ async function removeItemConfirmed() {
                         <FormSelect id="room-edit-pic" name="picId" value={room.picId ?? ''} class="w-full" options={[{ value: "", label: "Tidak ditentukan" }, ...(nurses).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} />
                     </Field>
                     <Field>
-                        <FieldLabel for="room-edit-daily-rate">Tarif harian</FieldLabel>
-                        <Input id="room-edit-daily-rate" name="dailyRate" type="number" min={0} step="0.01" required value={room.dailyRate} class="h-11 px-3 text-base md:text-base" />
+                        <FieldLabel for="room-edit-daily-rate">Tarif harian (Rp)</FieldLabel>
+                        <Input id="room-edit-daily-rate" name="dailyRate" inputmode="decimal" required value={dailyRateValue(room.dailyRate)} oninput={(event) => updateDailyRateInput(event.currentTarget, event instanceof InputEvent ? event.inputType : '')} aria-describedby="edit-rate-hint" class="h-11 px-3 text-base md:text-base" />
+                        <small class="text-muted-foreground" id="edit-rate-hint">Rupiah. Contoh: 250.000 atau 250.000,50</small>
                     </Field>
                 </FieldGroup>
                 <DialogFooter>
@@ -413,7 +416,7 @@ async function removeItemConfirmed() {
                 </div>
                 <div class="flex min-w-0 flex-col gap-1">
                     <dt class="text-[13px] text-muted-foreground">Tarif harian</dt>
-                    <dd class="text-sm font-semibold">{money(room.dailyRate)}</dd>
+                    <dd class="text-sm font-semibold">{displayDailyRate(room.dailyRate)}</dd>
                 </div>
                 <div class="flex min-w-0 flex-col gap-1">
                     <dt class="text-[13px] text-muted-foreground">Total biaya inventaris</dt>
