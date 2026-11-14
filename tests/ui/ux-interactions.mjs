@@ -258,7 +258,7 @@ try {
         await page.screenshot({ path: path.join(projectRoot, '.local/evidence', 'shadcn-billing-detail-' + width + '.png'), fullPage: true, animations: 'disabled' });
     }
     assert.deepEqual(pageErrors, []);
-    const deleteLine = invoiceDetail.locator('form.line-editor').first().getByRole('button', { name: 'Hapus', exact: true });
+    const deleteLine = invoiceDetail.locator('form.line-editor').first().getByRole('button', { name: 'Hapus rincian', exact: true });
     await deleteLine.click();
     const removeLine = page.getByRole('dialog', { name: 'Hapus rincian tagihan?', exact: true });
     await expect(removeLine).toBeVisible();
