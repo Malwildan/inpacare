@@ -1,6 +1,6 @@
 # InpaCare: shadcn-svelte migration and UI refresh
 
-Status: plan only; no application changes or dependency installation performed.
+Status: implemented on `feat/shadcn-ui-migration` in [PR #36](https://github.com/Malwildan/inpacare/pull/36). The original planning baseline and acceptance criteria are retained below. The PR and its Actions runs record final integration acceptance.
 
 Prepared: 2026-11-13. Source inspected at HEAD `6ac3a87bbff5`, including the working tree. Active, uncommitted task-board work was present and changed during inspection; its behavior must be baselined again before implementation.
 
@@ -184,6 +184,10 @@ Acceptance checks:
 
 Each milestone should be a separate reviewable change, with behavior tests and screenshots attached where relevant. Roll back or correct a failed milestone before propagating it; avoid carrying competing old/new primitive implementations indefinitely.
 
-## Execution boundary and current verification limits
+## Planning provenance and implementation
 
-This document is the deliverable for the planning request. No dependency install, application edit, UI render, test suite, build, deployment, commit, or merge was performed as part of creating it. Compatibility was assessed from current source and upstream documentation, not a trial installation. Begin execution with the baseline step because the working tree contains active independent changes.
+The original planning request produced this document without dependency installation or application changes. The user subsequently approved tickets #24–#35 and requested implementation with refreshed shadcn layouts.
+
+The integration branch now contains the registry foundation, all feature migrations, controlled reason dialogs, and removal of the old Modal/Badge and compatibility stylesheet. Task presentation was reconciled against the committed #23 baseline through `9514608`; its movement, ordering, loading and rollback rules remain intact. That dependency includes the additive task-ordering database migration, which requires a forward fix or verified backup to reverse.
+
+[UI components](../development/UI_COMPONENTS.md) records ownership and upstream-update guidance. [Visual evidence](../validation/shadcn-migration/README.md) contains synthetic component-fixture screenshots and their verification limits. Local checks passed frontend typecheck, architecture/traceability guards, 37 Vitest and 9 Node frontend tests, the production web build, and focused Chromium workflows at 390px, 768px and 1440px. Production frontend/API/disposable-PostgreSQL results are recorded separately in the PR's CI runs. No deployment is part of this migration.
