@@ -30,6 +30,14 @@ export class TypeOrmRoomStore implements RoomStore {
     if (!r[0]?.ok)
       throw DomainError.validation("PIC harus berupa perawat aktif.");
   }
+  async nextId(): Promise<string> {
+    // Hold the allocation lock through insertion; archived rooms keep their numbers.
+    await this.manager.query("SELECT pg_advisory_xact_lock(7231931)");
+    const [row] = await this.manager.query<{ next_number: string }[]>(
+      "SELECT (COALESCE(MAX(substring(id FROM '^RG-([0-9]+)$')::numeric), 0) + 1)::text AS next_number FROM rooms",
+    );
+    return `RG-${row.next_number.padStart(3, "0")}`;
+  }
   async create(d: {
     id: string;
     name: string;

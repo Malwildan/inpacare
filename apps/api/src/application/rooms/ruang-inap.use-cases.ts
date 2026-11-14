@@ -54,9 +54,9 @@ export class RuangInapUseCases {
     validateRoomText(name, roomClass);
     validateRoomCost(dto.dailyRate ?? "0");
     await this.store.validatePic(dto.picId);
-    const roomId = id();
-    await this.uow.run((tx) =>
-      tx.rooms.create({
+    const roomId = await this.uow.run(async (tx) => {
+      const roomId = await tx.rooms.nextId();
+      await tx.rooms.create({
         id: roomId,
         name,
         roomClass,
@@ -64,8 +64,9 @@ export class RuangInapUseCases {
         status: dto.status ?? "available",
         picId: dto.picId ?? null,
         dailyRate: dto.dailyRate ?? "0",
-      }),
-    );
+      });
+      return roomId;
+    });
     return this.detail(roomId);
   }
   async update(roomId: string, dto: UpdateRoomInput) {
