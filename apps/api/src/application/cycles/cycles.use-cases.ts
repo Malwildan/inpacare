@@ -78,8 +78,7 @@ export class CyclesUseCases {
       throw DomainError.notFound();
     if (!(await this.store.activeDoctor(input.doctorId)))
       throw DomainError.validation("Pilih dokter aktif.");
-    const cycleId = id();
-    await this.uow.run(async (tx) => {
+    const cycleId = await this.uow.run(async (tx) => {
       if (!(await tx.cycles.lockPatient(input.patientId)))
         throw DomainError.notFound();
       if (await tx.cycles.hasActiveCycle(input.patientId))
@@ -95,6 +94,7 @@ export class CyclesUseCases {
         if (!(await tx.cycles.activePlacement(placementId, input.patientId)))
           throw DomainError.conflict("Penempatan tidak lagi aktif.");
       }
+      const cycleId = await tx.cycles.nextId();
       await tx.cycles.createCycle({
         id: cycleId,
         patientId: input.patientId,
@@ -102,6 +102,7 @@ export class CyclesUseCases {
         doctorId: input.doctorId,
         nurseId: actor.id,
       });
+      return cycleId;
     });
     return {
       id: cycleId,

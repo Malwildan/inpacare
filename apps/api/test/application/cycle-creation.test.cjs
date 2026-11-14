@@ -9,6 +9,7 @@ function service(overrides = {}) {
     canReadPatient: async () => true, activeDoctor: async () => true,
     lockPatient: async () => { calls.push('lock'); return true; },
     hasActiveCycle: async () => { calls.push('check'); return false; },
+    nextId: async () => 'CY-001',
     createCycle: async value => calls.push(value), ...overrides,
   };
   return { calls, useCases: new CyclesUseCases(store, { run: work => work({ cycles: store }) }) };
@@ -31,6 +32,7 @@ test('a placement owned by another patient has an actionable validation error', 
 test('a registered patient without placement can start a pending recap', async () => {
   const { useCases, calls } = service();
   const result = await useCases.create(nurse, input);
+  assert.equal(result.id, 'CY-001');
   assert.equal(result.status, 'pending');
   assert.equal(result.placementId, null);
   assert.deepEqual(calls.slice(0, 2), ['lock', 'check']);

@@ -67,6 +67,7 @@ export interface CycleStore {
   roomForPlacement(placementId: string): Promise<string | undefined>;
   lockRoom(roomId: string): Promise<void>;
   activePlacement(placementId: string, patientId: string): Promise<boolean>;
+  nextId(): Promise<string>;
   createCycle(input: {
     id: string;
     patientId: string;
