@@ -94,6 +94,14 @@ export class TypeOrmCycleStore implements CycleStore {
     );
     return !!rows.length;
   }
+  async nextId(): Promise<string> {
+    // Keep allocation and insertion in one transaction, including archived numbers.
+    await this.manager.query("SELECT pg_advisory_xact_lock(7231932)");
+    const [row] = await this.manager.query<{ next_number: string }[]>(
+      "SELECT (COALESCE(MAX(substring(id FROM '^CY-([0-9]+)$')::numeric), 0) + 1)::text AS next_number FROM cycles",
+    );
+    return `CY-${row.next_number.padStart(3, "0")}`;
+  }
   async createCycle(d: {
     id: string;
     patientId: string;
