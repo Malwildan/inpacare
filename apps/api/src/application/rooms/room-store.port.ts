@@ -22,6 +22,7 @@ export interface RoomStore {
   list(): Promise<RoomRecord[]>;
   detail(roomId: string): Promise<RoomRecord>;
   validatePic(picId?: string | null): Promise<void>;
+  nextId(): Promise<string>;
   create(input: {
     id: string;
     name: string;

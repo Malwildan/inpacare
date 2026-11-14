@@ -141,6 +141,41 @@ before(async () => {
   useCases = createUseCases(ds);
 });
 
+test("new room IDs continue RG numbering and preserve legacy identifiers", { skip: !enabled }, async () => {
+  const input = { roomClass: "Test", capacity: 1 };
+  const first = await useCases.rooms.create(nurse, { ...input, name: "First numbered room" });
+  assert.equal(first.id, "RG-001");
+
+  const legacyId = newId();
+  await ds.query(
+    "INSERT INTO rooms(id,name,room_class,capacity,deleted_at) VALUES('RG-002','Numbered fixture','Test',1,NULL),('RG-009','Archived numbered fixture','Test',1,now()),($1,'Legacy UUID fixture','Test',1,NULL)",
+    [legacyId],
+  );
+  const next = await useCases.rooms.create(nurse, { ...input, name: "Next numbered room" });
+  assert.equal(next.id, "RG-010");
+  assert.equal((await useCases.rooms.detail(legacyId)).id, legacyId);
+
+  await useCases.rooms.deleteRoom(next.id, { expectedVersion: next.version });
+  const afterArchive = await useCases.rooms.create(nurse, { ...input, name: "Numbered room after archive" });
+  assert.equal(afterArchive.id, "RG-011", "archiving a room must not recycle its identifier");
+});
+
+test("concurrent room creation allocates unique IDs beyond RG-999 and releases failed allocations", { skip: !enabled }, async () => {
+  await ds.query("INSERT INTO rooms(id,name,room_class,capacity,deleted_at) VALUES('RG-999','Archived upper-bound fixture','Test',1,now())");
+  const created = await Promise.all(Array.from({ length: 8 }, (_, index) =>
+    useCases.rooms.create(nurse, { name: `Concurrent numbered room ${index}`, roomClass: "Test", capacity: 1 }),
+  ));
+  assert.deepEqual(created.map(room => room.id).sort(), [
+    "RG-1000", "RG-1001", "RG-1002", "RG-1003", "RG-1004", "RG-1005", "RG-1006", "RG-1007",
+  ]);
+  await assert.rejects(
+    useCases.rooms.create(nurse, { name: created[0].name, roomClass: "Test", capacity: 1 }),
+    error => error.code === "CONFLICT",
+  );
+  const afterFailure = await useCases.rooms.create(nurse, { name: "Numbered room after failed insert", roomClass: "Test", capacity: 1 });
+  assert.equal(afterFailure.id, "RG-1008");
+});
+
 test("room edits save while preserving peak capacity and version checks", { skip: !enabled }, async () => {
   const room = await useCases.rooms.create(nurse, {
     name: `Room edit ${newId()}`,
