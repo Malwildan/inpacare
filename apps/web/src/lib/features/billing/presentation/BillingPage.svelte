@@ -235,7 +235,7 @@ async function choosePatient(value: string) {
 {/if}
 
 {#if invoiceDeleteOpen && deletingInvoice}
-    <Modal title="Hapus tagihan?" {busy} onclose={() => invoiceDeleteOpen = false}>
+    <Modal title="Hapus tagihan?" description="Periksa tagihan dan masukkan alasan sebelum menghapusnya." {busy} onclose={() => invoiceDeleteOpen = false}>
         <form onsubmit={deleteInvoice}>
             <p>Tagihan <strong>{deletingInvoice.id}</strong> atas nama <strong>{deletingInvoice.patientName}</strong> akan dihapus dari daftar. Riwayat penghapusan tetap tersimpan.</p>
             {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -249,7 +249,7 @@ async function choosePatient(value: string) {
 {/if}
 
 {#if paymentOpen && paymentInvoice}
-    <Modal title="Ubah status pembayaran" {busy} onclose={() => paymentOpen = false}>
+    <Modal title="Ubah status pembayaran" description="Pilih status pembayaran dan catat alasan perubahan untuk riwayat tagihan." {busy} onclose={() => paymentOpen = false}>
         <form onsubmit={(event) => paymentInvoice && updateStatus(event, paymentInvoice)}>
             <p>Tagihan <strong>{paymentInvoice.id}</strong> · {paymentInvoice.patientName}</p>
             {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -267,7 +267,7 @@ async function choosePatient(value: string) {
 {/if}
 
 {#if lineDeleteOpen && deletingLine}
-    <Modal title="Hapus rincian tagihan?" {busy} onclose={() => lineDeleteOpen = false}>
+    <Modal title="Hapus rincian tagihan?" description="Masukkan alasan penghapusan rincian. Total akan dihitung kembali oleh server." {busy} onclose={() => lineDeleteOpen = false}>
         <form onsubmit={deleteLine}>
             <p>Rincian <strong>{deletingLine.description}</strong> akan dihapus. Riwayat perubahan tetap tersimpan.</p>
             {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -284,7 +284,7 @@ async function choosePatient(value: string) {
     <Card class="min-w-0 gap-1 p-5"><strong class="text-2xl tabular-nums">{data.invoices.length}</strong><span class="text-sm text-muted-foreground">Total tagihan</span></Card>
     <Card class="min-w-0 gap-1 p-5"><strong class="text-2xl tabular-nums">{data.invoices.filter((item) => item.status === 'unpaid').length}</strong><span class="text-sm text-muted-foreground">Belum dibayar</span></Card>
     <Card class="min-w-0 gap-1 p-5"><strong class="text-2xl tabular-nums">{data.invoices.filter((item) => item.status === 'paid').length}</strong><span class="text-sm text-muted-foreground">Lunas</span></Card>
-    <Card class="min-w-0 gap-1 p-5"><strong class="break-words text-xl tabular-nums">{rupiah(data.invoices.reduce((sum: number,item) => sum + Number(item.payableAmount),0))}</strong><span class="text-sm text-muted-foreground">Total dibayar pasien</span></Card>
+    <Card class="min-w-0 gap-1 p-5"><strong class="break-words text-base tabular-nums sm:text-xl">{rupiah(data.invoices.reduce((sum: number,item) => sum + Number(item.payableAmount),0))}</strong><span class="text-sm text-muted-foreground">Total dibayar pasien</span></Card>
 </section>
 
 <Card class="min-w-0 gap-4 p-5 sm:p-6" role="region" aria-label="Daftar tagihan">

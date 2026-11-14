@@ -8,6 +8,7 @@ Start with the [project README](../README.md), then choose the guide for your ta
 - [Windows runtime](development/RUNTIME_SETUP.md): isolated Rust and PostgreSQL tools.
 - [API workflow tests](development/API_TESTS.md): disposable PostgreSQL tests.
 - [Browser tests](development/BROWSER_TESTS.md): Playwright setup and scope.
+- [UI components](development/UI_COMPONENTS.md): shadcn-svelte source, local customizations and update checks.
 - [Implementation rules](development/BUILD_CONTRACT.md): current domain and interface decisions, with historical implementation ownership noted separately.
 - [Contributing](../CONTRIBUTING.md): changes, validation, and pull requests.
 - [OpenAPI contract](../contracts/README.md): specification and generated TypeScript.

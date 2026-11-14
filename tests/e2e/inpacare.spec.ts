@@ -167,8 +167,9 @@ test('role navigation only exposes the signed-in role’s screens and small scre
 	const admission=await browser.newPage({viewport:{width:1440,height:1000}});
 	await signIn(admission,'admisi');
 	await expect(admission).toHaveURL(/\/invoices$/);
-	await expect(admission.getByRole('link',{name:'Tagihan'})).toBeVisible();
-	await expect(admission.getByRole('link',{name:'Tugas Perawatan'})).toHaveCount(0);
+	const navigation=admission.getByRole('navigation',{name:'Navigasi utama',exact:true});
+	await expect(navigation.getByRole('link',{name:'Tagihan'})).toBeVisible();
+	await expect(navigation.getByRole('link',{name:'Tugas Perawatan'})).toHaveCount(0);
 	await admission.goto('/invoices');
 	await expect(admission.getByRole('heading',{name:'Manajemen Tagihan'})).toBeVisible();
 	let createdInvoiceId='';
@@ -186,9 +187,11 @@ test('role navigation only exposes the signed-in role’s screens and small scre
 	await expect.poll(()=>createdInvoiceId,{timeout:7500}).not.toBe('');
 	const invoice=admission.getByRole('row').filter({hasText:createdInvoiceId});
 	await expect(invoice).toContainText('Belum dibayar');
-	await invoice.getByText('Ubah status').click();
-	await invoice.locator('form').getByLabel('Alasan').fill('Bukti penerimaan diverifikasi dalam uji demo.');
-	await invoice.locator('form').getByRole('button',{name:'Simpan'}).click();
+	await invoice.getByRole('button',{name:'Ubah status',exact:true}).click();
+	const payment=admission.getByRole('dialog',{name:'Ubah status pembayaran',exact:true});
+	await payment.getByLabel('Alasan perubahan').fill('Bukti penerimaan diverifikasi dalam uji demo.');
+	await payment.getByRole('button',{name:'Simpan status',exact:true}).click();
+	await expect(payment).toHaveCount(0);
 	await expect(invoice).toContainText('Lunas');
 	await invoice.getByRole('button',{name:'Lihat detail'}).click();
 	await expect(admission.locator('.invoice-detail')).toContainText('Bukti penerimaan diverifikasi dalam uji demo.');

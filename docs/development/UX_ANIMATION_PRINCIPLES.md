@@ -1,5 +1,7 @@
 ﻿# UX and animation principles coverage
 
+Historical record of the pass before the shadcn-svelte migration. Component paths, CSS selectors and validation results below describe that snapshot. See [UI components](UI_COMPONENTS.md) for the current registry controls, reduced-motion behavior, dialogs and verification commands.
+
 This record describes the scoped frontend pass, not a claim that every screen or assistive technology was tested. Motion is subordinate to real state; optional effects are omitted where they do not clarify healthcare workflows.
 
 | # | Principle | Choice and source | Rationale |

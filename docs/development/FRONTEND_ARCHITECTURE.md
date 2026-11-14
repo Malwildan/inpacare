@@ -33,6 +33,8 @@ Medical page data is a discriminated union using `admisiProjection`. Admission v
 
 ## Adding or changing a feature
 
+General controls use the editable shadcn-svelte registry source in `shared/ui`. [UI components](UI_COMPONENTS.md) documents ownership, local variants, composition and upstream updates. Shared typography and layout styles remain in `app.css`; competing handwritten primitives and the temporary compatibility stylesheet have been removed.
+
 Start with the public operation and input/output types in application and the necessary pure model/rule in domain. Implement the port in infrastructure, wire it in `app/composition`, then inject it into presentation. Add no layer directory until it has real behavior, and no generic repository or dependency-injection container.
 
 For example, a tasks UI calls `tasks.update(id, { expectedVersion, notes })`; only its HTTP adapter knows that this is a PATCH request. A fake repository can exercise `createTasksUseCases(repository).loadPage(filters, page)` without Svelte, a browser, or a database. Cross-feature operations such as dashboard notifications and invoice room lookups are assembled by app composition, not by private imports between features.

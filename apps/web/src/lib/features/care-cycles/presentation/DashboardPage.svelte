@@ -156,7 +156,7 @@ async function deleteCycle(cycle: CycleDetail) {
     <div class="create-panel"><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" onclick={openCreate}>Tambah rekap pasien</Button></div>
 {/if}
 {#if createOpen}
-    <Modal busy={busy} title="Tambah rekap pasien" onclose={() => { if (!busy) createOpen = false; }}>
+    <Modal busy={busy} title="Tambah rekap pasien" description="Pilih pasien dan dokter penanggung jawab untuk rekap perawatan baru." onclose={() => { if (!busy) createOpen = false; }}>
         <p class="create-help">Buat siklus rawat inap untuk pasien yang sudah terdaftar. Status awal rekap adalah Pending.</p>
         {#if createError}<p class="error" role="alert">{createError}</p>{/if}
         {#if data.creationCandidates.length === 0}
@@ -196,7 +196,7 @@ async function deleteCycle(cycle: CycleDetail) {
 </Card>
 
 {#if selectedCycleId}
-	<Modal busy={busy} title="Detail siklus inpatient care" onclose={closeDetail}>
+	<Modal busy={busy} title="Detail siklus inpatient care" description="Informasi perawatan, penanggung jawab dan permintaan perubahan pasien." onclose={closeDetail}>
 		{#if detailLoading}<p class="muted" role="status">Memuat detail pasien...</p>
 		{:else if selectedCycle}
 			<div class="detail-grid cycle-summary">
@@ -233,7 +233,7 @@ async function deleteCycle(cycle: CycleDetail) {
 
 </div>
 {#if deletingCycle}
-    <Modal busy={busy} title="Hapus rekap pending?" onclose={() => deletingCycle = null}>
+    <Modal busy={busy} title="Hapus rekap pending?" description="Masukkan alasan penghapusan. Riwayat perubahan tetap tersimpan." onclose={() => deletingCycle = null}>
         <p class="text-sm text-muted-foreground">Hapus rekap {deletingCycle.patientName}? Masukkan alasan sebelum mengonfirmasi.</p>
         <form class="flex flex-col gap-4" onsubmit={(event) => { event.preventDefault(); if (deletingCycle) void deleteCycle(deletingCycle); }}>
             <label class="field">Alasan penghapusan<Textarea name="reason" bind:value={deletionReason} required maxlength={500}/></label>
