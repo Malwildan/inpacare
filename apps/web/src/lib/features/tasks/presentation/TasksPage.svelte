@@ -4,7 +4,6 @@ import { Card } from '$lib/shared/ui/card/index.js';
 import { Input } from '$lib/shared/ui/input/index.js';
 import FormSelect from '$lib/shared/ui/form-select.svelte';
 import { Textarea } from '$lib/shared/ui/textarea/index.js';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
 import { goto, invalidateAll } from '$app/navigation';
 import type { Tasks, TasksPageData, Task, TaskHistory, NewTask, BoardStatus, TaskBoard } from '$lib/features/tasks';
 import { sessionFailure } from '$lib/shared/presentation/session';
@@ -12,7 +11,7 @@ import { formText } from '$lib/shared/presentation/form';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
 import StatusBadge from '$lib/shared/ui/status-badge.svelte';
 import { Badge } from '$lib/shared/ui/badge/index.js';
-import { Plus } from 'lucide-svelte';
+import { ChevronDown, Plus } from 'lucide-svelte';
 let { data, tasks }: {
     data: TasksPageData;
     tasks: Tasks;
@@ -54,11 +53,33 @@ const filtered = $derived(Object.values(data.filters).some(Boolean));
 $effect(() => { board = data.board; generation++; refreshErrors.clear(); dragTask = null; dragTarget = null; });
 function canOperate(task: Task) { return coordinator || task.picId === data.user.id; }
 function allowed(task: Task, status: BoardStatus) {
+    if (task.status === 'done' || task.status === 'cancelled') return false;
     if (!canOperate(task)) return false;
     if (status === task.status) return !filtered;
     return (task.status === 'todo' && status === 'in_progress') || (task.status === 'in_progress' && status === 'done') || (coordinator && status === 'cancelled' && (task.status === 'todo' || task.status === 'in_progress'));
 }
 function statusLabel(status: string) { return statuses.find(([key]) => key === status)?.[1] ?? status; }
+function priorityLabel(priority: string) { return ({ high: 'Tinggi', normal: 'Normal', low: 'Rendah' } as Record<string, string>)[priority] ?? priority; }
+function auditFieldLabel(key: string) {
+    const labels: Record<string, string> = { id: 'ID tugas', title: 'Judul', description: 'Deskripsi', notes: 'Catatan tindakan', status: 'Status', priority: 'Prioritas', version: 'Versi', pic_id: 'PIC', pic_nurse_id: 'PIC', patient_id: 'Pasien', room_id: 'Ruangan', placement_id: 'Penempatan', starts_at: 'Waktu mulai', ends_at: 'Waktu selesai', created_at: 'Waktu dibuat', created_by: 'Dibuat oleh', created_by_id: 'Dibuat oleh', updated_at: 'Waktu diperbarui', actor_id: 'Pelaku', before_task_id: 'Tugas sebelumnya' };
+    const normalized = key.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/-/g, '_').toLowerCase();
+    return labels[normalized] ?? key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').replace(/^./, value => value.toUpperCase());
+}
+function auditValue(value: unknown, key = ''): string {
+    if (value === null || value === undefined || value === '') return 'Belum ada data';
+    if (typeof value === 'boolean') return value ? 'Ya' : 'Tidak';
+    if (Array.isArray(value)) return value.length ? value.map(item => auditValue(item)).join(', ') : 'Belum ada data';
+    if (typeof value === 'object') return Object.entries(value as Record<string, unknown>).map(([nestedKey, nestedValue]) => `${auditFieldLabel(nestedKey)}: ${auditValue(nestedValue, nestedKey)}`).join(' · ') || 'Belum ada data';
+    const normalized = key.replace(/[_-]/g, '').toLowerCase();
+    if (normalized === 'status') return statusLabel(String(value));
+    if (normalized === 'priority') return priorityLabel(String(value));
+    if (['picid', 'picnurseid', 'createdby', 'createdbyid', 'actorid', 'userid'].includes(normalized)) return data.reference.staff.find(staff => staff.id === value)?.name ?? String(value);
+    if (['startsat', 'endsat', 'createdat', 'updatedat'].includes(normalized) && typeof value === 'string') return local(value);
+    return String(value);
+}
+function auditActionLabel(action: string) {
+    return ({ created: 'Tugas dibuat', updated: 'Detail atau status diperbarui', reordered: 'Urutan diubah', reassigned: 'PIC dialihkan', deleted: 'Tugas dihapus' } as Record<string, string>)[action.toLowerCase()] ?? auditFieldLabel(action);
+}
 function startMove(task: Task, status?: BoardStatus, before: string | null = null) {
     if (pending.includes(task.id)) return;
     if (reasonTaskId !== task.id) reason = ''; reasonTaskId = task.id; moving = task; destination = status ?? (filtered ? (task.status === 'todo' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'cancelled') : task.status as BoardStatus); beforeId = before ?? ''; error = '';
@@ -125,8 +146,24 @@ async function moveTask(task: Task, status: BoardStatus, before: string | null, 
 }
 async function confirmMove(event: SubmitEvent) { event.preventDefault(); if (!moving) return; const task = moving; if (await moveTask(task, destination, beforeId || null, destination === 'cancelled' ? reason : undefined)) { moving = null; reason = ''; requestAnimationFrame(() => (document.getElementById(`task-${task.id}`) ?? document.getElementById(`heading-${task.status}`))?.focus()); } }
 function dragStart(event: DragEvent, task: Task) { if (!canOperate(task) || pending.includes(task.id)) { event.preventDefault(); return; } dragTask = task; suppressClick = true; event.dataTransfer?.setData('text/plain', task.id); if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'; }
-function dragOver(event: DragEvent, status: BoardStatus, before: string | null = null) { if (!dragTask || !allowed(dragTask, status) || before === dragTask.id) { dragTarget = null; return; } event.preventDefault(); dragTarget = { status, before: filtered ? null : before }; const el = (event.currentTarget as HTMLElement).closest<HTMLElement>('.task-column'); if (el) { const rect = el.getBoundingClientRect(); if (event.clientY < rect.top + 35) el.scrollTop -= 16; else if (event.clientY > rect.bottom - 35) el.scrollTop += 16; } const boardEl = document.querySelector('.task-board'); if (boardEl) { const b = boardEl.getBoundingClientRect(); if (event.clientX < b.left + 45) boardEl.scrollLeft -= 16; else if (event.clientX > b.right - 45) boardEl.scrollLeft += 16; } }
-function drop(event: DragEvent) { event.preventDefault(); event.stopPropagation(); const task = dragTask; const target = dragTarget; dragTask = null; dragTarget = null; if (!task || !target) return; if (target.status === 'cancelled' && task.status !== 'cancelled') startMove(task, target.status, target.before); else void moveTask(task, target.status, target.before); }
+function dropTarget(event: DragEvent, status: BoardStatus) {
+    const column = (event.currentTarget as HTMLElement).closest<HTMLElement>('.task-column');
+    if ((event.target as HTMLElement).closest('.column-heading')) return { status, before: null };
+    const cards = [...(column?.querySelectorAll<HTMLElement>('.task-card') ?? [])].filter(card => card.dataset.taskId !== dragTask?.id);
+    const before = cards.find(card => event.clientY <= card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2)?.dataset.taskId ?? null;
+    return { status, before: filtered ? null : before };
+}
+function dragOver(event: DragEvent, status: BoardStatus) { if (!dragTask || !allowed(dragTask, status) || (event.target as HTMLElement).closest<HTMLElement>('.task-card')?.dataset.taskId === dragTask.id) { dragTarget = null; return; } event.preventDefault(); dragTarget = dropTarget(event, status); const el = (event.currentTarget as HTMLElement).closest<HTMLElement>('.task-column'); if (el) { const rect = el.getBoundingClientRect(); if (event.clientY < rect.top + 35) el.scrollTop -= 16; else if (event.clientY > rect.bottom - 35) el.scrollTop += 16; } const boardEl = document.querySelector('.task-board'); if (boardEl) { const b = boardEl.getBoundingClientRect(); if (event.clientX < b.left + 45) boardEl.scrollLeft -= 16; else if (event.clientX > b.right - 45) boardEl.scrollLeft += 16; } }
+function drop(event: DragEvent, status: BoardStatus) {
+    event.preventDefault(); event.stopPropagation();
+    const task = dragTask;
+    const target = task && allowed(task, status) ? dropTarget(event, status) : null;
+    const ownCard = (event.target as HTMLElement).closest<HTMLElement>('.task-card')?.dataset.taskId === task?.id;
+    dragTask = null; dragTarget = null;
+    if (!task || !target || ownCard) return;
+    if (target.status === 'cancelled' && task.status !== 'cancelled') startMove(task, target.status, target.before);
+    else void moveTask(task, target.status, target.before);
+}
 function endDrag() { dragTask = null; dragTarget = null; setTimeout(() => suppressClick = false, 0); }
 function closeDetail() { selected = null; requestAnimationFrame(() => origin?.focus()); }
 function openCard(task: Task, event: MouseEvent) { if (suppressClick) return; origin = event.currentTarget as HTMLElement; void open(task); }
@@ -242,15 +279,15 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
  {#each statuses as [key,label]}
   {@const status = key as BoardStatus}
   {@const column = board[status]}
-  <section class="task-column" aria-label={label} ondragover={(e)=>dragOver(e,status)} ondrop={drop}>
-   <div class="column-heading" tabindex="-1" id={`heading-${status}`}><strong>{label}</strong><Badge variant="outline" class="shrink-0 tabular-nums">{column.error ? 'Gagal dimuat' : `${column.items.length} / ${column.total}`}</Badge></div>
+  <section class="task-column" aria-label={label} data-status={status} ondragover={(e)=>dragOver(e,status)} ondrop={(e)=>drop(e,status)}>
+   <div class="column-heading" tabindex="-1" id={`heading-${status}`}><strong>{label}</strong><span class="sr-only" aria-live="polite">{column.error ? 'Daftar gagal dimuat' : `${column.items.length} dari ${column.total} tugas dimuat`}</span><Badge variant="outline" class="shrink-0 tabular-nums">{column.error ? 'Gagal dimuat' : column.total}</Badge></div>
    {#if column.filtered}<p class="empty">Disembunyikan oleh filter status.</p>
    {:else}
     {#each column.items as task (task.id)}
      {#if dragTarget?.status===status && dragTarget.before===task.id}<div class="drop-marker" aria-label="Posisi penyisipan"></div>{/if}
-     <Card role="article" class={`task-card mb-2 gap-2 overflow-visible p-3 [overflow-wrap:anywhere] ${dragTask?.id===task.id ? 'opacity-50' : ''}`} draggable={canOperate(task) && !pending.includes(task.id)} ondragstart={(e)=>dragStart(e,task)} ondragend={endDrag} ondragover={(e)=>{e.stopPropagation();dragOver(e,status,task.id);}} ondrop={drop}>
-      <Button variant="ghost" id={`task-${task.id}`} class="card-open h-auto min-h-11 w-full flex-col items-start gap-1.5 whitespace-normal p-1 text-left font-normal hover:bg-accent/50" onclick={(event)=>openCard(task,event)}><strong class="card-title">{task.title}</strong><span>{task.patientName} - {task.roomName}</span><StatusBadge value={task.priority} label={`Prioritas ${task.priority==='high'?'Tinggi':task.priority==='low'?'Rendah':'Normal'}`} /><span>{local(task.startsAt)} - {local(task.endsAt)}</span><span>PIC: {task.picName}</span></Button>
-      {#if pending.includes(task.id)}<p role="status">Menyimpan...</p>{:else if canOperate(task) && statuses.some(([key])=>allowed(task,key as BoardStatus))}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline move-button" onclick={()=>startMove(task)}>Pindahkan</Button>{/if}
+     <Card role="article" data-task-id={task.id} class={`task-card mb-2 gap-2 overflow-visible p-3 [overflow-wrap:anywhere] ${dragTask?.id===task.id ? 'opacity-50' : ''}`} draggable={task.status!=='done' && task.status!=='cancelled' && canOperate(task) && !pending.includes(task.id)} ondragstart={(e)=>dragStart(e,task)} ondragend={endDrag} ondragover={(e)=>{e.stopPropagation();dragOver(e,status);}} ondrop={(e)=>drop(e,status)}>
+      <Button variant="ghost" id={`task-${task.id}`} aria-label={`Detail ${task.title}`} class="card-open h-auto min-h-11 w-full flex-col items-start gap-1.5 whitespace-normal p-1 text-left font-normal hover:bg-accent/50" onclick={(event)=>openCard(task,event)}><strong class="card-title">{task.title}</strong><span>{task.patientName} - {task.roomName}</span><StatusBadge value={task.priority} label={`Prioritas ${priorityLabel(task.priority)}`} /><span>{local(task.startsAt)} - {local(task.endsAt)}</span><span>PIC: {task.picName}</span></Button>
+      <div class="task-card-actions"><Button variant="outline" class="h-11 px-3" onclick={(event)=>openCard(task,event)}>Detail</Button>{#if pending.includes(task.id)}<p role="status">Menyimpan...</p>{:else if task.status!=='done' && task.status!=='cancelled' && canOperate(task) && statuses.some(([key])=>allowed(task,key as BoardStatus))}<Button variant="default" class="h-11 px-3 move-button" onclick={()=>startMove(task)}>Pindahkan</Button>{/if}</div>
      </Card>
     {:else}{#if !column.error}<p class="empty">Tidak ada tugas.</p>{/if}{/each}
     {#if dragTarget?.status===status && !dragTarget.before}<div class="drop-marker" aria-label="Posisi penyisipan di akhir"></div>{/if}
@@ -262,11 +299,34 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 </div>
 <p class="muted">Tugas hanya dapat maju ke tahap berikutnya; tugas selesai atau dibatalkan tidak dapat dibuka kembali.{#if filtered} Urutan dinonaktifkan saat filter aktif. Perpindahan status ditambahkan di akhir daftar.{/if}</p>
 {#if moving}<Modal title={`Pindahkan ${moving.title}`} description="Pilih status tujuan dan posisi tugas. Pembatalan memerlukan alasan." onclose={()=>moving=null}><form class="move-form" onsubmit={confirmMove}><label class="field">Status tujuan<FormSelect bind:value={destination} onValueChange={()=>beforeId=''} options={[...(statuses).flatMap(([key,label]) => [...(moving && allowed(moving,key as BoardStatus) ? [{ value: key, label: (label) }] : [])])]} /></label>{#if !filtered}<label class="field">Posisi<FormSelect bind:value={beforeId} options={[{ value: "", label: "Akhir daftar" }, ...(board[destination].items.filter(t=>t.id!==moving?.id)).map((anchor) => ({ value: anchor.id, label: "Sebelum " + (anchor.title) }))]} /></label>{:else}<p class="muted">Hapus filter untuk mengatur posisi.</p>{/if}{#if destination==='cancelled' && moving.status!=='cancelled'}<label class="field">Alasan pembatalan<Textarea bind:value={reason} required maxlength={500}></Textarea></label><p>Konfirmasi pembatalan tugas ini.</p>{/if}{#if error}<p class="error" role="alert">{error}</p>{/if}<div class="card-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={pending.includes(moving.id)}>Konfirmasi pindahkan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={()=>moving=null}>Batal</Button></div></form></Modal>{/if}
-{#if selected}<Modal title={selected.title} description="Detail tugas, catatan tindakan dan riwayat perubahan." busy={busy || pending.includes(selected.id)} onclose={closeDetail}><p class="task-context">{selected.patientName} · {selected.roomName} · {selected.picName}</p><p><strong>Status:</strong> {statusLabel(selected.status)} - <strong>Prioritas:</strong> {selected.priority}</p>{#if canOperate(selected) && statuses.some(([key])=>allowed(selected!,key as BoardStatus))}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" onclick={()=>selected&&startMove(selected)}>Pindahkan</Button>{/if}{#if error}<p class="error" role="alert">{error}</p>{/if}<p>{selected.description||'Tidak ada deskripsi.'}</p><p><strong>Pembuat:</strong> {selected.createdByName}</p><p><strong>Catatan:</strong> {selected.notes||'Belum ada catatan.'}</p><p class="muted">{local(selected.startsAt)} – {local(selected.endsAt)} · versi {selected!.version}</p>
-	{#if coordinator&&selected.status!=='done'&&selected.status!=='cancelled'}<details class="edit-task"><summary class="text-link">Ubah detail tugas</summary><form class="form-grid" onsubmit={updateTask}><label class="field">Judul<Input class="h-11 text-base md:text-sm" name="title" value={selected.title} required maxlength={150}/></label><label class="field">Prioritas<FormSelect name="priority" value={selected.priority} options={[{ value: "low", label: "Rendah" }, { value: "normal", label: "Normal" }, { value: "high", label: "Tinggi" }]} /></label><label class="field">Mulai<Input class="h-11 text-base md:text-sm" name="startsAt" type="datetime-local" value={localInput(selected.startsAt)} required/></label><label class="field">Selesai<Input class="h-11 text-base md:text-sm" name="endsAt" type="datetime-local" value={localInput(selected.endsAt)} required/></label><label class="field full">Deskripsi<Textarea value={[(selected.description)].join("")} name="description" rows={3}></Textarea></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>Simpan detail</Button></div></form></details>{/if}
-	{#if data.user.id===selected.picId||coordinator}<form class="inline-edit" onsubmit={addNote}><label class="field">Catatan tindakan<Textarea value={[(selected.notes)].join("")} name="notes" rows={2} maxlength={3000} required></Textarea></label><Button variant="outline" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>Simpan catatan</Button></form>{/if}
-	{#if coordinator&&selected.status!=='done'&&selected.status!=='cancelled'}<form class="inline-edit" onsubmit={reassign}><label class="field">Alihkan ke perawat<FormSelect name="picId" required options={[...(data.reference.staff.filter((u)=>u.role==='PERAWAT'&&u.active&&u.id!==selected?.picId)).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label><label class="field">Alasan pengalihan<Input class="h-11 text-base md:text-sm" name="reason" required maxlength={500} /></label><Button variant="outline" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>Alihkan PIC</Button></form><div class="card-actions"><Button variant="destructive" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||selected.status==='cancelled'} onclick={()=>selected&&changeStatus(selected,'cancelled')}>Batalkan dengan alasan</Button><Button variant="destructive" class="h-11 px-4 no-underline hover:no-underline" disabled={busy} onclick={startTaskDelete}>Hapus logis dengan alasan</Button></div>{/if}
-	<h3>Riwayat tugas</h3><ol class="history-list">{#each history as item}<li><strong>{item.action}</strong> · {item.actorName} <time>{local(item.createdAt)}</time>{#if item.reason}<p>{item.reason}</p>{/if}<details><summary>Nilai sebelum dan sesudah</summary><p>Sebelum</p><pre class="audit-values">{JSON.stringify(item.before,null,2)}</pre><p>Sesudah</p><pre class="audit-values">{JSON.stringify(item.after,null,2)}</pre></details></li>{:else}<li class="muted">Belum ada riwayat.</li>{/each}</ol></Modal>{/if}
+{#if selected}<Modal title={selected.title} description="Detail tugas, catatan tindakan dan riwayat perubahan." busy={busy || pending.includes(selected.id)} onclose={closeDetail}>
+<div class="detail-layout">
+ <section class="detail-section" aria-labelledby="task-summary-heading">
+  <h3 id="task-summary-heading">Ringkasan tugas</h3>
+  <dl class="detail-grid">
+   <div><dt>Pasien</dt><dd>{selected.patientName} <span class="muted">({selected.medicalRecordNo})</span></dd></div>
+   <div><dt>Ruangan</dt><dd>{selected.roomName}</dd></div>
+   <div><dt>Penanggung jawab</dt><dd>{selected.picName}</dd></div>
+   <div><dt>Status</dt><dd>{statusLabel(selected.status)}</dd></div>
+   <div><dt>Prioritas</dt><dd>{priorityLabel(selected.priority)}</dd></div>
+   <div><dt>Jadwal</dt><dd>{local(selected.startsAt)}<br />sampai {local(selected.endsAt)}</dd></div>
+   <div><dt>Dibuat oleh</dt><dd>{selected.createdByName}</dd></div>
+  </dl>
+  {#if canOperate(selected) && selected.status!=='done' && selected.status!=='cancelled' && statuses.some(([key])=>allowed(selected!,key as BoardStatus))}<Button variant="default" class="h-11 px-4" onclick={()=>selected&&startMove(selected)}>Pindahkan</Button>{/if}
+ </section>
+ {#if error}<p class="error" role="alert">{error}</p>{/if}
+ <section class="detail-section"><h3>Deskripsi</h3><p class="detail-copy">{selected.description||'Tidak ada deskripsi.'}</p></section>
+ <section class="detail-section"><h3>Catatan tindakan</h3><p class="detail-copy">{selected.notes||'Belum ada catatan.'}</p></section>
+ <p class="muted detail-version">Versi {selected.version}</p>
+ {#if coordinator&&selected.status!=='done'&&selected.status!=='cancelled'}
+  <details class="edit-task detail-section"><summary class="text-link">Ubah detail tugas</summary><form class="form-grid" onsubmit={updateTask}><label class="field">Judul<Input class="h-11 text-base md:text-sm" name="title" value={selected.title} required maxlength={150}/></label><label class="field">Prioritas<FormSelect name="priority" value={selected.priority} options={[{ value: "low", label: "Rendah" }, { value: "normal", label: "Normal" }, { value: "high", label: "Tinggi" }]} /></label><label class="field">Mulai<Input class="h-11 text-base md:text-sm" name="startsAt" type="datetime-local" value={localInput(selected.startsAt)} required/></label><label class="field">Selesai<Input class="h-11 text-base md:text-sm" name="endsAt" type="datetime-local" value={localInput(selected.endsAt)} required/></label><label class="field full">Deskripsi<Textarea value={[(selected.description)].join("")} name="description" rows={3}></Textarea></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4" disabled={busy}>Simpan detail</Button></div></form></details>
+ {/if}
+ {#if data.user.id===selected.picId||coordinator}<section class="detail-section"><h3>Tambah catatan</h3><form class="inline-edit" onsubmit={addNote}><label class="field">Catatan tindakan<Textarea value={[(selected.notes)].join("")} name="notes" rows={2} maxlength={3000} required></Textarea></label><Button variant="outline" type="submit" class="h-11 px-4" disabled={busy}>Simpan catatan</Button></form></section>{/if}
+ {#if coordinator&&selected.status!=='done'&&selected.status!=='cancelled'}
+  <section class="detail-section"><h3>Penugasan dan tindakan</h3><form class="inline-edit" onsubmit={reassign}><label class="field">Alihkan ke perawat<FormSelect name="picId" required options={[...(data.reference.staff.filter((u)=>u.role==='PERAWAT'&&u.active&&u.id!==selected?.picId)).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label><label class="field">Alasan pengalihan<Input class="h-11 text-base md:text-sm" name="reason" required maxlength={500} /></label><Button variant="outline" type="submit" class="h-11 px-4" disabled={busy}>Alihkan PIC</Button></form><div class="card-actions"><Button variant="destructive" class="h-11 px-4" disabled={busy||selected.status==='cancelled'} onclick={()=>selected&&changeStatus(selected,'cancelled')}>Batalkan dengan alasan</Button><Button variant="destructive" class="h-11 px-4" disabled={busy} onclick={startTaskDelete}>Hapus logis dengan alasan</Button></div></section>
+ {/if}
+  <section class="detail-section"><h3>Riwayat tugas</h3><ol class="history-list">{#each history as item}{@const beforeValues=item.before??{}}{@const auditKeys=[...new Set([...Object.keys(beforeValues),...Object.keys(item.after??{})])]}<li><strong>{auditActionLabel(item.action)}</strong> · {item.actorName} <time>{local(item.createdAt)}</time>{#if item.reason}<p>{item.reason}</p>{/if}<details class="audit-disclosure"><summary>Nilai sebelum dan sesudah<ChevronDown size={16} aria-hidden="true" /></summary><div class="audit-columns"><span aria-hidden="true"></span><span>Sebelum</span><span>Sesudah</span></div>{#if auditKeys.length}{#each auditKeys as auditKey}<div class="audit-row"><strong>{auditFieldLabel(auditKey)}</strong><span><span class="sr-only">Sebelum: </span>{auditValue(beforeValues[auditKey],auditKey)}</span><span><span class="sr-only">Sesudah: </span>{auditValue(item.after?.[auditKey],auditKey)}</span></div>{/each}{:else}<p class="muted">Belum ada data perubahan.</p>{/if}</details></li>{:else}<li class="muted">Belum ada riwayat.</li>{/each}</ol></section>
+</div></Modal>{/if}
 
 {#if deletionOpen && deletingTask}
     <Modal title="Hapus tugas?" description="Catat alasan penghapusan logis tugas untuk riwayat perubahan." {busy} onclose={() => deletionOpen = false}>
@@ -284,20 +344,20 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 </div>
 
 <style>
-.audit-values { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; font-size: 0.8rem; }
 .task-board { display:flex; gap:16px; overflow-x:auto; align-items:flex-start; background:var(--muted); padding:16px; border-radius:12px; max-width:100%; }
 .task-column { flex:0 0 292px; min-width:0; min-height:140px; max-height:70vh; overflow-y:auto; background:var(--muted); padding:0 4px 4px; }
 .column-heading { position:sticky; top:0; z-index:1; background:var(--muted); display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 2px 16px; font-size:13px; }
 .card-title { font-size:14px; font-weight:600; }
 .tasks-page :global(.card-open > span) { font-size:12px; }
-.drop-marker { height:48px; border:2px dashed var(--primary); border-radius:8px; margin-bottom:8px; }
+.drop-marker { height:0; border:0; margin:0; position:relative; z-index:2; pointer-events:none; }
+.drop-marker::before { content:''; position:absolute; top:-2px; left:0; right:0; border-top:4px dashed var(--primary); }
+.task-card-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; }
 .card-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
 .advanced { min-width:0; }
 .advanced summary { cursor:pointer; min-height:44px; display:flex; align-items:center; }
 .advanced .filters { margin-top:12px; }
 .applied { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
 .move-form { display:grid; gap:12px; }
-.task-context { margin:0 0 12px; font-size:13px; }
 .edit-task { margin:20px 0; border-top:1px solid var(--border); padding-top:14px; }
 .edit-task summary { cursor:pointer; min-height:44px; }
 .task-filters { align-items:end; }
@@ -307,5 +367,20 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 .history-list li { padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; }
 .history-list time { display:block; color:var(--muted-foreground); font-size:12px; margin-top:4px; }
 .history-list p { margin:4px 0; }
-@media(max-width:620px) { .inline-edit { align-items:stretch; flex-direction:column; } }
+.detail-layout { display:grid; gap:20px; min-width:0; }
+.detail-section { min-width:0; border-top:1px solid var(--border); padding-top:16px; }
+.detail-section h3 { margin:0 0 12px; font-size:1rem; font-weight:600; }
+.detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 20px; margin:0 0 16px; }
+.detail-grid dt { color:var(--muted-foreground); font-size:.8rem; }
+.detail-grid dd { margin:3px 0 0; overflow-wrap:anywhere; }
+.detail-copy { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.detail-version { margin:0; }
+.audit-disclosure { min-width:0; margin-top:8px; }
+.audit-disclosure summary { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; }
+.audit-disclosure[open] :global(summary svg) { transform:rotate(180deg); }
+.audit-columns,.audit-row { display:grid; grid-template-columns:minmax(90px,.7fr) minmax(0,1fr) minmax(0,1fr); gap:8px; padding:8px; border-bottom:1px solid var(--border); }
+.audit-columns { color:var(--muted-foreground); font-size:.8rem; font-weight:600; }
+.audit-row > * { min-width:0; overflow-wrap:anywhere; white-space:pre-wrap; }
+.audit-row strong { font-weight:500; }
+@media(max-width:620px) { .inline-edit { align-items:stretch; flex-direction:column; } .detail-grid { grid-template-columns:minmax(0,1fr); } .audit-columns,.audit-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .audit-columns span:first-child { display:none; } .audit-row strong { grid-column:1 / -1; } }
 </style>
