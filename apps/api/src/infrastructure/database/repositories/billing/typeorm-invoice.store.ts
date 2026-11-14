@@ -57,6 +57,14 @@ export class TypeOrmInvoiceStore implements InvoiceStore {
     );
     return !!rows.length;
   }
+  async nextId(): Promise<string> {
+    // Hold the allocation lock through insertion; deleted invoices keep their numbers.
+    await this.manager.query("SELECT pg_advisory_xact_lock(7231932)");
+    const [row] = await this.manager.query<{ next_number: string }[]>(
+      "SELECT (COALESCE(MAX(substring(id FROM '^INV-([0-9]+)$')::numeric), 0) + 1)::text AS next_number FROM invoices",
+    );
+    return `INV-${row.next_number.padStart(3, "0")}`;
+  }
   async createInvoice(d: {
     id: string;
     patientId: string;

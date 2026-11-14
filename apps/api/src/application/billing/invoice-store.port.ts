@@ -70,6 +70,7 @@ export interface InvoiceStore {
     before: unknown;
     after: unknown;
   }): Promise<void>;
+  nextId(): Promise<string>;
   lockInvoice(invoiceId: string): Promise<InvoiceRow | undefined>;
   updatePayment(invoiceId: string, status: string): Promise<void>;
   updateInvoice(invoiceId: string, input: { status: string; total: string; covered: string; payable: string }): Promise<void>;
