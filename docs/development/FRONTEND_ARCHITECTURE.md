@@ -33,6 +33,8 @@ Medical page data is a discriminated union using `admisiProjection`. Admission v
 
 ## Adding or changing a feature
 
+General controls use the editable shadcn-svelte registry source in `shared/ui`. [UI components](UI_COMPONENTS.md) documents ownership, local variants, composition and upstream updates. Shared typography and layout styles remain in `app.css`; competing handwritten primitives and the temporary compatibility stylesheet have been removed.
+
 Start with the public operation and input/output types in application and the necessary pure model/rule in domain. Implement the port in infrastructure, wire it in `app/composition`, then inject it into presentation. Add no layer directory until it has real behavior, and no generic repository or dependency-injection container.
 
 For example, a tasks UI calls `tasks.update(id, { expectedVersion, notes })`; only its HTTP adapter knows that this is a PATCH request. A fake repository can exercise `createTasksUseCases(repository).loadPage(filters, page)` without Svelte, a browser, or a database. Cross-feature operations such as dashboard notifications and invoice room lookups are assembled by app composition, not by private imports between features.
@@ -55,7 +57,7 @@ The CI frontend gate requires typechecks, architecture checks, unit tests, produ
 
 Baseline source: commit `f6463539d1fbf4bf9d17061e92e78cc22a2cdccd`. OpenAPI SHA-256: `c8ce146488d3ed27b0d1ea7a3bf7905fd717cd5aa9eb5c84444a50b31fb31dca`. The local backend was independently being refactored, so local browser validation uses an isolated compiled API snapshot rather than rebuilding/changing that work. CI validates against its own checked-out backend source.
 
-Preserved routes include login, dashboard, rooms, calendar, tasks, patient context, medical list/detail and invoices. Tasks retain search/status/priority/roomId/patientId/picId/from/to/page query parameters; dashboard retains search/status/roomId/patientId; calendar retains from. Nurse/coordinator/doctor/admission access and the restricted admission medical projection follow current behavior.
+Preserved routes include login, dashboard, rooms, calendar, tasks, patient context, medical list/detail and invoices. Tasks retain search/status/priority/roomId/patientId/picId/from/to filters. The Kanban board loads each status list independently; legacy task links carrying `page` remain accepted but start at the initial batch in each list, preserving all other filters (issue #23). Dashboard retains search/status/roomId/patientId; calendar retains from. Nurse/coordinator/doctor/admission access and the restricted admission medical projection follow current behavior.
 
 
 Local validation on 2026-11-03 passed frontend typechecking (zero errors/warnings), production builds, all 29 Vitest cases, 9 dependency-checker cases, 11 existing CI-selection/hook cases, all 17 Playwright cases, generated-type comparison against the unchanged OpenAPI, and CSS/static-copy preservation for all 11 moved views. The isolated API snapshot main.js SHA-256 was `743acfcef01b9a4d9a5a76ddc201d0a39f3708a64ad77abcfbc6aaa36d8fa8c9`. These are local results; the new GitHub Actions job has not been run remotely by this task. Full pixel parity is not asserted by the CSS/copy comparison.

@@ -1690,6 +1690,18 @@
               "default": 0
             },
             "description": "Clamped to 100000."
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "board"
+              ]
+            },
+            "description": "Use durable board order; omission preserves schedule order."
           }
         ],
         "responses": {
@@ -6105,6 +6117,124 @@
           "PERAWAT"
         ]
       }
+    },
+    "/api/v1/tasks/{id}/move": {
+      "post": {
+        "operationId": "POST_tasks_id_move",
+        "summary": "Move or reorder a task",
+        "tags": [
+          "Tasks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "PERAWAT"
+        ],
+        "description": "Current PIC or coordinator. Null beforeTaskId appends to the full destination list; cancellation requires a coordinator and reason.",
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveTask"
+              }
+            }
+          }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
+      }
     }
   },
   "components": {
@@ -9693,6 +9823,40 @@
                 }
               }
             }
+          }
+        }
+      },
+      "MoveTask": {
+        "type": "object",
+        "required": [
+          "expectedVersion",
+          "status",
+          "beforeTaskId"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "done",
+              "cancelled"
+            ]
+          },
+          "beforeTaskId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 36,
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
           }
         }
       }

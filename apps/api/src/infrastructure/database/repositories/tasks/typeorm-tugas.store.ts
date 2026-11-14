@@ -10,9 +10,24 @@ const coordinator = (a: Actor) => a.role === "PERAWAT" && a.coordinator;
 const TASK_ROW = `SELECT t.id,t.title,t.description,t.notes,t.created_by AS "createdById",creator.name AS "createdByName",t.patient_id AS "patientId",p.name AS "patientName",p.medical_record_no AS "medicalRecordNo",t.room_id AS "roomId",r.name AS "roomName",t.pic_id AS "picId",u.name AS "picName",t.priority,t.status,t.starts_at AS "startsAt",t.ends_at AS "endsAt",t.version FROM tasks t JOIN patients p ON p.id=t.patient_id JOIN rooms r ON r.id=t.room_id JOIN users u ON u.id=t.pic_id JOIN users creator ON creator.id=t.created_by`;
 export class TypeOrmTaskStore implements TaskStore {
   constructor(private readonly manager: EntityManager) {}
+  async lockBoard() {
+    await this.manager.query("SELECT pg_advisory_xact_lock(7231923)");
+  }
+  async movePosition(taskId: string, actor: Actor, status: string, beforeTaskId: string | null) {
+    if (beforeTaskId === taskId) throw DomainError.validation("Posisi tugas tidak valid.");
+    if (beforeTaskId !== null) {
+      const anchor = await this.manager.query("SELECT id FROM tasks WHERE id=$1 AND deleted_at IS NULL AND status=$2 AND ($3 OR pic_id=$4)", [beforeTaskId, status, coordinator(actor), actor.id]);
+      if (!anchor.length) throw DomainError.notFound();
+    }
+    const [current] = await this.manager.query(`SELECT t.status, (SELECT n.id FROM tasks n WHERE n.deleted_at IS NULL AND n.status=t.status AND (n.board_position,n.id)>(t.board_position,t.id) ORDER BY n.board_position,n.id LIMIT 1) AS successor FROM tasks t WHERE t.id=$1`, [taskId]);
+    if (current.status === status && current.successor === beforeTaskId) return false;
+    await this.manager.query(`UPDATE tasks SET board_position = CASE WHEN $3::text IS NULL THEN COALESCE((SELECT max(board_position)+1 FROM tasks WHERE status=$2 AND deleted_at IS NULL AND id<>$1),1) ELSE COALESCE((SELECT (a.board_position + p.board_position)*0.5 FROM tasks a JOIN LATERAL (SELECT board_position FROM tasks WHERE status=$2 AND deleted_at IS NULL AND id<>$1 AND (board_position,id)<(a.board_position,a.id) ORDER BY board_position DESC,id DESC LIMIT 1) p ON true WHERE a.id=$3), (SELECT board_position-1 FROM tasks WHERE id=$3)) END WHERE id=$1`, [taskId, status, beforeTaskId]);
+    return true;
+  }
   async list(
     actor: Actor,
     q: {
+      order?: "board";
       search: string;
       status: string | null;
       priority: string | null;
@@ -42,7 +57,7 @@ export class TypeOrmTaskStore implements TaskStore {
     const baseWhere = `t.deleted_at IS NULL AND ($1 OR t.pic_id=$2) AND ($3='' OR p.name ILIKE '%'||$3||'%' OR t.title ILIKE '%'||$3||'%' OR p.medical_record_no ILIKE '%'||$3||'%') AND ($5::text IS NULL OR t.priority=$5) AND ($6::text IS NULL OR t.room_id=$6) AND ($7::text IS NULL OR t.patient_id=$7) AND ($8::text IS NULL OR t.pic_id=$8) AND ($9::date IS NULL OR (t.starts_at AT TIME ZONE 'Asia/Jakarta')::date >= $9) AND ($10::date IS NULL OR (t.starts_at AT TIME ZONE 'Asia/Jakarta')::date <= $10)`;
     const where = `${baseWhere} AND ($4::text IS NULL OR t.status=$4)`;
     const items = (await this.manager.query(
-      `${TASK_ROW} WHERE ${where} ORDER BY t.starts_at,t.id LIMIT $11 OFFSET $12`,
+      `${TASK_ROW} WHERE ${where} ORDER BY ${q.order === "board" ? "t.board_position,t.id" : "t.starts_at,t.id"} LIMIT $11 OFFSET $12`,
       params,
     )) as TaskRecord[];
     const totals = await this.manager.query(
@@ -169,7 +184,7 @@ export class TypeOrmTaskStore implements TaskStore {
     priority: string;
   }) {
     await this.manager.query(
-      `INSERT INTO tasks(id,patient_id,room_id,placement_id,pic_id,created_by,title,description,notes,starts_at,ends_at,priority) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+      `INSERT INTO tasks(id,patient_id,room_id,placement_id,pic_id,created_by,title,description,notes,starts_at,ends_at,priority,board_position) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,(SELECT COALESCE(max(board_position)+1,1) FROM tasks WHERE status='todo' AND deleted_at IS NULL))`,
       [
         d.id,
         d.patientId,
@@ -188,7 +203,7 @@ export class TypeOrmTaskStore implements TaskStore {
   }
   async createSnapshot(taskId: string, historyId: string, actorId: string) {
     await this.manager.query(
-      `INSERT INTO task_history(id,task_id,actor_id,action,after_data) SELECT $1,t.id,$3,'created',to_jsonb(t) FROM tasks t WHERE t.id=$2`,
+      `INSERT INTO task_history(id,task_id,actor_id,action,after_data) SELECT $1,t.id,$3,'created',to_jsonb(t)-'board_position' FROM tasks t WHERE t.id=$2`,
       [historyId, taskId, actorId],
     );
   }
@@ -227,7 +242,9 @@ export class TypeOrmTaskStore implements TaskStore {
     before: unknown;
     after: unknown;
   }) {
-    if (d.action === "updated")
+    if (d.action === "reordered")
+      await this.manager.query(`INSERT INTO task_history(id,task_id,actor_id,action,reason,before_data,after_data) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb)`, [d.id,d.taskId,d.actorId,d.action,d.reason,JSON.stringify(d.before),JSON.stringify(d.after)]);
+    else if (d.action === "updated")
       await this.manager.query(
         `INSERT INTO task_history(id,task_id,actor_id,action,reason,before_data,after_data) VALUES($1,$2,$3,'updated',$4,$5::jsonb,$6::jsonb)`,
         [

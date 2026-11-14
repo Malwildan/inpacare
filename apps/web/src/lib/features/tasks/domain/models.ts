@@ -59,3 +59,4 @@ export type DeleteTask = {
     expectedVersion: number;
     reason: string;
 };
+export type MoveTask = { expectedVersion: number; status: 'todo' | 'in_progress' | 'done' | 'cancelled'; beforeTaskId: string | null; reason?: string };

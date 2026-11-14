@@ -31,3 +31,23 @@ test("task use case rejects stale versions before executing any write", async ()
   const service = new TugasUseCases({}, { run: work => work({ tasks: store }) });
   await assert.rejects(service.update(actor, task.id, { expectedVersion: 9, notes: "Stale" }), error => error.code === "CONFLICT");
 });
+
+test("board listing forwards explicit ordering while preserving pagination", async () => {
+  const service = new TugasUseCases({ list: async (_actor, filters) => filters }, {});
+  const result = await service.list(actor, { order: "board", status: "todo", limit: 20, offset: 10 });
+  assert.equal(result.order, "board");
+  assert.equal(result.status, "todo");
+  assert.equal(result.offset, 10);
+});
+
+test("moving to the same position leaves version and history unchanged", async () => {
+  const store = {
+    lockBoard: async () => {},
+    lockTask: async () => ({ task, placement: { status: "active" } }),
+    movePosition: async () => false,
+    detail: async () => ({ id: task.id, version: 1 }),
+    historyChange: async () => assert.fail("no history for a no-op"),
+  };
+  const service = new TugasUseCases({}, { run: work => work({ tasks: store }) });
+  assert.deepEqual(await service.move(actor, task.id, { expectedVersion: 1, status: "todo", beforeTaskId: null }), { id: task.id, version: 1 });
+});

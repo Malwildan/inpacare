@@ -649,6 +649,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/{id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move or reorder a task
+         * @description Current PIC or coordinator. Null beforeTaskId appends to the full destination list; cancellation requires a coordinator and reason.
+         */
+        post: operations["POST_tasks_id_move"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1506,6 +1526,13 @@ export interface components {
                 name: string;
                 medicalRecordNo: string;
             }[];
+        };
+        MoveTask: {
+            expectedVersion: number;
+            /** @enum {string} */
+            status: "todo" | "in_progress" | "done" | "cancelled";
+            beforeTaskId: string | null;
+            reason?: string;
         };
     };
     responses: never;
@@ -2697,6 +2724,8 @@ export interface operations {
                 limit?: number;
                 /** @description Clamped to 100000. */
                 offset?: number;
+                /** @description Use durable board order; omission preserves schedule order. */
+                order?: "board";
             };
             header?: never;
             path?: never;
@@ -5825,6 +5854,89 @@ export interface operations {
                 };
             };
             /** @description Forbidden or origin/CSRF check failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    POST_tasks_id_move: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveTask"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden. */
             403: {
                 headers: {
                     [name: string]: unknown;

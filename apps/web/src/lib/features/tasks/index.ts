@@ -1,3 +1,3 @@
 export type * from './domain/models';
-export { createTasksUseCases, parseTaskSearch } from './application/tasks';
-export type { Tasks, TasksRepository, TasksPageData, TaskFilters } from './application/tasks';
+export { createTasksUseCases, parseTaskSearch, boardStatuses } from './application/tasks';
+export type { Tasks, TasksRepository, TasksPageData, TaskFilters, BoardStatus, BoardColumn, TaskBoard } from './application/tasks';
