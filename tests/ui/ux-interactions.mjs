@@ -111,9 +111,36 @@ try {
     assert.deepEqual(await page.evaluate(() => window.calendarCreate), { patientId: 'patient', roomId: 'room', startsOn: '2026-11-03', endsOn: '2026-11-04' });
     await placementForm.getByRole('button', { name: 'Batal', exact: true }).click();
 
-    for (const width of [390, 768, 1440]) {
+    for (const width of [390, 768, 1440, 1920]) {
         await page.setViewportSize({ width, height: 1000 });
+        await page.evaluate(() => document.fonts.ready);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Calendar page must contain schedule scrolling at ' + width + 'px');
+        const scheduleScroller = page.locator('.calendar-wrap [data-slot="table-container"]');
+        for (const scrollLeft of [0, 300]) {
+            await scheduleScroller.evaluate((element, offset) => { element.scrollLeft = offset; }, scrollLeft);
+            const overflowingText = await page.locator('.calendar .room-name, .calendar .booking').evaluateAll(elements => elements.flatMap(element => {
+                const bounds = element.getBoundingClientRect();
+                const style = getComputedStyle(element);
+                const left = bounds.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
+                const right = bounds.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight);
+                const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+                const overflows = [];
+                while (walker.nextNode()) {
+                    const node = walker.currentNode;
+                    if (!node.textContent.trim()) continue;
+                    const range = document.createRange();
+                    range.selectNodeContents(node);
+                    for (const rect of range.getClientRects()) {
+                        if (rect.left < left - 1 || rect.right > right + 1) {
+                            overflows.push({ text: node.textContent, left, right, textLeft: rect.left, textRight: rect.right, whiteSpace: getComputedStyle(node.parentElement).whiteSpace });
+                        }
+                    }
+                }
+                return overflows;
+            }));
+            assert.deepEqual(overflowingText, [], `Calendar text must stay within its cell at ${width}px, scroll ${scrollLeft}px`);
+        }
+        await scheduleScroller.evaluate(element => { element.scrollLeft = 0; });
         await page.screenshot({ path: path.join(projectRoot, '.local/evidence', 'shadcn-calendar-' + width + '.png'), fullPage: true, animations: 'disabled' });
     }
     const cancelTrigger = page.getByRole('row').filter({ hasText: 'RM-TEST' }).getByRole('button', { name: 'Batalkan', exact: true });

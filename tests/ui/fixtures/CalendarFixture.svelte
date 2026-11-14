@@ -5,8 +5,15 @@ const data = $state({
     user: { id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT', coordinator: false },
     from: '2026-11-02', to: '2026-11-08',
     patients: [{ id: 'patient', name: 'Pasien Uji', medicalRecordNo: 'RM-TEST' }],
-    rooms: [{ id: 'room', name: 'Ruangan Uji', roomClass: 'Kelas I', capacity: 2, status: 'available' }],
-    placements: [{ id: 'placement', patientId: 'patient', patientName: 'Pasien Uji', medicalRecordNo: 'RM-TEST', roomId: 'room', roomName: 'Ruangan Uji', startsOn: '2026-11-02', endsOn: '2026-11-04', status: 'active', version: 7 }]
+    rooms: [
+        { id: 'room', name: 'Ruangan Uji', roomClass: 'Kelas I', capacity: 2, status: 'available' },
+        { id: 'c09f4d1a-2100-4c1b-aa6c-d0b774a996ca', name: 'Ruangan Pribadi Alvin WokWok', roomClass: 'Kelas VVIP', capacity: 1, status: 'available' },
+        { id: '8d6fa93d-75d9-4773-b4dc-d4a31e8c2684', name: 'RuanganTanpaSpasiYangSangatPanjangUntukMengujiBatasKolom', roomClass: 'Kelas 2', capacity: 1, status: 'available' }
+    ],
+    placements: [
+        { id: 'placement', patientId: 'patient', patientName: 'Pasien Uji', medicalRecordNo: 'RM-TEST', roomId: 'room', roomName: 'Ruangan Uji', startsOn: '2026-11-02', endsOn: '2026-11-04', status: 'active', version: 7 },
+        { id: 'long-placement', patientId: 'long-patient', patientName: 'NamaPasienTanpaSpasiYangSangatPanjangUntukMengujiBatasKartu', medicalRecordNo: 'RM-LONG', roomId: 'c09f4d1a-2100-4c1b-aa6c-d0b774a996ca', roomName: 'Ruangan Pribadi Alvin WokWok', startsOn: '2026-11-02', endsOn: '2026-11-04', status: 'active', version: 1 }
+    ]
 });
 const cancellations = [];
 window.calendarCancellations = cancellations;

@@ -153,7 +153,7 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 .placement-page :global(.week-navigation){display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .placement-page :global(.week-navigation strong){font-size:14px;white-space:nowrap}
 .placement-page :global(.calendar){width:100%;border-collapse:separate;border-spacing:0;min-width:1120px;table-layout:fixed}
-.placement-page :global(.calendar th),.placement-page :global(.calendar td){border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-align:left;vertical-align:top;padding:12px 10px}
+.placement-page :global(.calendar th),.placement-page :global(.calendar td){border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-align:left;vertical-align:top;padding:12px 10px;white-space:normal}
 .placement-page :global(.calendar thead th){background:var(--background);font-size:12px;font-weight:500;color:var(--muted-foreground)}
 .placement-page :global(.calendar thead th span),.placement-page :global(.calendar thead th strong){display:block}
 .placement-page :global(.calendar thead th strong){font-size:14px;color:var(--foreground);margin-top:4px}
