@@ -180,7 +180,7 @@ test('role navigation only exposes the signed-in role’s screens and small scre
 	await selectOption(form.getByLabel('Pasien'), 'PT-012');
 	await form.getByLabel('Layanan').fill(`E2E layanan ${Date.now()}`);
 	await form.getByLabel('Qty').fill('2');
-	await form.getByLabel('Harga satuan (Rp)').fill('1250.25');
+	await form.getByLabel('Harga satuan (Rp)').fill('1.250,25');
 	await form.getByLabel('Jumlah jaminan BPJS (Rp)').fill('500');
 	await form.getByRole('button',{name:'Simpan tagihan'}).click();
 	await expect(admission.getByRole('status')).toContainText(/berhasil/i);
