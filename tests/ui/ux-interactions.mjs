@@ -348,6 +348,7 @@ try {
     await expect(page.getByRole('alert')).toContainText('Tugas berubah.');
     await expect(todo.getByRole('article').filter({ hasText: 'Tugas Uji' })).toBeVisible();
     await taskCard.getByRole('button', { name: 'Pindahkan', exact: true }).click();
+    await moveTask.getByLabel('Status tujuan').selectOption('in_progress');
     await moveTask.getByRole('button', { name: 'Konfirmasi pindahkan', exact: true }).click();
     await expect(moveTask).toHaveCount(0);
     await expect(page.locator('#task-task')).toBeFocused();
