@@ -363,6 +363,7 @@ test('native drag keeps insertion targets still and uses the final pointer in ca
 		first.title
 	]);
 	await expect(targetColumn.locator('.task-card').filter({ hasText: source.title })).toBeVisible();
+	await expect(pic.locator('p.success')).toHaveText(`${source.title} dipindahkan ke Sedang Dikerjakan.`);
 
 	const blankSource = await createTask(author, ref, `${prefix} blank`);
 	await moveApi(author, blankSource, 'in_progress', first.id);
@@ -380,8 +381,10 @@ test('native drag keeps insertion targets still and uses the final pointer in ca
 	await pic.mouse.move(emptyColumnBox!.x + 2, emptyColumnBox!.y + 130, { steps: 12 });
 	await pic.mouse.up();
 	await expect(emptyDoneColumn.locator('.task-card').filter({ hasText: blankSource.title })).toBeVisible();
+	await expect(pic.locator('p.success')).toHaveText(`${blankSource.title} dipindahkan ke Selesai.`);
 
 	await pic.goto('/tasks');
+	await expect(column(pic, 'Selesai').locator('.task-card').filter({ hasText: blankSource.title })).toBeVisible();
 	const ownCard = card(pic, source.title);
 	await expect(ownCard).toBeVisible();
 	await ownCard.scrollIntoViewIfNeeded();
