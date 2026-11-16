@@ -101,7 +101,7 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	const form = page.locator('.create-form');
 	await selectOption(form.getByLabel('Pasien'), 'PT-012');
 	await form.getByLabel('Layanan').fill(`Rebuild E2E ${Date.now()}`);
-	await form.getByLabel('Jumlah').fill('1');
+	await form.getByLabel('Jumlah', { exact: true }).fill('1');
 	const price = form.getByLabel('Harga satuan (Rp)');
 	for (const invalid of ['-100', '1,234']) {
 		await price.fill(invalid);
