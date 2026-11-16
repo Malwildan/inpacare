@@ -8,6 +8,7 @@
 	import { Button } from '$lib/shared/ui/button/index.js';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
 	import { Field, FieldGroup, FieldLabel } from '$lib/shared/ui/field/index.js';
+	import FormDatePicker from '$lib/shared/ui/form-date-picker.svelte';
 	import { Input } from '$lib/shared/ui/input/index.js';
 	import FormSelect from '$lib/shared/ui/form-select.svelte';
 	import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
@@ -123,7 +124,7 @@
 						</Field>
 						<Field>
 							<FieldLabel for="record-date">Tanggal rekam medis</FieldLabel>
-							<Input id="record-date" type="date" name="recordDate" value={today} required class="h-11 px-3 text-base md:text-base" />
+							<FormDatePicker id="record-date" type="date" name="recordDate" value={today} required class="h-11 px-3 text-base md:text-base" />
 						</Field>
 						<Field class="sm:col-span-2">
 							<FieldLabel for="record-complaint">Keluhan</FieldLabel>
