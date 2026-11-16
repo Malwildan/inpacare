@@ -8,6 +8,7 @@
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
 	import { Field, FieldGroup, FieldLabel } from '$lib/shared/ui/field/index.js';
 	import { Input } from '$lib/shared/ui/input/index.js';
+	import { trimPastedWhitespace } from './trim-pasted-whitespace';
 
 	let { auth, landingPage }: {
 		auth: Auth;
@@ -83,6 +84,7 @@
 								autocomplete="username"
 								placeholder="Masukkan ID petugas"
 								bind:value={username}
+								oninput={trimPastedWhitespace}
 								required
 								maxlength={100}
 								class="h-11 px-3 text-base md:text-base"
@@ -99,6 +101,7 @@
 									autocomplete="current-password"
 									placeholder="Masukkan kata sandi"
 									bind:value={password}
+									oninput={trimPastedWhitespace}
 									required
 									maxlength={200}
 									class="h-12 px-3 pr-12 text-base md:text-base"

@@ -59,7 +59,7 @@ async function create(event: SubmitEvent) {
         savedId = patient.id;
         notice = `Pasien ${patient.name} berhasil ditambahkan dengan nomor rekam medis ${patient.medicalRecordNo}.`;
         try {
-            await goto(`/patients?${new URLSearchParams({ q: patient.medicalRecordNo })}`, { invalidateAll: true, reset: true });
+            await goto(`/patients?${new URLSearchParams({ q: patient.medicalRecordNo })}`, { refreshAll: true, reset: true });
         } catch {
             error = 'Pasien sudah tersimpan, tetapi daftar belum dapat dimuat ulang. Buka ringkasan pasien atau muat ulang halaman.';
         }
