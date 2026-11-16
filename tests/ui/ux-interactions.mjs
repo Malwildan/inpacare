@@ -1,13 +1,17 @@
 import { toastMessage } from '../toast.mjs';
 import { selectOption } from '../select-option.mjs';
 import { selectDate } from '../select-date.mjs';
-import { createServer } from 'vite';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { createRequire } from 'node:module';
 import tailwindcss from '@tailwindcss/vite';
 import { chromium, expect } from '@playwright/test';
 import { strict as assert } from 'node:assert';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
+
+// Use the web workspace's matching Vite and Svelte plugin after a clean npm install.
+const webRequire = createRequire(new URL('../../apps/web/package.json', import.meta.url));
+const { createServer } = await import(pathToFileURL(webRequire.resolve('vite')).href);
+const { svelte } = await import(pathToFileURL(webRequire.resolve('@sveltejs/vite-plugin-svelte')).href);
 
 const root = fileURLToPath(new URL('./fixtures/', import.meta.url));
 const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
@@ -248,15 +252,19 @@ try {
     assert.deepEqual(await page.evaluate(() => window.notificationReads), ['notice']);
     await allNotices.getByRole('button', { name: 'Tutup notifikasi', exact: true }).click();
     await expect(dashboardNotifications).toBeFocused();
-    const addCycle = page.getByRole('button', { name: 'Tambah rekap pasien', exact: true });
+    const addCycle = page.getByRole('button', { name: 'Mulai rawat inap', exact: true });
     await addCycle.click();
-    const createCycle = page.getByRole('dialog', { name: 'Tambah rekap pasien', exact: true });
+    const createCycle = page.getByRole('dialog', { name: 'Mulai rawat inap', exact: true });
     await selectOption(createCycle.getByRole('combobox', { name: 'Pasien terdaftar', exact: true }), 'new-patient');
     await selectOption(createCycle.getByRole('combobox', { name: 'Dokter penanggung jawab', exact: true }), 'doctor');
-    await createCycle.getByRole('button', { name: 'Simpan rekap', exact: true }).click();
+    await createCycle.getByRole('button', { name: 'Simpan sebagai Menunggu', exact: true }).click();
     await expect(toastMessage(page, 'Rekap gagal tersimpan.')).toContainText('Rekap gagal tersimpan.');
     await expect(createCycle.getByRole('combobox', { name: 'Pasien terdaftar', exact: true })).toHaveAttribute('data-value', 'new-patient');
-    assert.deepEqual(await page.evaluate(() => window.cycleCreate), { patientId: 'new-patient', doctorId: 'doctor', placementId: null });
+    const pendingCreate = await page.evaluate(() => window.cycleCreate);
+    assert.match(pendingCreate.requestId, /^[a-f0-9-]{36}$/);
+    assert.deepEqual(pendingCreate, { patientId: 'new-patient', doctorId: 'doctor', placementId: null, requestId: pendingCreate.requestId });
+    await createCycle.getByRole('button', { name: 'Simpan sebagai Menunggu', exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => window.cycleCreate), pendingCreate);
     await createCycle.getByRole('button', { name: 'Tutup', exact: true }).click();
     await page.getByRole('button', { name: 'Abaikan perubahan', exact: true }).click();
     await expect(createCycle).toHaveCount(0);

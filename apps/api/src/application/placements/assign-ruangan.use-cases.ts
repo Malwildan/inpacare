@@ -7,6 +7,7 @@ import {
 import { canReadPatient } from "../patients/patient-access";
 import { id } from "../shared/runtime";
 import { UnitOfWork } from "../shared/unit-of-work.port";
+import { TransactionContext } from "../shared/transaction-context";
 import { PlacementStore } from "./placement-store.port";
 export interface PlacementDateRange {
   from: string;
@@ -21,6 +22,35 @@ export interface CreatePlacementInput {
 }
 export interface UpdatePlacementInput extends CreatePlacementInput {
   expectedVersion: number;
+}
+export async function createPlacement(
+  tx: TransactionContext,
+  actor: Actor,
+  d: CreatePlacementInput,
+) {
+  if (actor.role !== "PERAWAT") throw DomainError.forbidden();
+  validatePlacementSpan(d.startsOn, d.endsOn);
+  await canReadPatient(tx.patients, actor, d.patientId);
+  if (!(await tx.placements.patientExistsForUpdate(d.patientId)))
+    throw DomainError.notFound();
+  const room = await tx.placements.roomForCreate(d.roomId);
+  if (!room) throw DomainError.notFound();
+  if (room.status !== "available")
+    throw DomainError.conflict("Ruangan tidak tersedia untuk penempatan.");
+  if (await tx.placements.patientOverlap(d.patientId, d.startsOn, d.endsOn))
+    throw DomainError.conflict(
+      "Pasien sudah memiliki penempatan pada rentang tanggal tersebut.",
+    );
+  if (
+    (await tx.placements.peakOccupancy(d.roomId, d.startsOn, d.endsOn)) >=
+    room.capacity
+  )
+    throw DomainError.conflict(
+      "Kapasitas ruangan tidak mencukupi pada sebagian rentang tanggal.",
+    );
+  const placementId = id();
+  await tx.placements.create({ ...d, id: placementId, actorId: actor.id });
+  return placementId;
 }
 export class AssignRuanganUseCases {
   constructor(
@@ -38,36 +68,7 @@ export class AssignRuanganUseCases {
     };
   }
   async create(actor: Actor, d: CreatePlacementInput) {
-    validatePlacementSpan(d.startsOn, d.endsOn);
-    const placementId = id();
-    await this.uow.run(async (tx) => {
-      await canReadPatient(tx.patients, actor, d.patientId);
-      if (!(await tx.placements.patientExistsForUpdate(d.patientId)))
-        throw DomainError.notFound();
-      const room = await tx.placements.roomForCreate(d.roomId);
-      if (!room) throw DomainError.notFound();
-      if (room.status !== "available")
-        throw DomainError.conflict("Ruangan tidak tersedia untuk penempatan.");
-      if (await tx.placements.patientOverlap(d.patientId, d.startsOn, d.endsOn))
-        throw DomainError.conflict(
-          "Pasien sudah memiliki penempatan pada rentang tanggal tersebut.",
-        );
-      if (
-        (await tx.placements.peakOccupancy(d.roomId, d.startsOn, d.endsOn)) >=
-        room.capacity
-      )
-        throw DomainError.conflict(
-          "Kapasitas ruangan tidak mencukupi pada sebagian rentang tanggal.",
-        );
-      await tx.placements.create({
-        id: placementId,
-        patientId: d.patientId,
-        roomId: d.roomId,
-        startsOn: d.startsOn,
-        endsOn: d.endsOn,
-        actorId: actor.id,
-      });
-    });
+    const placementId = await this.uow.run((tx) => createPlacement(tx, actor, d));
     return this.store.byId(placementId);
   }
   async update(actor: Actor, placementId: string, d: UpdatePlacementInput) {

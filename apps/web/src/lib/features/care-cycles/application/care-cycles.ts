@@ -1,4 +1,4 @@
-import type { Cycle, CycleSummary, NewCycle, ChangeCycle, NewRequest, Decision, DeleteCycle } from '../domain/models';
+import type { Cycle, CycleSummary, NewCycle, CreatedCycle, ChangeCycle, NewRequest, Decision, DeleteCycle } from '../domain/models';
 import type { User } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
 export type CycleFilters = Record<'search' | 'status' | 'roomId' | 'patientId', string>;
@@ -7,7 +7,7 @@ export type CareCycles = {
     creationCandidates(): Promise<CycleCandidate[]>;
     dashboard(filters: CycleFilters): Promise<CycleSummary[]>;
     detail(id: string): Promise<Cycle>;
-    create(input: NewCycle): Promise<unknown>;
+    create(input: NewCycle): Promise<CreatedCycle>;
     change(id: string, input: ChangeCycle): Promise<unknown>;
     remove(id: string, input: DeleteCycle): Promise<unknown>;
     request(id: string, input: NewRequest): Promise<unknown>;
