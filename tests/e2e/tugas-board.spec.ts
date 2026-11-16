@@ -130,7 +130,7 @@ test('a filtered card stays pending and a filter change receives the committed m
 		await expect(column(page, 'Belum Dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
 		await expect(card(page, title).getByRole('status')).toContainText('Menyimpan');
 		await page.getByRole('dialog').getByRole('button', { name: 'Batal' }).click();
-		await page.getByRole('button', { name: 'status: todo - Hapus' }).click();
+		await page.getByRole('button', { name: 'Status: Belum Dikerjakan - Hapus' }).click();
 		await expect(page).not.toHaveURL(/status=todo/);
 		await expect(column(page, 'Belum Dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
 		release();
@@ -787,8 +787,8 @@ test('filters disable position controls, append status moves, and explain filter
 	await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe('heading-todo');
 
 	await page.goto(`/tasks?search=${encodeURIComponent(prefix)}&status=todo`);
-	await expect(page.getByRole('button', { name: /status: todo - Hapus/ })).toBeVisible();
-	await page.getByRole('button', { name: /status: todo - Hapus/ }).click();
+	await expect(page.getByRole('button', { name: /Status: Belum Dikerjakan - Hapus/ })).toBeVisible();
+	await page.getByRole('button', { name: /Status: Belum Dikerjakan - Hapus/ }).click();
 	await expect(page).not.toHaveURL(/status=todo/);
 	await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: normalTitle })).toBeVisible();
 	await page.close();
@@ -904,10 +904,10 @@ test('card details restore focus and retain management forms', async ({ browser 
 	await expect(coordinatorPage.getByRole('dialog')).toContainText(revised);
 
 	detail = coordinatorPage.getByRole('dialog');
-	await detail.getByRole('button', { name: 'Alihkan PIC', exact: true }).click();
+	await detail.getByRole('button', { name: 'Alihkan penanggung jawab', exact: true }).click();
 	await selectOption(detail.getByLabel('Alihkan ke perawat'), { label: 'Bima Pratama' });
 	await detail.getByLabel('Alasan pengalihan').fill('Pengalihan uji peran.');
-	await detail.getByRole('button', { name: 'Alihkan PIC' }).click();
+	await detail.getByRole('button', { name: 'Alihkan penanggung jawab' }).click();
 	await expect(toastMessage(coordinatorPage, '', 'success')).toContainText(/berhasil/i);
 	await expect(coordinatorPage.getByRole('dialog')).toContainText('Bima Pratama');
 	await coordinatorPage.getByRole('dialog').getByRole('button', { name: 'Tutup', exact: true }).click();
@@ -936,7 +936,7 @@ test('card details restore focus and retain management forms', async ({ browser 
 	await createTask(coordinatorPage, ref, deleteTitle, dina);
 	await coordinatorPage.goto(`/tasks?search=${encodeURIComponent(deletePrefix)}`);
 	await openDetails(coordinatorPage, deleteTitle);
-	await coordinatorPage.getByRole('dialog', { name: new RegExp(escape(deleteTitle)) }).getByRole('button', { name: 'Hapus logis dengan alasan' }).click();
+	await coordinatorPage.getByRole('dialog', { name: new RegExp(escape(deleteTitle)) }).getByRole('button', { name: 'Hapus tugas dengan alasan' }).click();
 	const removal = coordinatorPage.getByRole('dialog', { name: 'Hapus tugas?', exact: true });
 	await removal.getByLabel('Alasan penghapusan').fill('Alasan hapus dari detail.');
 	await removal.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();

@@ -44,7 +44,7 @@ test('login rejects bad credentials, signs in, and revokes the session on logout
 	await page.getByLabel('Kata sandi', { exact: true }).fill(password);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);
-	await expect(page.getByRole('heading', { name: 'Dashboard Siklus Inpatient Care' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Ringkasan Siklus Rawat Inap' })).toBeVisible();
 	await page.getByRole('button', { name: /Keluar/ }).click();
 	await expect(page).toHaveURL(/\/login$/);
 	const protectedPage = await page.request.get('/tasks', { maxRedirects: 0 });
@@ -86,7 +86,7 @@ for (const [username, destination] of [['rina', '/dashboard'], ['admisi', '/invo
 test('a signed-in coordinator can open the six core module routes', async ({ page }) => {
 	await signIn(page, 'rina');
 	for (const [route, heading] of [
-		['/dashboard', 'Dashboard Siklus Inpatient Care'],
+		['/dashboard', 'Ringkasan Siklus Rawat Inap'],
 		['/rooms', 'Manajemen Ruangan'],
 		['/calendar', 'Kalender Ruangan'],
 		['/tasks', 'Tugas Perawatan'],
@@ -99,7 +99,7 @@ test('a signed-in coordinator can open the six core module routes', async ({ pag
 	const nurse=await nurseContext.newPage();
 	await signIn(nurse,'dina');
 	await nurse.goto('/dashboard');
-	await expect(nurse.getByRole('heading',{name:'Dashboard Siklus Inpatient Care'})).toBeVisible();
+	await expect(nurse.getByRole('heading',{name:'Ringkasan Siklus Rawat Inap'})).toBeVisible();
 	await mkdir(evidence,{recursive:true});
 	await nurse.screenshot({path:path.join(evidence,'dashboard-dina-desktop.png'),fullPage:true,animations:'disabled'});
 	await nurseContext.close();
@@ -113,7 +113,7 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await expect(coordinator.getByRole('heading', { name: 'Tugas Perawatan' })).toBeVisible();
 	await coordinator.getByRole('button', { name: /Buat tugas/ }).click();
 	await selectOption(coordinator.getByLabel('Penempatan pasien'), { index: 1 });
-	await selectOption(coordinator.getByLabel('Perawat PIC'), { label: 'Dina Putri' });
+	await selectOption(coordinator.getByLabel('Perawat penanggung jawab'), { label: 'Dina Putri' });
 	await coordinator.getByLabel('Judul', { exact: true }).fill(title);
 	await selectOption(coordinator.getByRole('dialog', {name:'Buat tugas perawatan',exact:true}).getByLabel('Prioritas'), 'normal');
 	const starts = new Date(Date.now() + 5 * 60_000);
@@ -188,7 +188,7 @@ test('role navigation only exposes the signed-in role’s screens and small scre
 	const form=admission.locator('.create-form');
 	await selectOption(form.getByLabel('Pasien'), 'PT-012');
 	await form.getByLabel('Layanan').fill(`E2E layanan ${Date.now()}`);
-	await form.getByLabel('Qty').fill('2');
+	await form.getByLabel('Jumlah', { exact: true }).fill('2');
 	await form.getByLabel('Harga satuan (Rp)').fill('1.250,25');
 	await form.getByLabel('Jumlah jaminan BPJS (Rp)').fill('500');
 	await form.getByRole('button',{name:'Simpan tagihan'}).click();

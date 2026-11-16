@@ -124,10 +124,10 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  await page.goto(`/tasks?search=${encodeURIComponent(task.title)}`);
  await page.locator('.task-card').getByRole('button').first().click();
  const detail=page.getByRole('dialog');
- await detail.getByRole('button', { name: 'Alihkan PIC', exact: true }).click();
+ await detail.getByRole('button', { name: 'Alihkan penanggung jawab', exact: true }).click();
  await selectOption(detail.getByRole('combobox',{name:/Alihkan ke perawat/}), bima.id);
  await detail.getByLabel('Alasan pengalihan').fill('Pergantian shift sintetis');
- await detail.getByRole('button',{name:'Alihkan PIC',exact:true}).click();
+ await detail.getByRole('button',{name:'Alihkan penanggung jawab',exact:true}).click();
  await expect(detail).toContainText(bima.name);
  await expect(detail).toContainText('Pergantian shift sintetis');
  const oldPic=await browser.newPage();
@@ -150,7 +150,7 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  await page.goto(`/tasks?search=${encodeURIComponent(removed.title)}`);
  await page.locator('.task-card').getByRole('button').first().click();
  const deleted=page.waitForResponse(response=>response.request().method()==='DELETE' && new URL(response.url()).pathname===`/api/v1/tasks/${removed.id}`);
- await page.getByRole('dialog').getByRole('button',{name:'Hapus logis dengan alasan'}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Hapus tugas dengan alasan'}).click();
  const removal=page.getByRole('dialog',{name:'Hapus tugas?',exact:true});
  await removal.getByLabel('Alasan penghapusan').fill('Alasan sintetis regresi');
  await removal.getByRole('button',{name:'Konfirmasi hapus',exact:true}).click();

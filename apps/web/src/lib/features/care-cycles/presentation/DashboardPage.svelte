@@ -14,7 +14,7 @@ import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
 import { NotificationDialog, type Notifications } from '$lib/features/notifications';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
-const statusLabels: Record<string, string> = { pending: 'Pending', assigned: 'Assigned', in_care: 'In Care', extend: 'Extend', released: 'Pelepasan' };
+const statusLabels: Record<string, string> = { pending: 'Menunggu', assigned: 'Sudah ditempatkan', in_care: 'Dalam perawatan', extend: 'Diperpanjang', released: 'Pelepasan' };
 const requestLabels: Record<string, string> = { pending: 'Menunggu keputusan', approved: 'Disetujui', rejected: 'Ditolak' };
 import Badge from '$lib/shared/ui/status-badge.svelte';
 let { data, careCycles, notificationService }: {
@@ -118,7 +118,7 @@ async function create(event: SubmitEvent) {
         await careCycles.create({ patientId: createPatientId, doctorId: formText(form, 'doctorId'), placementId: createPlacementId || null });
         createOpen = false;
         await goto('/dashboard', { invalidateAll: true });
-        toast.success('Rekap berhasil dibuat dengan status Pending. Buka Lihat detail untuk melanjutkan siklus.', { id: toastId });
+        toast.success('Rekap berhasil dibuat dengan status Menunggu. Pilih Lihat detail untuk melanjutkan perawatan.', { id: toastId });
     } catch (cause) {
         if (createOpen) toast.error(sessionFailure(cause), { id: toastId });
         else toast.warning('Rekap tersimpan, tetapi daftar gagal dimuat. Muat ulang halaman.', { id: toastId });
@@ -157,14 +157,14 @@ async function deleteCycle(cycle: CycleDetail) {
 }
 </script>
 
-<svelte:head><title>Dashboard Siklus | InpaCare</title></svelte:head>
+<svelte:head><title>Ringkasan Siklus | InpaCare</title></svelte:head>
 <div class="dashboard-page flex min-w-0 flex-col gap-6">
 <section class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-	<div><h1 class="page-title">Dashboard Siklus Inpatient Care</h1><p class="page-subtitle">Pantau setiap pasien dan kelanjutan proses rawat inap sesuai kondisi terkini.</p></div>
+	<div><h1 class="page-title">Ringkasan Siklus Rawat Inap</h1><p class="page-subtitle">Pantau setiap pasien dan kelanjutan proses rawat inap sesuai kondisi terkini.</p></div>
 </section>
 
 <section class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" aria-label="Ringkasan siklus">
-	{#each counts as item}<Card class="gap-1 p-4"><strong class="text-2xl font-semibold tabular-nums">{item.count}</strong><span class="text-sm text-muted-foreground">{({pending:'Pending',assigned:'Assigned',in_care:'In Care',extend:'Extend',released:'Pelepasan'} as Record<string,string>)[item.status]}</span></Card>{/each}
+	{#each counts as item}<Card class="gap-1 p-4"><strong class="text-2xl font-semibold tabular-nums">{item.count}</strong><span class="text-sm text-muted-foreground">{({pending:'Menunggu',assigned:'Sudah ditempatkan',in_care:'Dalam perawatan',extend:'Diperpanjang',released:'Pelepasan'} as Record<string,string>)[item.status]}</span></Card>{/each}
 </section>
 
 <div class="flex flex-wrap gap-3"><Button variant="outline" class="h-11" aria-haspopup="dialog" onclick={() => notificationsOpen = true}><Bell aria-hidden="true" /> Lihat notifikasi</Button></div>
@@ -175,7 +175,7 @@ async function deleteCycle(cycle: CycleDetail) {
 {#if createOpen}
     <Modal busy={busy} protectChanges title="Tambah rekap pasien" description="Pilih pasien dan dokter penanggung jawab untuk rekap perawatan baru." onclose={() => { if (!busy) createOpen = false; }}>
         {#snippet children(close)}
-        <p class="create-help">Buat siklus rawat inap untuk pasien yang sudah terdaftar. Status awal rekap adalah Pending.</p>
+        <p class="create-help">Buat siklus rawat inap untuk pasien yang sudah terdaftar. Status awal rekap adalah Menunggu.</p>
         {#if data.creationCandidates.length === 0}
             <p class="empty">Belum ada pasien terdaftar tanpa rekap aktif. Periksa rekap yang ada atau minta data pasien didaftarkan terlebih dahulu.</p>
             <Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" onclick={close}><X aria-hidden="true" /> Tutup</Button>
@@ -185,8 +185,8 @@ async function deleteCycle(cycle: CycleDetail) {
                 <p class="muted">Hanya pasien yang belum memiliki rekap aktif yang dapat dipilih.</p>
                 <label class="field">Dokter penanggung jawab<FormSelect name="doctorId" required disabled={busy} options={[{ value: "", label: "Pilih dokter aktif" }, ...(data.reference.staff.filter(s => s.role === 'DOKTER' && s.active)).map((doctor) => ({ value: doctor.id, label: (doctor.name) }))]} /></label>
                 <label class="field">Penempatan pasien<FormSelect name="placementId" bind:value={createPlacementId} disabled={busy || !createPatientId || matchingPlacements.length === 0} options={[{ value: "", label: "Belum ditempatkan" }, ...(matchingPlacements).map((placement) => ({ value: placement.id, label: (placement.roomName) + " · " + (placement.startsOn) + "–" + (placement.endsOn) }))]} /></label>
-                {#if createPatientId && matchingPlacements.length === 0}<p class="muted">Pasien belum memiliki penempatan aktif. Rekap tetap dapat disimpan sebagai Pending.</p>{/if}
-                <p class="create-note"><strong>Status awal: Pending.</strong> Setelah disimpan, buka Lihat detail. Kaitkan penempatan aktif sebelum mengubah status menjadi Assigned, lalu In Care.</p>
+                {#if createPatientId && matchingPlacements.length === 0}<p class="muted">Pasien belum memiliki penempatan aktif. Rekap tetap dapat disimpan dengan status Menunggu.</p>{/if}
+                <p class="create-note"><strong>Status awal: Menunggu.</strong> Setelah disimpan, pilih Lihat detail. Hubungkan rekap ke penempatan aktif sebelum mengubah status menjadi Sudah ditempatkan, lalu Dalam perawatan.</p>
                 <div class="form-actions"><Button variant="outline" type="button" class="h-11 px-4 no-underline hover:no-underline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batalkan</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || !createPatientId}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan rekap'}</Button></div>
             </form>
         {/if}
@@ -209,7 +209,7 @@ async function deleteCycle(cycle: CycleDetail) {
 </Card>
 
 {#if selectedCycleId}
-<Modal {busy} title={cycleView === 'detail' ? 'Detail siklus inpatient care' : cycleView === 'placement' ? 'Ubah penempatan' : cycleView === 'status' ? 'Perbarui status perawatan' : cycleView === 'request' ? 'Ajukan perpanjangan atau pelepasan' : cycleView === 'decision' ? 'Keputusan dokter' : 'Hapus rekap pending?'}
+<Modal {busy} title={cycleView === 'detail' ? 'Detail siklus rawat inap' : cycleView === 'placement' ? 'Ubah penempatan' : cycleView === 'status' ? 'Perbarui status perawatan' : cycleView === 'request' ? 'Ajukan perpanjangan atau pelepasan' : cycleView === 'decision' ? 'Keputusan dokter' : 'Hapus rekap berstatus Menunggu?'}
  description="Informasi perawatan, penanggung jawab, dan permintaan perubahan pasien."
  protectChanges={cycleView !== 'detail' && cycleView !== 'delete'} formKey={cycleView}
  backLabel={cycleView !== 'detail' ? 'Kembali ke detail' : undefined}
@@ -237,7 +237,7 @@ async function deleteCycle(cycle: CycleDetail) {
  {:else if selectedCycle}
  <p class="mb-5 font-medium">{selectedCycle.patientName} · {selectedCycle.medicalRecordNo}</p>
  {#if cycleView === 'placement'}<form onsubmit={(event)=>assignPlacement(event,selectedCycle!)}><label class="field">Penempatan<FormSelect name="placementId" value={selectedCycle.placementId??''} options={[{ value: "", label: "Belum ditempatkan" }, ...(data.reference.placements.filter((p)=>p.status==='active'&&p.patientId===selectedCycle!.patientId)).map((placement) => ({ value: placement.id, label: (placement.roomName) + " · " + (placement.startsOn) + "–" + (placement.endsOn) }))]} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan penempatan</Button></div></form>
- {:else if cycleView === 'status'}<form onsubmit={(event) => transition(event, selectedCycle!)}><label class="field">Tahap berikutnya<FormSelect name="status" required options={[{ value: selectedCycle.status === 'pending' ? 'assigned' : 'in_care', label: (selectedCycle.status === 'pending' ? 'Assigned' : 'In Care') }]} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan status</Button></div></form>
+ {:else if cycleView === 'status'}<form onsubmit={(event) => transition(event, selectedCycle!)}><label class="field">Tahap berikutnya<FormSelect name="status" required options={[{ value: selectedCycle.status === 'pending' ? 'assigned' : 'in_care', label: (selectedCycle.status === 'pending' ? 'Sudah ditempatkan' : 'Dalam perawatan') }]} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan status</Button></div></form>
  {:else if cycleView === 'request'}{#if pendingRequest}<p class="approval-note" id="cycle-request-blocked">Pengajuan sebelumnya masih menunggu keputusan dokter. Pengajuan baru belum dapat dikirim.</p>{/if}<form onsubmit={(event) => request(event, selectedCycle!)}><fieldset class="request-fields" disabled={busy || !!pendingRequest} aria-describedby={pendingRequest ? 'cycle-request-blocked' : undefined}><legend class="request-legend">Pengajuan perubahan perawatan</legend><div class="form-grid"><label class="field">Jenis permintaan<FormSelect name="kind" bind:value={requestKind} options={[{ value: "release", label: "Pelepasan" }, { value: "extend", label: "Perpanjangan" }]} /></label>{#if requestKind === 'extend'}<label class="field">Perpanjang sampai tanggal<FormDatePicker class="h-11 text-base md:text-sm" name="requestedEnd" type="date" required /></label>{/if}<label class="field full">Alasan<Textarea name="reason" maxlength={500} required></Textarea></label></div><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline"><Send aria-hidden="true" /> Ajukan ke dokter</Button></div></fieldset></form>
  {:else if cycleView === 'decision'}<form onsubmit={(event) => decide(event, selectedCycle!, decisionRequestId, String((event.submitter as HTMLButtonElement)?.value))}><label class="field">Catatan keputusan<Input class="h-11 text-base md:text-sm" name="note" maxlength={500} required /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="outline" type="submit" class="h-11 px-4 no-underline hover:no-underline" name="decision" value="reject" disabled={busy}><X aria-hidden="true" /> Tolak</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" name="decision" value="approve" disabled={busy}><Check aria-hidden="true" /> Setujui</Button></div></form>
  {:else if cycleView === 'delete'}<form class="flex flex-col gap-4" onsubmit={(event) => { event.preventDefault(); if (deletingCycle) void deleteCycle(deletingCycle); }}>
@@ -253,7 +253,7 @@ async function deleteCycle(cycle: CycleDetail) {
 </Modal>
 {/if}
 
-<p class="muted workflow-note">Alur: Pending → Assigned → In Care → Extend / Pelepasan. Perpanjangan dan pelepasan berlaku setelah keputusan dokter.</p>
+<p class="muted workflow-note">Alur: Menunggu → Sudah ditempatkan → Dalam perawatan → Diperpanjang / Pelepasan. Perpanjangan dan pelepasan berlaku setelah keputusan dokter.</p>
 
 </div>
 <style>
@@ -287,7 +287,7 @@ async function deleteCycle(cycle: CycleDetail) {
 <Modal title="Filter rekap" description="Pilih pasien, ruangan, dan status perawatan untuk membatasi daftar rekap." busy={filterBusy} onclose={() => filterOpen = false}>
     {#snippet children(close)}
     <form class="flex flex-col gap-4" onsubmit={(event) => filterCycles(event, filterDraft)}>
-<label class="field">Pasien<FormSelect bind:value={filterDraft.patientId} options={[{ value: "", label: "Semua pasien" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} /></label><label class="field">Ruangan<FormSelect bind:value={filterDraft.roomId} options={[{ value: "", label: "Semua ruangan" }, ...(rooms).map((room) => ({ value: room.id, label: (room.name) }))]} /></label><label class="field">Status<FormSelect bind:value={filterDraft.status} options={[{ value: "", label: "Semua status" }, ...(counts).flatMap((item) => [{ value: item.status, label: (({pending:'Pending',assigned:'Assigned',in_care:'In Care',extend:'Extend',released:'Pelepasan'} as Record<string,string>)[item.status]) }]), { value: "pending_approval", label: "Menunggu keputusan" }]} /></label>
+<label class="field">Pasien<FormSelect bind:value={filterDraft.patientId} options={[{ value: "", label: "Semua pasien" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} /></label><label class="field">Ruangan<FormSelect bind:value={filterDraft.roomId} options={[{ value: "", label: "Semua ruangan" }, ...(rooms).map((room) => ({ value: room.id, label: (room.name) }))]} /></label><label class="field">Status<FormSelect bind:value={filterDraft.status} options={[{ value: "", label: "Semua status" }, ...(counts).flatMap((item) => [{ value: item.status, label: (({pending:'Menunggu',assigned:'Sudah ditempatkan',in_care:'Dalam perawatan',extend:'Diperpanjang',released:'Pelepasan'} as Record<string,string>)[item.status]) }]), { value: "pending_approval", label: "Menunggu keputusan" }]} /></label>
         <div class="form-actions"><Button variant="outline" disabled={filterBusy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button type="submit" disabled={filterBusy}><Filter aria-hidden="true" /> Terapkan filter</Button></div>
     </form>
     {/snippet}

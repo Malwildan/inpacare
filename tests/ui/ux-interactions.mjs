@@ -97,7 +97,7 @@ try {
     await page.evaluate(() => window.setRole('ADMISI'));
     await expect(navigation.getByRole('link', { name: 'Tagihan', exact: true })).toBeVisible();
     await expect(navigation.getByRole('link', { name: 'Tugas Perawatan', exact: true })).toHaveCount(0);
-    await expect(navigation.getByRole('link', { name: 'Dashboard Siklus', exact: true })).toHaveCount(0);
+    await expect(navigation.getByRole('link', { name: 'Ringkasan Siklus', exact: true })).toHaveCount(0);
     assert.deepEqual(pageErrors, []);
 
     await page.setViewportSize({ width: 390, height: 1000 });
@@ -263,7 +263,7 @@ try {
     await expect(addCycle).toBeFocused();
 
     await legacyCycleRow.getByRole('button', { name: 'Lihat detail', exact: true }).click();
-    const detailCycle = page.getByRole('dialog', { name: 'Detail siklus inpatient care', exact: true });
+    const detailCycle = page.getByRole('dialog', { name: 'Detail siklus rawat inap', exact: true });
     await expect(detailCycle.locator('form')).toHaveCount(0);
     await detailCycle.getByRole('button', { name: 'Ubah penempatan', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(1);
@@ -272,7 +272,7 @@ try {
     assert.deepEqual(await page.evaluate(() => window.cycleActions.at(-1)), { action: 'change', id: '00000000-0000-4000-8000-000000000001', expectedVersion: 11, placementId: null });
     await detailCycle.getByRole('button', { name: 'Perbarui status', exact: true }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Simpan status', exact: true }).click();
-    await expect(detailCycle).toContainText('Assigned');
+    await expect(detailCycle).toContainText('Sudah ditempatkan');
     await page.evaluate(() => window.setCycleState('in_care'));
     await detailCycle.getByRole('button', { name: 'Ajukan perpanjangan / pelepasan', exact: true }).click();
     const requestCycle = page.getByRole('dialog');
@@ -292,7 +292,7 @@ try {
     await page.evaluate(() => window.setCycleState('pending'));
     const deleteCycle = detailCycle.getByRole('button', { name: 'Hapus rekap', exact: true });
     await deleteCycle.click();
-    const removeCycle = page.getByRole('dialog', { name: 'Hapus rekap pending?', exact: true });
+    const removeCycle = page.getByRole('dialog', { name: 'Hapus rekap berstatus Menunggu?', exact: true });
     await removeCycle.getByRole('button', { name: 'Batal', exact: true }).click();
     await expect(removeCycle).toHaveCount(0);
     await expect(deleteCycle).toBeFocused();
@@ -334,7 +334,7 @@ try {
     await selectOption(invoiceForm.getByRole('combobox', { name: 'Pasien', exact: true }), 'patient');
     await selectOption(invoiceForm.getByRole('combobox', { name: 'Penempatan', exact: true }), 'placement');
     await invoiceForm.getByLabel('Layanan', { exact: true }).fill('Layanan Uji');
-    await invoiceForm.getByLabel('Qty', { exact: true }).fill('2');
+    await invoiceForm.getByLabel('Jumlah', { exact: true }).fill('2');
     await invoiceForm.getByLabel('Harga satuan (Rp)', { exact: true }).fill('1.234,56');
     await invoiceForm.getByLabel('Jumlah jaminan BPJS (Rp)').fill('100,25');
     for (const width of [390, 768, 1440]) {
@@ -644,19 +644,19 @@ try {
     await taskNote.getByLabel('Catatan tindakan').fill('Catatan diperbarui');
     await taskNote.getByRole('button', { name: 'Simpan catatan', exact: true }).click();
     await expect(taskDetail).toContainText('Catatan diperbarui');
-    await taskDetail.getByRole('button', { name: 'Alihkan PIC', exact: true }).click();
-    const taskReassign = page.getByRole('dialog', { name: 'Alihkan PIC', exact: true });
+    await taskDetail.getByRole('button', { name: 'Alihkan penanggung jawab', exact: true }).click();
+    const taskReassign = page.getByRole('dialog', { name: 'Alihkan penanggung jawab', exact: true });
     await selectOption(taskReassign.getByLabel('Alihkan ke perawat'), 'other-nurse');
     await taskReassign.getByLabel('Alasan pengalihan').fill('Pergantian petugas');
-    await taskReassign.getByRole('button', { name: 'Alihkan PIC', exact: true }).click();
+    await taskReassign.getByRole('button', { name: 'Alihkan penanggung jawab', exact: true }).click();
     await expect(taskDetail).toContainText('Perawat Lain');
     assert.equal(await page.evaluate(() => window.taskEdits.at(-1).reason), 'Pergantian petugas');
-    await taskDetail.getByRole('button', { name: 'Hapus logis dengan alasan', exact: true }).click();
+    await taskDetail.getByRole('button', { name: 'Hapus tugas dengan alasan', exact: true }).click();
     const removeTask = page.getByRole('dialog', { name: 'Hapus tugas?', exact: true });
     await removeTask.getByLabel('Alasan penghapusan').fill('Koreksi tugas ganda');
     await removeTask.getByRole('button', { name: 'Batal', exact: true }).click();
     assert.deepEqual(await page.evaluate(() => window.taskWrites), []);
-    await taskDetail.getByRole('button', { name: 'Hapus logis dengan alasan', exact: true }).click();
+    await taskDetail.getByRole('button', { name: 'Hapus tugas dengan alasan', exact: true }).click();
     await expect(removeTask.getByLabel('Alasan penghapusan')).toHaveValue('Koreksi tugas ganda');
     await removeTask.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();
     await expect(toastMessage(page, 'Penghapusan gagal tersimpan.')).toContainText('Penghapusan gagal tersimpan.');
@@ -674,7 +674,7 @@ try {
     await page.getByRole('button', { name: 'Buat tugas', exact: true }).click();
     const taskForm = page.locator('form').filter({ has: page.getByRole('button', { name: 'Simpan tugas', exact: true }) });
     await selectOption(taskForm.getByLabel('Penempatan pasien'), 'placement');
-    await selectOption(taskForm.getByLabel('Perawat PIC'), 'nurse');
+    await selectOption(taskForm.getByLabel('Perawat penanggung jawab'), 'nurse');
     await taskForm.getByLabel('Judul', { exact: true }).fill('Tugas Baru');
     await taskForm.getByRole('button', { name: 'Simpan tugas', exact: true }).click();
     await expect(taskForm.getByLabel('Waktu mulai')).toBeFocused();
@@ -834,30 +834,30 @@ try {
     await page.goto(server.resolvedUrls.local[0] + '?surface=rooms', { waitUntil: 'domcontentloaded' });
     await page.getByRole('row').filter({ hasText: 'Ruangan Uji' }).getByRole('button', { name: 'Lihat', exact: true }).click();
     const roomDetail = page.getByRole('dialog', { name: 'Detail ruangan', exact: true });
-    const roomAddTrigger = roomDetail.getByRole('button', { name: 'Tambah item', exact: true });
+    const roomAddTrigger = roomDetail.getByRole('button', { name: 'Tambah perlengkapan', exact: true });
     await roomAddTrigger.click();
-    const roomAdd = page.getByRole('dialog', { name: 'Tambah item', exact: true });
+    const roomAdd = page.getByRole('dialog', { name: 'Tambah perlengkapan', exact: true });
     await expect(page.getByRole('dialog')).toHaveCount(1);
-    await roomAdd.getByLabel('Nama item').fill('Item Baru');
+    await roomAdd.getByLabel('Nama perlengkapan').fill('Item Baru');
     await roomAdd.getByLabel('Kategori').fill('Alat');
     await roomAdd.getByLabel('Harga satuan').fill('1.234,50');
     await roomAdd.getByRole('button', { name: 'Batal', exact: true }).click();
     await page.getByRole('button', { name: 'Lanjutkan mengisi', exact: true }).click();
-    await expect(roomAdd.getByLabel('Nama item')).toHaveValue('Item Baru');
-    await roomAdd.getByRole('button', { name: 'Tambah item', exact: true }).click();
+    await expect(roomAdd.getByLabel('Nama perlengkapan')).toHaveValue('Item Baru');
+    await roomAdd.getByRole('button', { name: 'Tambah perlengkapan', exact: true }).click();
     await expect(toastMessage(page, 'Versi ruangan berubah.')).toBeVisible();
     await expect(roomAdd.getByLabel('Harga satuan')).toHaveValue('1.234,50');
     await page.evaluate(() => window.acceptRoomWrite());
-    await roomAdd.getByRole('button', { name: 'Tambah item', exact: true }).click();
+    await roomAdd.getByRole('button', { name: 'Tambah perlengkapan', exact: true }).click();
     await expect(roomDetail).toContainText('Item Baru');
     await expect(roomAddTrigger).toBeFocused();
     const originalItem = roomDetail.getByRole('listitem').filter({ hasText: 'Perlengkapan Uji' });
     await originalItem.getByRole('button', { name: 'Ubah', exact: true }).click();
-    const roomItemEdit = page.getByRole('dialog', { name: 'Ubah item', exact: true });
+    const roomItemEdit = page.getByRole('dialog', { name: 'Ubah perlengkapan', exact: true });
     await expect(page.getByRole('dialog')).toHaveCount(1);
     await roomItemEdit.getByLabel('Jumlah', { exact: true }).fill('2');
     await page.evaluate(() => { window.rejectRoomWrite(); window.holdRoomWrite(); });
-    await roomItemEdit.getByRole('button', { name: 'Simpan item', exact: true }).click();
+    await roomItemEdit.getByRole('button', { name: 'Simpan perlengkapan', exact: true }).click();
     await page.keyboard.press('Escape');
     await expect(roomItemEdit).toBeVisible();
     await expect(roomItemEdit.getByRole('button', { name: 'Menyimpan…', exact: true })).toBeDisabled();
@@ -871,10 +871,10 @@ try {
         await page.screenshot({ path: path.join(projectRoot, '.local/evidence', `dialog-room-item-${width}.png`), animations: 'disabled' });
     }
     await page.evaluate(() => window.acceptRoomWrite());
-    await roomItemEdit.getByRole('button', { name: 'Simpan item', exact: true }).click();
+    await roomItemEdit.getByRole('button', { name: 'Simpan perlengkapan', exact: true }).click();
     await expect(originalItem).toContainText('2 ×');
     await originalItem.getByRole('button', { name: 'Hapus', exact: true }).click();
-    const roomRemoveItem = page.getByRole('dialog', { name: 'Hapus item?', exact: true });
+    const roomRemoveItem = page.getByRole('dialog', { name: 'Hapus perlengkapan?', exact: true });
     await expect(page.getByRole('dialog')).toHaveCount(1);
     await roomRemoveItem.getByRole('button', { name: 'Batal', exact: true }).click();
     await expect(originalItem.getByRole('button', { name: 'Hapus', exact: true })).toBeFocused();

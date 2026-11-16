@@ -8,7 +8,7 @@ type SwaggerRequest = {
 export function createSwaggerRequestInterceptor(origin: string, readCsrfToken: () => string | undefined) {
     return (request: SwaggerRequest) => {
         const url = new URL(request.url, origin);
-        if (url.origin !== origin) throw new Error('Swagger UI only sends requests to this site.');
+        if (url.origin !== origin) throw new Error('Dokumentasi API hanya dapat mengirim permintaan ke situs ini.');
 
         request.url = url.href;
         request.credentials = 'same-origin';

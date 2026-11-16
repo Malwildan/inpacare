@@ -380,8 +380,12 @@ class Workflows(unittest.TestCase):
         })
         self.assertEqual(status, 200, decision)
         self.assertEqual(decision["status"], "approved")
-        self.assertEqual(self.dina.request("GET", "/notifications")[0], 200)
-        self.assertTrue(any("extend" in item["message"] for item in self.dina.request("GET", "/notifications")[1]["items"]))
+        status, notifications = self.dina.request("GET", "/notifications")
+        self.assertEqual(status, 200)
+        self.assertTrue(any(
+            item["cycleId"] == "CY-003" and item["message"] == "Permintaan perpanjangan disetujui."
+            for item in notifications["items"]
+        ))
         self.assert_error(self.hendra.request("POST", f"/cycles/CY-003/requests/{request['id']}/decision", {
             "decision": "approve", "note": "Pemutaran ulang", "expectedVersion": 1,
         }), 404, "NOT_FOUND")

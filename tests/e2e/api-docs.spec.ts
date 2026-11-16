@@ -15,8 +15,8 @@ test('Swagger renders, reads the API, and sends authenticated CSRF-protected mut
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByRole('navigation').getByRole('link', { name: 'API Explorer', exact: true })).toHaveCount(0);
     await page.goto('/api-docs');
-    await expect(page.getByRole('heading', { name: 'InpaCare API Explorer', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Database (pgAdmin)' })).toHaveAttribute('href', '/db/');
+    await expect(page.getByRole('heading', { name: 'Dokumentasi API InpaCare', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Basis data (pgAdmin)' })).toHaveAttribute('href', '/db/');
 
     const spec = await page.request.get('/api-docs/openapi.json');
     expect(spec.status()).toBe(200);
