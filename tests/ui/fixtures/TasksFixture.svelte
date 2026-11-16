@@ -30,8 +30,11 @@ const tasks = {
         if (writes.filter(write => write.action === 'move').length === 1) {
             await new Promise((resolve, reject) => { window.rejectTaskMove = () => reject(new Error('Tugas berubah. Muat ulang daftar.')); });
         }
-        const saved = { ...serverTasks.find(item => item.id === id), status: input.status, version: 18 };
-        serverTasks = serverTasks.map(item => item.id === id ? saved : item);
+        const current = serverTasks.find(item => item.id === id);
+        const saved = { ...current, status: input.status, version: current.version + 1 };
+        serverTasks = serverTasks.filter(item => item.id !== id);
+        const before = input.beforeTaskId ? serverTasks.findIndex(item => item.id === input.beforeTaskId) : -1;
+        serverTasks.splice(before < 0 ? serverTasks.length : before, 0, saved);
         return clone(saved);
     },
     remove: async (id, input) => { writes.push({ action: 'remove', id, ...input }); throw new Error('Penghapusan gagal tersimpan.'); }
