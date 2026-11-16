@@ -263,7 +263,7 @@ try {
     await expect(addCycle).toBeFocused();
 
     await legacyCycleRow.getByRole('button', { name: 'Lihat detail', exact: true }).click();
-    const detailCycle = page.getByRole('dialog', { name: 'Detail siklus inpatient care', exact: true });
+    const detailCycle = page.getByRole('dialog', { name: 'Detail siklus rawat inap', exact: true });
     await expect(detailCycle.locator('form')).toHaveCount(0);
     await detailCycle.getByRole('button', { name: 'Ubah penempatan', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(1);
@@ -292,7 +292,7 @@ try {
     await page.evaluate(() => window.setCycleState('pending'));
     const deleteCycle = detailCycle.getByRole('button', { name: 'Hapus rekap', exact: true });
     await deleteCycle.click();
-    const removeCycle = page.getByRole('dialog', { name: 'Hapus rekap pending?', exact: true });
+    const removeCycle = page.getByRole('dialog', { name: 'Hapus rekap berstatus Menunggu?', exact: true });
     await removeCycle.getByRole('button', { name: 'Batal', exact: true }).click();
     await expect(removeCycle).toHaveCount(0);
     await expect(deleteCycle).toBeFocused();
