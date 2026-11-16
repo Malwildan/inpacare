@@ -13,8 +13,8 @@ import { formText } from '$lib/shared/presentation/form';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
 import StatusBadge from '$lib/shared/ui/status-badge.svelte';
 import { Badge } from '$lib/shared/ui/badge/index.js';
-import { ArrowDownToLine, ArrowRightLeft, Ban, ChevronDown, Eye, Filter, ListPlus, LockKeyhole, Pencil, Plus, RefreshCw, Save, Search, SlidersHorizontal, Trash2, UserRoundPen, X } from 'lucide-svelte';
-import { untrack } from 'svelte';
+import { ArrowDownToLine, ArrowRightLeft, Ban, ChevronDown, Eye, Filter, ListPlus, LockKeyhole, Pencil, Plus, RefreshCw, Save, Search, SlidersHorizontal, Trash2, Undo2, UserRoundPen, X } from 'lucide-svelte';
+import { onDestroy, untrack } from 'svelte';
 let { data, tasks }: {
     data: TasksPageData;
     tasks: Tasks;
@@ -51,12 +51,14 @@ let reason = $state('');
 let reasonTaskId = '';
 let dragTask = $state<Task | null>(null);
 let dragTarget = $state<BoardStatus | null>(null);
+let pressedTaskId = $state<string | null>(null);
+let dragImage: HTMLElement | null = null;
 let origin: HTMLElement | null = null;
 let suppressClick = false;
 const filtered = $derived(Object.values(data.filters).some(Boolean));
 $effect(() => {
     const next = data.board;
-    board = next; generation++; refreshErrors.clear(); dragTask = null; dragTarget = null;
+    board = next; generation++; refreshErrors.clear(); dragTask = null; dragTarget = null; clearDragVisuals();
     untrack(() => {
         for (const [key] of statuses) {
             const status = key as BoardStatus;
@@ -72,6 +74,7 @@ function reportColumnFailure(status: BoardStatus, description?: string) {
     });
 }
 function canOperate(task: Task) { return coordinator || task.picId === data.user.id; }
+function canDrag(task: Task) { return task.status !== 'done' && task.status !== 'cancelled' && canOperate(task) && !pending.includes(task.id); }
 function allowed(task: Task, status: BoardStatus) {
     if (task.status === 'done' || task.status === 'cancelled') return false;
     if (!canOperate(task)) return false;
@@ -81,7 +84,6 @@ function allowed(task: Task, status: BoardStatus) {
 function dropLockReason(task: Task, status: BoardStatus) {
     if (task.status === 'done' || task.status === 'cancelled') return 'Tugas selesai atau dibatalkan tidak dapat dipindahkan.';
     if (!canOperate(task)) return 'Hanya penanggung jawab atau koordinator yang dapat memindahkan tugas ini.';
-    if (status === task.status && filtered) return 'Hapus filter untuk mengubah urutan tugas.';
     if (status === 'cancelled' && !coordinator) return 'Hanya koordinator yang dapat membatalkan tugas.';
     if (task.status === 'todo' && status === 'done') return 'Pindahkan ke Sedang Dikerjakan terlebih dahulu.';
     return 'Tugas tidak dapat kembali ke Belum Dikerjakan.';
@@ -187,15 +189,38 @@ async function moveTask(task: Task, status: BoardStatus, before: string | null, 
     } finally { pending = pending.filter(id => id !== task.id); }
 }
 async function confirmMove(event: SubmitEvent) { event.preventDefault(); if (!moving) return; const task = moving; if (await moveTask(task, destination, beforeId || null, destination === 'cancelled' ? reason : undefined)) { moving = null; reason = ''; requestAnimationFrame(() => (document.getElementById(`task-${task.id}`) ?? document.getElementById(`heading-${task.status}`))?.focus()); } }
+function releaseCard() { pressedTaskId = null; }
+function clearDragVisuals() { releaseCard(); dragImage?.remove(); dragImage = null; }
+onDestroy(clearDragVisuals);
+function pressCard(event: PointerEvent, task: Task) {
+    if (event.button === 0 && event.isPrimary && canDrag(task)) pressedTaskId = task.id;
+}
 function dragStart(event: DragEvent, task: Task) {
-    if (task.status === 'done' || task.status === 'cancelled' || !canOperate(task) || pending.includes(task.id)) { event.preventDefault(); return; }
+    if (!canDrag(task)) { event.preventDefault(); clearDragVisuals(); return; }
+    clearDragVisuals();
+    if (event.dataTransfer) {
+        const card = event.currentTarget as HTMLElement;
+        const bounds = card.getBoundingClientRect();
+        // The browser snapshots this lifted copy as its native drag image.
+        dragImage = card.cloneNode(true) as HTMLElement;
+        dragImage.classList.remove('task-card', 'card-pressed', 'card-dragging');
+        dragImage.classList.add('task-drag-preview');
+        dragImage.removeAttribute('data-task-id');
+        dragImage.removeAttribute('draggable');
+        dragImage.setAttribute('aria-hidden', 'true');
+        dragImage.inert = true;
+        dragImage.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
+        dragImage.style.width = `${card.offsetWidth}px`;
+        document.body.append(dragImage);
+        event.dataTransfer.setDragImage(dragImage, Math.max(0, event.clientX - bounds.left), Math.max(0, event.clientY - bounds.top));
+    }
     dragTask = task; suppressClick = true;
     event.dataTransfer?.setData('text/plain', task.id);
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
 }
 function dragOver(event: DragEvent, status: BoardStatus) {
     if (!dragTask) return;
-    const valid = allowed(dragTask, status);
+    const valid = status === dragTask.status || allowed(dragTask, status);
     dragTarget = valid ? status : null;
     if (event.dataTransfer) event.dataTransfer.dropEffect = valid ? 'move' : 'none';
     if (valid) event.preventDefault();
@@ -216,11 +241,11 @@ function drop(event: DragEvent, status: BoardStatus) {
     event.preventDefault(); event.stopPropagation();
     const task = dragTask;
     endDrag();
-    if (!task || !allowed(task, status)) return;
+    if (!task || status === task.status || !allowed(task, status)) return;
     if (status === 'cancelled') startMove(task, status);
     else void moveTask(task, status, null);
 }
-function endDrag() { dragTask = null; dragTarget = null; setTimeout(() => suppressClick = false, 0); }
+function endDrag() { dragTask = null; dragTarget = null; clearDragVisuals(); setTimeout(() => suppressClick = false, 0); }
 function closeDetail() { taskView = 'detail'; selectedAudit = null; selected = null; requestAnimationFrame(() => origin?.focus()); }
 function closeMove() {
     const task = moving;
@@ -234,7 +259,7 @@ function closeFilters() {
     patientFilter = data.filters.patientId; picFilter = data.filters.picId; fromFilter = data.filters.from; toFilter = data.filters.to;
     filterOpen = false;
 }
-async function filterTasks() { dragTask = null; dragTarget = null; const q = new URLSearchParams(); for (const [key, value] of Object.entries({ search: search.trim(), status: statusFilter, priority: priorityFilter, roomId: roomFilter, patientId: patientFilter, picId: picFilter, from: fromFilter, to: toFilter }))
+async function filterTasks() { endDrag(); const q = new URLSearchParams(); for (const [key, value] of Object.entries({ search: search.trim(), status: statusFilter, priority: priorityFilter, roomId: roomFilter, patientId: patientFilter, picId: picFilter, from: fromFilter, to: toFilter }))
     if (value)
         q.set(key, value); await goto(`/tasks?${q}`, { keepFocus: true, noScroll: true }); }
 const statuses = [['todo', 'Belum Dikerjakan'], ['in_progress', 'Sedang Dikerjakan'], ['done', 'Selesai'], ['cancelled', 'Dibatalkan']];
@@ -331,6 +356,7 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 </script>
 
 <svelte:head><title>Tugas Perawatan | InpaCare</title></svelte:head>
+<svelte:window onpointerup={releaseCard} onpointercancel={releaseCard} onblur={releaseCard} />
 <div class="tasks-page flex min-w-0 flex-col gap-6">
 <section class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="page-title">Tugas Perawatan</h1><p class="page-subtitle">Tugas pasien dengan penanggung jawab, rentang waktu, prioritas, dan riwayat perubahan.</p></div>{#if coordinator}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={()=>{creating=!creating;}}><Plus size={16} aria-hidden="true"/> Buat tugas</Button>{/if}</section>
 
@@ -345,18 +371,20 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
    {#if column.filtered}<p class="empty">Disembunyikan oleh filter status.</p>
    {:else}
     {#each column.items as task (task.id)}
-     <Card role="article" data-task-id={task.id} class={`task-card mb-2 gap-0 overflow-visible p-0 [overflow-wrap:anywhere] ${dragTask?.id===task.id ? 'opacity-50' : ''}`} draggable={task.status!=='done' && task.status!=='cancelled' && canOperate(task) && !pending.includes(task.id)} ondragstart={(e)=>dragStart(e,task)} ondragend={endDrag}>
-      <Button variant="ghost" id={`task-${task.id}`} aria-label={`Detail ${task.title}`} aria-haspopup="dialog" aria-busy={pending.includes(task.id)} class="card-open h-auto min-h-11 w-full flex-col items-start gap-1.5 rounded-xl whitespace-normal p-4 text-left font-normal hover:bg-accent/50" onclick={(event)=>openCard(task,event)}><strong class="card-title">{task.title}</strong><span>{task.patientName} - {task.roomName}</span><StatusBadge value={task.priority} label={`Prioritas ${priorityLabel(task.priority)}`} /><span>{local(task.startsAt)} - {local(task.endsAt)}</span><span>Penanggung jawab: {task.picName}</span>{#if pending.includes(task.id)}<span role="status">Menyimpan...</span>{/if}</Button>
+     <Card role="article" data-task-id={task.id} class={`task-card mb-2 gap-0 overflow-visible p-0 [overflow-wrap:anywhere] ${pressedTaskId===task.id ? 'card-pressed' : ''} ${dragTask?.id===task.id ? 'card-dragging' : ''}`} draggable={canDrag(task)} ondragstart={(e)=>dragStart(e,task)} ondragend={endDrag}>
+      <Button variant="ghost" id={`task-${task.id}`} aria-label={`Detail ${task.title}`} aria-haspopup="dialog" aria-busy={pending.includes(task.id)} class="card-open h-auto min-h-11 w-full flex-col items-start gap-1.5 rounded-xl whitespace-normal p-4 text-left font-normal hover:bg-accent/50" onpointerdown={(event)=>pressCard(event,task)} onclick={(event)=>openCard(task,event)}><strong class="card-title">{task.title}</strong><span>{task.patientName} - {task.roomName}</span><StatusBadge value={task.priority} label={`Prioritas ${priorityLabel(task.priority)}`} /><span>{local(task.startsAt)} - {local(task.endsAt)}</span><span>Penanggung jawab: {task.picName}</span>{#if pending.includes(task.id)}<span role="status">Menyimpan...</span>{/if}</Button>
      </Card>
     {:else}{#if !column.error}<p class="empty">Tidak ada tugas.</p>{/if}{/each}
     {#if column.error}<Button variant="outline" class="h-11 px-4" disabled={loading.includes(status)} onclick={()=>loadMore(status)}><RefreshCw aria-hidden="true" /> {loading.includes(status) ? 'Memuat...' : 'Coba lagi'}</Button>{:else if column.items.length < column.total}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" disabled={loading.includes(status)} onclick={()=>loadMore(status)}><ListPlus aria-hidden="true" /> {loading.includes(status) ? 'Memuat...' : 'Muat lebih banyak'}</Button>{/if}
    {/if}
    </div>
    {#if dragTask}
-    {@const valid = allowed(dragTask, status)}
-    <div class="column-drop-overlay" class:locked={!valid} class:active={valid && dragTarget === status} data-drop-state={valid ? 'allowed' : 'locked'}>
+    {@const cancel = dragTask.status === status}
+    {@const valid = cancel || allowed(dragTask, status)}
+    <div class="column-drop-overlay" class:locked={!valid} class:active={valid && dragTarget === status} data-drop-state={cancel ? 'cancel' : valid ? 'allowed' : 'locked'}>
      <div class="drop-message">
-      {#if valid}<ArrowDownToLine size={24} aria-hidden="true" /><strong>Move here</strong><span>{status === 'cancelled' ? 'Konfirmasi alasan untuk membatalkan tugas.' : 'Tugas masuk ke urutan paling bawah.'}</span>
+      {#if cancel}<Undo2 size={24} aria-hidden="true" /><strong>Cancel</strong><span>Lepaskan untuk mengembalikan kartu tanpa mengubah urutan.</span>
+      {:else if valid}<ArrowDownToLine size={24} aria-hidden="true" /><strong>Move here</strong><span>{status === 'cancelled' ? 'Konfirmasi alasan untuk membatalkan tugas.' : 'Tugas masuk ke urutan paling bawah.'}</span>
       {:else}<LockKeyhole size={24} aria-hidden="true" /><strong>Tidak dapat dipindahkan</strong><span>{dropLockReason(dragTask, status)}</span>{/if}
      </div>
     </div>
@@ -364,7 +392,7 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
   </section>
  {/each}
 </div>
-<p class="muted">Klik atau ketuk kartu untuk melihat detail dan tindakan. Seret ke kolom tujuan untuk menaruh tugas di urutan paling bawah. Tugas hanya dapat maju ke tahap berikutnya; tugas selesai atau dibatalkan tidak dapat dibuka kembali.{#if filtered} Urutan dinonaktifkan saat filter aktif. Perpindahan status ditambahkan di akhir daftar.{/if}</p>
+<p class="muted">Klik atau ketuk kartu untuk melihat detail dan tindakan. Seret ke kolom tujuan untuk menaruh tugas di urutan paling bawah, atau lepaskan di kolom asal untuk membatalkan perpindahan. Tugas hanya dapat maju ke tahap berikutnya; tugas selesai atau dibatalkan tidak dapat dibuka kembali.{#if filtered} Urutan dinonaktifkan saat filter aktif. Perpindahan status ditambahkan di akhir daftar.{/if}</p>
 
 </div>
 
@@ -454,18 +482,36 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 .column-heading { position:sticky; top:0; z-index:1; background:var(--muted); display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 2px 16px; font-size:13px; }
 .card-title { font-size:14px; font-weight:600; }
 .tasks-page :global(.card-open > span) { font-size:12px; }
+.tasks-page :global(.task-card) { transition:transform 140ms cubic-bezier(.2,.8,.2,1), opacity 140ms ease, box-shadow 140ms ease; }
+.tasks-page :global(.task-card[draggable="true"] .card-open) { cursor:grab; }
+.tasks-page :global(.card-pressed) { transform:scale(.97); box-shadow:0 2px 6px color-mix(in srgb, var(--foreground) 8%, transparent); }
+.tasks-page :global(.card-pressed .card-open) { cursor:grabbing; }
+.tasks-page :global(.card-dragging) { transform:scale(.98); opacity:.4; }
+:global(.task-drag-preview) {
+    position:fixed; left:-10000px; top:0; margin:0; pointer-events:none;
+    transform:translateY(-6px) rotate(-1deg) scale(1.02); border-color:var(--primary);
+    box-shadow:0 18px 36px color-mix(in srgb, var(--foreground) 20%, transparent), 0 4px 12px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+:global(.task-drag-preview .card-open > span) { font-size:12px; }
 .column-drop-overlay {
-    --drop-color:var(--color-blue-600);
+    --drop-color:var(--primary);
     position:absolute; inset:0; z-index:2; display:grid; place-items:center; padding:16px;
     border:2px dashed var(--drop-color); border-radius:10px; pointer-events:none;
     background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--drop-color) 10%, transparent) 0 10px, color-mix(in srgb, var(--drop-color) 20%, transparent) 10px 12px), color-mix(in srgb, var(--card) 76%, transparent);
-    transition:box-shadow 120ms ease, border-color 120ms ease;
+    animation:drop-overlay-in 140ms ease-out;
+    transition:box-shadow 160ms ease, border-color 160ms ease;
 }
 .column-drop-overlay.active { box-shadow:inset 0 0 0 1px var(--drop-color), inset 0 0 28px color-mix(in srgb, var(--drop-color) 25%, transparent), 0 0 12px color-mix(in srgb, var(--drop-color) 30%, transparent); }
 .column-drop-overlay.locked { --drop-color:var(--muted-foreground); }
-.drop-message { display:flex; flex-direction:column; align-items:center; gap:8px; max-width:100%; padding:16px; border:1px solid color-mix(in srgb, var(--drop-color) 35%, var(--border)); border-radius:10px; background:var(--card); color:var(--drop-color); text-align:center; overflow-wrap:anywhere; }
+.column-drop-overlay[data-drop-state="cancel"] { --drop-color:var(--destructive); }
+.drop-message { display:flex; flex-direction:column; align-items:center; gap:8px; max-width:100%; padding:16px; border:1px solid color-mix(in srgb, var(--drop-color) 35%, var(--border)); border-radius:10px; background:var(--card); color:var(--drop-color); text-align:center; overflow-wrap:anywhere; transition:transform 160ms cubic-bezier(.2,.8,.2,1); }
+.column-drop-overlay.active .drop-message { transform:translateY(-2px); }
 .drop-message strong { font-size:16px; }
 .drop-message span { font-size:12px; color:var(--foreground); }
+@keyframes drop-overlay-in { from { opacity:0; } to { opacity:1; } }
+@media (prefers-reduced-motion:reduce) {
+    .tasks-page :global(.card-pressed), .tasks-page :global(.card-dragging), :global(.task-drag-preview), .column-drop-overlay.active .drop-message { transform:none; }
+}
 .card-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
 
 

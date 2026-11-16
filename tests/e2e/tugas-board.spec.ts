@@ -270,7 +270,7 @@ test('terminal cards stay readable in Detail and cannot be moved or dragged', as
 	await author.close();
 });
 
-test('pointer drag saves status and same-list order across reload and a second session', async ({ browser }) => {
+test('same-column drag cancels and explicit ordering persists across sessions', async ({ browser }) => {
 	const author = await browser.newPage();
 	await signIn(author, 'rina');
 	const ref = await reference(author);
@@ -291,6 +291,11 @@ test('pointer drag saves status and same-list order across reload and a second s
 	expect(await titles(pic, 'Sedang Dikerjakan', prefix)).toEqual(titlesSeeded);
 
 	await card(pic, titlesSeeded[0]).dragTo(card(pic, titlesSeeded[2]));
+	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual(titlesSeeded);
+	expect((await api<Task>(pic, 'GET', `/tasks/${a.id}`)).version).toBe(inProgressTasks[0].version);
+	await expect(pic.getByRole('dialog')).toHaveCount(0);
+	const reorderDialog = await moveVia(pic, titlesSeeded[0], 'Sedang Dikerjakan');
+	await expect(reorderDialog).toHaveCount(0);
 	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([titlesSeeded[1], titlesSeeded[2], titlesSeeded[0]]);
 	await expect(pic.getByRole('dialog')).toHaveCount(0);
 
@@ -323,7 +328,7 @@ test('pointer drag saves status and same-list order across reload and a second s
 	await author.close();
 });
 
-test('native drag highlights whole columns and appends drops from card margins and the source card', async ({ browser }) => {
+test('native drag lifts cards, appends destination drops and cancels in the source column', async ({ browser }) => {
 	const author = await browser.newPage();
 	await signIn(author, 'rina');
 	const ref = await reference(author);
@@ -357,13 +362,22 @@ test('native drag highlights whole columns and appends drops from card margins a
 
 	await pic.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + sourceBox!.height / 2);
 	await pic.mouse.down();
+	await expect(sourceCard).toHaveClass(/card-pressed/);
+	await expect.poll(() => sourceCard.evaluate(element => new DOMMatrix(getComputedStyle(element).transform).a)).toBeLessThan(1);
 	await pic.mouse.move(firstBox!.x + firstBox!.width / 2, firstBox!.y + 5, { steps: 12 });
+	await expect(sourceCard).toHaveClass(/card-dragging/);
+	await expect(sourceCard).not.toHaveClass(/card-pressed/);
+	await expect(pic.locator('.task-drag-preview')).toHaveCount(1);
+	await expect(pic.locator('.task-drag-preview')).not.toHaveCSS('box-shadow', 'none');
+	await expect(pic.locator('.task-drag-preview [id]')).toHaveCount(0);
 	const validOverlay = targetColumn.locator('.column-drop-overlay');
 	await expect(validOverlay).toHaveAttribute('data-drop-state', 'allowed');
 	await expect(validOverlay).toHaveClass(/active/);
 	await expect(validOverlay).toContainText('Move here');
 	await expect(validOverlay).not.toHaveCSS('box-shadow', 'none');
 	await expect(validOverlay).toHaveCSS('pointer-events', 'none');
+	const primary = await pic.getByRole('button', { name: 'Cari tugas', exact: true }).evaluate(element => getComputedStyle(element).backgroundColor);
+	await expect(validOverlay).toHaveCSS('border-top-color', primary);
 	const overlayBounds = await validOverlay.boundingBox();
 	const columnBounds = await targetColumn.boundingBox();
 	expect(overlayBounds).toEqual(columnBounds);
@@ -402,6 +416,7 @@ test('native drag highlights whole columns and appends drops from card margins a
 		source.title
 	]);
 	await expect(pic.locator('.column-drop-overlay')).toHaveCount(0);
+	await expect(pic.locator('.task-drag-preview')).toHaveCount(0);
 	const progress = await api<{ total: number }>(pic, 'GET', '/tasks?status=in_progress&order=board&limit=1');
 	const lastProgress = await api<{ items: Task[] }>(pic, 'GET', `/tasks?status=in_progress&order=board&limit=1&offset=${progress.total - 1}`);
 	expect(lastProgress.items.map(task => task.id)).toEqual([source.id]);
@@ -446,16 +461,22 @@ test('native drag highlights whole columns and appends drops from card margins a
 	await pic.mouse.move(ownBox!.x + ownBox!.width / 2, ownBox!.y + ownBox!.height / 2);
 	await pic.mouse.down();
 	await pic.mouse.move(ownBox!.x + ownBox!.width / 2 + 24, ownBox!.y + ownBox!.height / 2, { steps: 4 });
-	await expect(ownCard).toHaveClass(/opacity-50/);
+	await expect(ownCard).toHaveClass(/card-dragging/);
+	const cancelOverlay = column(pic, 'Sedang Dikerjakan').locator('.column-drop-overlay');
+	await expect(cancelOverlay).toHaveAttribute('data-drop-state', 'cancel');
+	await expect(cancelOverlay).toContainText('Cancel');
+	await expect(cancelOverlay).not.toContainText('Move here');
+	await expect(cancelOverlay).toHaveClass(/active/);
 	await pic.mouse.move(ownBox!.x + ownBox!.width / 2, ownBox!.y + ownBox!.height / 2, { steps: 4 });
 	await pic.mouse.up();
-	await expect(ownCard).not.toHaveClass(/opacity-50/);
-	await expect.poll(() => ownMoveRequests).toBe(1);
-	await expect.poll(async () => (await api<Task>(pic, 'GET', `/tasks/${second.id}`)).version).toBeGreaterThan(beforeMove.version);
+	await expect(ownCard).not.toHaveClass(/card-dragging/);
+	await expect(pic.locator('.column-drop-overlay, .task-drag-preview')).toHaveCount(0);
+	expect((await api<Task>(pic, 'GET', `/tasks/${second.id}`)).version).toBe(beforeMove.version);
+	expect(ownMoveRequests).toBe(0);
 	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([
+		second.title,
 		first.title,
-		source.title,
-		second.title
+		source.title
 	]);
 
 	await pic.close();
@@ -696,6 +717,13 @@ test('drag cancellation and invalid destinations make no saved change', async ({
 
 	const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
 	await source.dispatchEvent('dragstart', { dataTransfer });
+	const cancelOverlay = column(page, 'Belum Dikerjakan').locator('.column-drop-overlay');
+	await expect(cancelOverlay).toHaveAttribute('data-drop-state', 'cancel');
+	await expect(cancelOverlay).toContainText('Cancel');
+	await column(page, 'Belum Dikerjakan').dispatchEvent('drop', { dataTransfer });
+	await expect(page.locator('.column-drop-overlay, .task-drag-preview')).toHaveCount(0);
+	expect((await api<Task>(page, 'GET', `/tasks/${created.id}`)).version).toBe(created.version);
+	await source.dispatchEvent('dragstart', { dataTransfer });
 	await page.locator('body').dispatchEvent('dragover', { dataTransfer });
 	await page.locator('body').dispatchEvent('drop', { dataTransfer });
 	await source.dispatchEvent('dragend', { dataTransfer });
@@ -794,7 +822,16 @@ test('each list reports truthful totals and loads additional cards independently
 	const lastLoaded = column(page, growingLabel).locator('.task-card').last();
 	const lastLoadedId = await lastLoaded.getAttribute('data-task-id');
 	expect(lastLoadedId).toBeTruthy();
+	const lastLoadedTask = await api<Task>(page, 'GET', `/tasks/${lastLoadedId}`);
+	const originalOrder = await column(page, growingLabel).locator('.task-card').evaluateAll(cards => cards.map(card => card.getAttribute('data-task-id')));
 	await lastLoaded.dragTo(column(page, growingLabel).locator('.column-heading'));
+	expect(await column(page, growingLabel).locator('.task-card').evaluateAll(cards => cards.map(card => card.getAttribute('data-task-id')))).toEqual(originalOrder);
+	expect((await api<Task>(page, 'GET', `/tasks/${lastLoadedId}`)).version).toBe(lastLoadedTask.version);
+	// Explicit positioning still appends past cards not loaded in this page.
+	await page.locator(`[data-task-id="${lastLoadedId}"]`).getByRole('button').click();
+	await expect(page.getByRole('dialog', { name: lastLoadedTask.title, exact: true })).toBeVisible();
+	const moveDialog = await moveVia(page, lastLoadedTask.title, growingLabel);
+	await expect(moveDialog).toHaveCount(0);
 	await expect.poll(async () => {
 		const tail = await api<{ items: Task[] }>(page, 'GET', `/tasks?status=${growing}&order=board&limit=1&offset=${totals[growing!] - 1}`);
 		return tail.items[0]?.id;
