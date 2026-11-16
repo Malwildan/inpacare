@@ -8235,6 +8235,7 @@
       },
       "NewCycle": {
         "type": "object",
+        "description": "Create a pending cycle without placement, or an assigned cycle using placementId or newPlacement (mutually exclusive). Reuse requestId with the same input to safely retry a submission.",
         "properties": {
           "patientId": {
             "type": "string",
@@ -8250,12 +8251,33 @@
               "null"
             ],
             "maxLength": 36
+          },
+          "newPlacement": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/CyclePlacement" },
+              { "type": "null" }
+            ]
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Client-generated submission ID. The same nurse and ID return the original result; changed input returns 409."
           }
         },
         "required": [
           "patientId",
           "doctorId"
         ],
+        "additionalProperties": false
+      },
+      "CyclePlacement": {
+        "type": "object",
+        "properties": {
+          "roomId": { "type": "string", "minLength": 1, "maxLength": 36 },
+          "startsOn": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "endsOn": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+        },
+        "required": ["roomId", "startsOn", "endsOn"],
         "additionalProperties": false
       },
       "ChangeCycleStatus": {
@@ -8633,7 +8655,8 @@
             "maxLength": 36
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": ["pending", "assigned"]
           },
           "version": {
             "type": "integer"

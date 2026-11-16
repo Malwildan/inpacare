@@ -185,6 +185,14 @@ async function newRecapPatient(name) {
   return patientId;
 }
 
+async function admissionInput(capacity = 1) {
+  const room = await useCases.rooms.create(nurse, { name: `Admission ${newId()}`, roomClass: 'Test', capacity });
+  return {
+    patientId: await newRecapPatient('Admission patient'), doctorId: doctor.id, requestId: newId(),
+    newPlacement: { roomId: room.id, startsOn: day(), endsOn: day(2) },
+  };
+}
+
 test("new recaps continue CY numbering without rewriting archived or legacy recaps", { skip: !enabled }, async () => {
   const patientId = await newRecapPatient("Numbered recap patient");
   const input = { patientId, doctorId: doctor.id, placementId: null };
@@ -614,10 +622,106 @@ test("adoption upgrades an existing Nest schema without inventing negative claim
       { id: "legacy-approved", claim_result: "Terverifikasi (data lama)", total_amount: "10.00" },
       { id: "legacy-unknown", claim_result: null, total_amount: "10.00" },
     ]);
-    assert.equal((await legacy.query("SELECT count(*)::int n FROM migrations"))[0].n, 5);
+    const { ALL_MIGRATIONS } = require('../../dist/infrastructure/database/entity-registry');
+    assert.equal((await legacy.query("SELECT count(*)::int n FROM migrations"))[0].n, ALL_MIGRATIONS.length);
   } finally {
     if (legacy?.isInitialized) await legacy.destroy();
     await admin.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
     await admin.end();
+  }
+});
+
+test('admission creates and links a placement atomically, then starts care only on an explicit action', { skip: !enabled }, async () => {
+  const input = await admissionInput();
+  const cycle = await useCases.cycles.create(nurse, input);
+  assert.equal(cycle.status, 'assigned');
+  assert.equal(cycle.version, 1);
+  const [placement] = await ds.query('SELECT patient_id,room_id,status FROM placements WHERE id=$1', [cycle.placementId]);
+  assert.deepEqual(placement, { patient_id: input.patientId, room_id: input.newPlacement.roomId, status: 'active' });
+  assert.equal((await useCases.cycles.detail(nurse, cycle.id)).status, 'assigned');
+  await assert.rejects(useCases.cycles.request(nurse, cycle.id, { kind: 'release', reason: 'Not started' }), { code: 'CONFLICT' });
+  const started = await useCases.cycles.change(nurse, cycle.id, { status: 'in_care', expectedVersion: 1 });
+  assert.equal(started.status, 'in_care');
+  assert.equal(started.version, 2);
+});
+
+test('admission reuses only a valid placement of the selected patient and leaves existing data intact on rejection', { skip: !enabled }, async () => {
+  const input = await admissionInput();
+  const placement = await useCases.placements.create(nurse, { ...input.newPlacement, patientId: input.patientId });
+  const before = await ds.query('SELECT * FROM placements WHERE id=$1', [placement.id]);
+  const unrelatedPatient = await newRecapPatient('Unrelated admission');
+  await assert.rejects(useCases.cycles.create(nurse, { patientId: unrelatedPatient, doctorId: doctor.id, placementId: placement.id }), { code: 'VALIDATION_FAILED' });
+  assert.deepEqual(await ds.query('SELECT * FROM placements WHERE id=$1', [placement.id]), before);
+  const cycle = await useCases.cycles.create(nurse, { patientId: input.patientId, doctorId: doctor.id, placementId: placement.id });
+  assert.equal(cycle.placementId, placement.id);
+  assert.equal(cycle.status, 'assigned');
+  assert.deepEqual(await ds.query('SELECT * FROM placements WHERE id=$1', [placement.id]), before);
+  await ds.query("UPDATE cycles SET status='released' WHERE id=$1", [cycle.id]);
+  await assert.rejects(useCases.cycles.create(nurse, { patientId: input.patientId, doctorId: doctor.id, placementId: placement.id }), { code: 'CONFLICT' });
+  assert.deepEqual(await ds.query('SELECT * FROM placements WHERE id=$1', [placement.id]), before);
+});
+
+test('waiting admission needs no room, denies non-nurses, and retrying never creates another cycle', { skip: !enabled }, async () => {
+  const input = { patientId: await newRecapPatient('Waiting admission'), doctorId: doctor.id, requestId: newId() };
+  for (const role of ['DOKTER', 'ADMISI'])
+    await assert.rejects(useCases.cycles.create({ ...nurse, role }, input), { code: 'FORBIDDEN' });
+  const [first, retry] = await Promise.all([useCases.cycles.create(nurse, input), useCases.cycles.create(nurse, input)]);
+  assert.deepEqual(first, retry);
+  assert.equal(first.status, 'pending');
+  assert.equal(first.placementId, null);
+  assert.deepEqual(await ds.query('SELECT id FROM placements WHERE patient_id=$1', [input.patientId]), []);
+  assert.equal((await ds.query('SELECT count(*)::int n FROM cycles WHERE patient_id=$1', [input.patientId]))[0].n, 1);
+});
+
+test('concurrent admission retries return one saved result even after care starts; changed payload conflicts', { skip: !enabled }, async () => {
+  const input = await admissionInput();
+  const results = await Promise.all(Array.from({ length: 5 }, (_, index) => useCases.cycles.create(nurse, { ...input, requestId: index % 2 ? input.requestId.toUpperCase() : input.requestId })));
+  for (const result of results) assert.deepEqual(result, results[0]);
+  assert.equal((await ds.query('SELECT count(*)::int n FROM placements WHERE patient_id=$1', [input.patientId]))[0].n, 1);
+  assert.equal((await ds.query('SELECT count(*)::int n FROM cycles WHERE patient_id=$1', [input.patientId]))[0].n, 1);
+  await useCases.cycles.change(nurse, results[0].id, { status: 'in_care', expectedVersion: 1 });
+  assert.deepEqual(await useCases.cycles.create(nurse, input), results[0]);
+  await assert.rejects(useCases.cycles.create(nurse, { ...input, patientId: await newRecapPatient('Changed admission') }), { code: 'CONFLICT' });
+});
+
+test('competing admissions for one bed commit only one placement and cycle', { skip: !enabled }, async () => {
+  const input = await admissionInput();
+  const other = { ...input, patientId: await newRecapPatient('Competing admission'), requestId: newId() };
+  const results = await Promise.allSettled([useCases.cycles.create(nurse, input), useCases.cycles.create(nurse, other)]);
+  assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+  assert.equal(results.find(result => result.status === 'rejected').reason.code, 'CONFLICT');
+  const rejectedPatient = results[0].status === 'rejected' ? input.patientId : other.patientId;
+  assert.deepEqual(await ds.query('SELECT id FROM cycles WHERE patient_id=$1', [rejectedPatient]), []);
+  assert.deepEqual(await ds.query('SELECT id FROM placements WHERE patient_id=$1', [rejectedPatient]), []);
+  assert.equal((await ds.query('SELECT count(*)::int n FROM placements WHERE room_id=$1', [input.newPlacement.roomId]))[0].n, 1);
+});
+
+test('a failed cycle insert rolls back the new placement and allows the same request to retry', { skip: !enabled }, async () => {
+  const input = await admissionInput();
+  await ds.query(`CREATE FUNCTION fail_admission_cycle() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.patient_id='${input.patientId}' THEN RAISE EXCEPTION 'Synthetic admission save failure'; END IF; RETURN NEW; END $$;
+    CREATE TRIGGER fail_admission_cycle BEFORE INSERT ON cycles FOR EACH ROW EXECUTE FUNCTION fail_admission_cycle()`);
+  try {
+    await assert.rejects(useCases.cycles.create(nurse, input), /Synthetic admission save failure/);
+    assert.deepEqual(await ds.query('SELECT id FROM placements WHERE patient_id=$1', [input.patientId]), []);
+    assert.deepEqual(await ds.query('SELECT id FROM cycles WHERE patient_id=$1', [input.patientId]), []);
+    assert.deepEqual(await ds.query('SELECT request_id FROM cycle_creation_requests WHERE request_id=$1', [input.requestId]), []);
+  } finally {
+    await ds.query('DROP TRIGGER fail_admission_cycle ON cycles; DROP FUNCTION fail_admission_cycle()');
+  }
+  assert.equal((await useCases.cycles.create(nurse, input)).status, 'assigned');
+});
+
+test('a final save failure rolls back the cycle while preserving an existing placement', { skip: !enabled }, async () => {
+  const input = await admissionInput();
+  const placement = await useCases.placements.create(nurse, { ...input.newPlacement, patientId: input.patientId });
+  const before = await ds.query('SELECT * FROM placements WHERE id=$1', [placement.id]);
+  await ds.query(`CREATE FUNCTION fail_admission_result() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic admission result failure'; END $$;
+    CREATE TRIGGER fail_admission_result BEFORE INSERT ON cycle_creation_requests FOR EACH ROW EXECUTE FUNCTION fail_admission_result()`);
+  try {
+    await assert.rejects(useCases.cycles.create(nurse, { patientId: input.patientId, doctorId: doctor.id, placementId: placement.id, requestId: input.requestId }), /Synthetic admission result failure/);
+    assert.deepEqual(await ds.query('SELECT * FROM placements WHERE id=$1', [placement.id]), before);
+    assert.deepEqual(await ds.query('SELECT id FROM cycles WHERE patient_id=$1', [input.patientId]), []);
+  } finally {
+    await ds.query('DROP TRIGGER fail_admission_result ON cycle_creation_requests; DROP FUNCTION fail_admission_result()');
   }
 });

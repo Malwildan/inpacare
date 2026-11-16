@@ -12,3 +12,13 @@ it('preserves dashboard filters and versioned doctor decisions', async () => {
     expect(fetcher.mock.calls[2][0]).toBe('/api/v1/cycles/C1/requests/Q1/decision');
     expect(JSON.parse(String(fetcher.mock.calls[2][1]?.body))).toEqual({ decision: 'approve', note: 'Approved', expectedVersion: 4 });
 });
+
+it('sends a unified placement and retry ID and returns the saved cycle for opening details', async () => {
+    const input = { patientId: 'P1', doctorId: 'D1', requestId: 'dd60d0df-0cb1-483f-b327-a5d67ef8e3f9', newPlacement: { roomId: 'R1', startsOn: '2026-11-20', endsOn: '2026-11-22' } };
+    const saved = { id: 'CY-012', patientId: 'P1', doctorId: 'D1', nurseId: 'N1', placementId: 'PL1', status: 'assigned', version: 1 };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json(saved));
+    const result = await createHttpCareCycles(createHttpClient(fetcher)).create(input);
+    expect(result).toEqual(saved);
+    expect(fetcher.mock.calls[0][0]).toBe('/api/v1/cycles');
+    expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body))).toEqual(input);
+});

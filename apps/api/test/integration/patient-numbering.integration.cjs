@@ -27,7 +27,9 @@ for (const legacy of [false, true]) {
       const { createDataSource, ALL_MIGRATIONS } = require('../../dist/infrastructure/database/entity-registry');
       const { createUseCases } = require('../../dist/composition/create-use-cases');
       ds = createDataSource();
-      ds.setOptions({ migrations: ALL_MIGRATIONS.slice(0, -1) });
+      const numberingIndex = ALL_MIGRATIONS.findIndex(Migration => new Migration().name === 'PatientRecordNumber1793577600004');
+      assert.ok(numberingIndex > 0);
+      ds.setOptions({ migrations: ALL_MIGRATIONS.slice(0, numberingIndex) });
       await ds.initialize();
       await ds.runMigrations({ transaction: 'all' });
       const numbers = legacy ? ['RM-00042', 'RM-99999', 'LEGACY-42', 'RM-999999999999999999999999'] : [];

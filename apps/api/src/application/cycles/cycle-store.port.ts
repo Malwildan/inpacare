@@ -39,7 +39,21 @@ export interface CycleCandidate {
   name: string;
   medicalRecordNo: string;
 }
+export interface CreatedCycle {
+  id: string;
+  patientId: string;
+  placementId: string | null;
+  doctorId: string;
+  nurseId: string;
+  status: "pending" | "assigned";
+  version: number;
+}
 export interface CycleStore {
+  creationForRequest(nurseId: string, requestId: string): Promise<{
+    payload: string;
+    result: CreatedCycle;
+  } | undefined>;
+  saveCreationRequest(nurseId: string, requestId: string, payload: string, result: CreatedCycle): Promise<void>;
   creationCandidates(): Promise<CycleCandidate[]>;
   hasActiveCycle(patientId: string): Promise<boolean>;
   list(
@@ -74,6 +88,7 @@ export interface CycleStore {
     placementId: string | null;
     doctorId: string;
     nurseId: string;
+    status: "pending" | "assigned";
   }): Promise<void>;
   changeSeed(cycleId: string, nurseId: string): Promise<CycleSeed | undefined>;
   lockCycleForChange(

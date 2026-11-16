@@ -4,11 +4,16 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsObject,
+  IsUUID,
   Matches,
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
+  ValidateIf,
 } from "class-validator";
+import { Type } from "class-transformer";
 import type {
   ChangeCycleInput,
   CreateCycleInput,
@@ -41,6 +46,18 @@ export class CycleListQueryDto implements CycleListFilters {
   @MaxLength(120)
   search?: string;
 }
+export class CyclePlacementDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(36)
+  roomId!: string;
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @IsDateString({ strict: true })
+  startsOn!: string;
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @IsDateString({ strict: true })
+  endsOn!: string;
+}
 export class CreateCycleDto implements CreateCycleInput {
   @IsString()
   @MinLength(1)
@@ -54,6 +71,14 @@ export class CreateCycleDto implements CreateCycleInput {
   @IsString()
   @MaxLength(36)
   placementId?: string | null;
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => CyclePlacementDto)
+  newPlacement?: CyclePlacementDto | null;
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsUUID()
+  requestId?: string;
 }
 export class ChangeCycleDto implements ChangeCycleInput {
   @IsOptional()
