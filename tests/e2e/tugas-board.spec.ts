@@ -99,9 +99,15 @@ async function titles(page: Page, label: string, prefix: string) {
 	return all.filter(title => title.startsWith(prefix));
 }
 
+async function openMove(page: Page, title: string) {
+	const detail = page.getByRole('dialog', { name: title, exact: true });
+	if (!await detail.isVisible()) await openDetails(page, title);
+	await detail.getByRole('button', { name: 'Pindahkan', exact: true }).click();
+	return page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
+}
+
 async function moveVia(page: Page, title: string, statusLabel: string, options: { before?: string; reason?: string } = {}) {
-	await card(page, title).getByRole('button', { name: 'Pindahkan' }).click();
-	const dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
+	const dialog = await openMove(page, title);
 	await selectOption(dialog.getByLabel('Status tujuan'), { label: statusLabel });
 	if (options.before) await selectOption(dialog.getByLabel('Posisi'), { label: `Sebelum ${options.before}` });
 	if (options.reason) await dialog.getByLabel('Alasan pembatalan').fill(options.reason);
@@ -143,11 +149,14 @@ test('retry after a rejected move and failed refresh replaces stale cards', asyn
 	const task = await createTask(page, ref, title);
 	await page.goto(`/tasks?search=${encodeURIComponent(title)}`);
 	await expect(card(page, title)).toBeVisible();
+	const dialog = await openMove(page, title);
 	await moveApi(page, task, 'in_progress');
 	await page.route('**/api/v1/tasks?**', route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Daftar gagal dimuat.' } }) }));
-	const dialog = await moveVia(page, title, 'Sedang Dikerjakan');
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
+	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
 	await expect(toastMessage(page, 'Tugas berubah')).toContainText('Tugas berubah');
 	await dialog.getByRole('button', { name: 'Batal' }).click();
+	await page.keyboard.press('Escape');
 	await expect(toastMessage(page, 'Daftar Belum Dikerjakan gagal dimuat.')).toBeVisible();
 	await page.unroute('**/api/v1/tasks?**');
 	await column(page, 'Belum Dikerjakan').getByRole('button', { name: 'Coba lagi' }).click();
@@ -214,7 +223,7 @@ test('terminal cards stay readable in Detail and cannot be moved or dragged', as
 		await expect(terminalCard).toBeVisible();
 		await expect(terminalCard).toHaveAttribute('draggable', 'false');
 		await expect(terminalCard.getByRole('button', { name: 'Pindahkan' })).toHaveCount(0);
-		const detailButton = terminalCard.getByRole('button', { name: 'Detail', exact: true });
+		const detailButton = openButton(pic, title);
 		await detailButton.click();
 		const dialog = pic.getByRole('dialog');
 		await expect(dialog).toBeVisible();
@@ -468,9 +477,9 @@ test('allowed transitions and terminal restrictions hold for PIC and coordinator
 	await dinaPage.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
 	const mineCard = card(dinaPage, mine);
 	await expect(mineCard).toBeVisible();
-	await expect(mineCard.getByRole('button', { name: 'Detail', exact: true })).toBeVisible();
-	await expect(mineCard.getByRole('button', { name: 'Pindahkan' })).toBeVisible();
-	await mineCard.getByRole('button', { name: 'Pindahkan' }).click();
+	await expect(mineCard.getByRole('button')).toHaveCount(1);
+	await expect(mineCard.getByRole('button', { name: 'Pindahkan' })).toHaveCount(0);
+	await openMove(dinaPage, mine);
 	let dialog = dinaPage.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(mine)}`) });
 	expect(await optionLabels(dialog.getByLabel('Status tujuan'))).toEqual(['Sedang Dikerjakan']);
 	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
@@ -478,7 +487,7 @@ test('allowed transitions and terminal restrictions hold for PIC and coordinator
 	await expect(toastMessage(dinaPage, '', 'success')).toContainText(/dipindahkan/i);
 	await expect(column(dinaPage, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: mine })).toBeVisible();
 
-	await card(dinaPage, mine).getByRole('button', { name: 'Pindahkan' }).click();
+	await openMove(dinaPage, mine);
 	dialog = dinaPage.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(mine)}`) });
 	expect(await optionLabels(dialog.getByLabel('Status tujuan'))).toEqual(['Selesai']);
 	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Selesai' });
@@ -492,8 +501,8 @@ test('allowed transitions and terminal restrictions hold for PIC and coordinator
 	await coordinatorPage.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
 	const coordinatorOther = card(coordinatorPage, other);
 	await expect(coordinatorOther).toBeVisible();
-	await expect(coordinatorOther.getByRole('button', { name: 'Detail', exact: true })).toBeVisible();
-	await expect(coordinatorOther.getByRole('button', { name: 'Pindahkan' })).toBeVisible();
+	await expect(coordinatorOther.getByRole('button')).toHaveCount(1);
+	await expect(coordinatorOther.getByRole('button', { name: 'Pindahkan' })).toHaveCount(0);
 	await moveVia(coordinatorPage, other, 'Sedang Dikerjakan');
 	await expect(column(coordinatorPage, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: other })).toBeVisible();
 
@@ -522,8 +531,11 @@ test('Pindahkan dialog moves cards by keyboard and touch without dragging', asyn
 	const keyboardPage = await browser.newPage();
 	await signIn(keyboardPage, 'dina');
 	await keyboardPage.goto(`/tasks?search=${encodeURIComponent(keyboardTitle)}`);
-	const button = card(keyboardPage, keyboardTitle).getByRole('button', { name: 'Pindahkan' });
+	const button = openButton(keyboardPage, keyboardTitle);
 	await button.focus();
+	await keyboardPage.keyboard.press('Enter');
+	const detail = keyboardPage.getByRole('dialog', { name: keyboardTitle, exact: true });
+	await detail.getByRole('button', { name: 'Pindahkan', exact: true }).focus();
 	await keyboardPage.keyboard.press('Enter');
 	const dialog = keyboardPage.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(keyboardTitle)}`) });
 	await expect(dialog).toBeVisible();
@@ -539,7 +551,8 @@ test('Pindahkan dialog moves cards by keyboard and touch without dragging', asyn
 	await touchPage.goto(`/tasks?search=${encodeURIComponent(touchTitle)}`);
 	await expect(touchPage.getByRole('heading', { name: 'Tugas Perawatan' })).toBeVisible();
 	const touchCard = touchPage.locator('.task-card').filter({ hasText: touchTitle });
-	await touchCard.getByRole('button', { name: 'Pindahkan' }).tap();
+	await touchCard.getByRole('button').tap({ position: { x: 8, y: 8 } });
+	await touchPage.getByRole('dialog', { name: touchTitle, exact: true }).getByRole('button', { name: 'Pindahkan', exact: true }).tap();
 	const touchDialog = touchPage.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(touchTitle)}`) });
 	await expect(touchDialog).toBeVisible();
 	await selectOption(touchDialog.getByLabel('Status tujuan'), { label: 'Selesai' });
@@ -564,7 +577,7 @@ test('cancellation requires an explicit reason and preserves it on failure', asy
 	const todoCard = card(page, title);
 	await expect(todoCard).toBeVisible();
 
-	await todoCard.getByRole('button', { name: 'Pindahkan' }).click();
+	await openMove(page, title);
 	let dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
 	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Dibatalkan' });
 	await expect(dialog.getByLabel('Alasan pembatalan')).toBeVisible();
@@ -577,7 +590,7 @@ test('cancellation requires an explicit reason and preserves it on failure', asy
 	await expect(dialog).toBeHidden();
 	await expect(card(page, title)).toBeVisible();
 
-	await card(page, title).getByRole('button', { name: 'Pindahkan' }).click();
+	await openMove(page, title);
 	dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
 	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Dibatalkan' });
 	await dialog.getByLabel('Alasan pembatalan').fill('Alasan uji pembatalan.');
@@ -628,7 +641,7 @@ test('failed saves restore the confirmed card and prevent duplicate pending move
 
 	for (const failure of failures) {
 		await page.route('**/api/v1/tasks/*/move', failure.handler);
-		await card(page, title).getByRole('button', { name: 'Pindahkan' }).click();
+		await openMove(page, title);
 		const dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
 		await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
 		await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
@@ -649,11 +662,11 @@ test('failed saves restore the confirmed card and prevent duplicate pending move
 		await gate;
 		await route.continue();
 	});
-	await card(page, title).getByRole('button', { name: 'Pindahkan' }).click();
+	await openMove(page, title);
 	const pendingDialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
 	await selectOption(pendingDialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
 	await pendingDialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
-	await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: title }).locator('p[role="status"]')).toContainText('Menyimpan');
+	await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: title }).getByRole('status')).toContainText('Menyimpan');
 	await expect(pendingDialog.getByRole('button', { name: 'Konfirmasi pindahkan' })).toBeDisabled();
 	expect(moveRequests).toBe(1);
 	release();
@@ -689,7 +702,7 @@ test('drag cancellation and invalid destinations make no saved change', async ({
 	await expect(card(page, title)).toBeVisible();
 
 	await page.keyboard.press('Escape');
-	await page.getByRole('button', { name: 'Pindahkan' }).first().focus();
+	await openButton(page, title).focus();
 	await source.dispatchEvent('dragstart', { dataTransfer });
 	await page.keyboard.press('Escape');
 	await source.dispatchEvent('dragend', { dataTransfer });
@@ -719,7 +732,7 @@ test('filters disable position controls, append status moves, and explain filter
 	await page.goto(`/tasks?search=${encodeURIComponent(prefix)}&priority=high`);
 	await expect(card(page, highTitle)).toBeVisible();
 	await expect(card(page, normalTitle)).toHaveCount(0);
-	await card(page, highTitle).getByRole('button', { name: 'Pindahkan' }).click();
+	await openMove(page, highTitle);
 	let dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(highTitle)}`) });
 	await expect(dialog.getByLabel('Posisi')).toHaveCount(0);
 	await expect(dialog).toContainText('Hapus filter untuk mengatur posisi.');
@@ -733,7 +746,7 @@ test('filters disable position controls, append status moves, and explain filter
 
 	await page.goto(`/tasks?search=${encodeURIComponent(prefix)}&status=todo`);
 	await expect(card(page, normalTitle)).toBeVisible();
-	await card(page, normalTitle).getByRole('button', { name: 'Pindahkan' }).click();
+	await openMove(page, normalTitle);
 	dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(normalTitle)}`) });
 	const secondOptions = await optionLabels(dialog.getByLabel('Status tujuan'));
 	expect(secondOptions).toContain('Sedang Dikerjakan');
@@ -955,18 +968,17 @@ test('board geometry, long content, mobile overflow, and evidence screenshots', 
 	await longCard.dispatchEvent('dragend', { dataTransfer: transfer });
 	await expect(page.locator('.column-drop-overlay')).toHaveCount(0);
 
-	await longCard.getByRole('button', { name: 'Pindahkan' }).click();
+	await openMove(page, longTitle);
 	await expect(page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(token)}`) })).toBeVisible();
 	await page.screenshot({ path: path.join(evidence, 'tugas-board-move-dialog.png'), animations: 'disabled' });
 	await page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(token)}`) }).getByRole('button', { name: 'Batal' }).click();
-	await longCard.getByRole('button', { name: new RegExp(escape(token)) }).click();
 	await expect(page.getByRole('dialog')).toContainText(token);
 	await page.screenshot({ path: path.join(evidence, 'tugas-board-detail.png'), animations: 'disabled' });
 	await page.getByRole('dialog').getByRole('button', { name: 'Tutup', exact: true }).click();
 
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.evaluate(() => document.fonts.ready);
-	await longCard.getByRole('button', { name: 'Detail', exact: true }).click();
+	await openButton(page, longTitle).click();
 	const mobileDetail = page.getByRole('dialog', { name: longTitle });
 	await expect(mobileDetail).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

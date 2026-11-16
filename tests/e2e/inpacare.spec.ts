@@ -152,7 +152,8 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await expect(detail).toContainText('Pemeriksaan diselesaikan melalui alur E2E.');
 	await detail.getByRole('button',{name:'Tutup',exact:true}).click();
 	await expect(detail).toBeHidden();
-	await card.getByRole('button',{name:'Pindahkan'}).click();
+	await card.getByRole('button').click();
+	await pic.getByRole('dialog',{name:title,exact:true}).getByRole('button',{name:'Pindahkan',exact:true}).click();
 	const move=pic.getByRole('dialog',{name:new RegExp(`Pindahkan ${title}`)});
 	await selectOption(move.getByLabel('Status tujuan'), 'in_progress');
 	await move.getByRole('button',{name:'Konfirmasi pindahkan'}).click();

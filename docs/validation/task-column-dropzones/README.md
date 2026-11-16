@@ -1,5 +1,7 @@
 # Task column drop targets
 
+These captures document the original column-drop change. See [single-action task cards](../task-card-single-action/README.md) for the subsequent card layout.
+
 These captures use synthetic task, patient and staff data from `tests/ui/fixtures/TasksFixture.svelte`. They show the real `TasksPage` component, not the design mockup. Regenerate them with `npm run test:web:ux`; source captures are written to `.local/evidence/task-column-drop-*.png`.
 
 - [Desktop: active blue destination and striped gray locks](active-and-locked-desktop.png). The glow follows the hovered allowed column. Locked columns explain the status or role restriction.
