@@ -252,7 +252,7 @@ test('terminal cards stay readable in Detail and cannot be moved or dragged', as
 			await pic.screenshot({ path: path.join(evidence, 'tugas-board-history-mobile.png'), animations: 'disabled' });
 			await pic.setViewportSize({ width: 1440, height: 1000 });
 		}
-		await dialog.getByRole('button', { name: 'Tutup' }).click();
+		await dialog.getByRole('button', { name: 'Tutup', exact: true }).click();
 		await expect(detailButton).toBeFocused();
 	}
 	await pic.close();
@@ -449,7 +449,7 @@ test('allowed transitions and terminal restrictions hold for PIC and coordinator
 	await expect(card(dinaPage, mine).getByRole('button', { name: 'Pindahkan' })).toHaveCount(0);
 	await openDetails(dinaPage, mine);
 	await expect(dinaPage.getByRole('dialog').getByRole('button', { name: 'Pindahkan' })).toHaveCount(0);
-	await dinaPage.getByRole('button', { name: 'Tutup' }).click();
+	await dinaPage.getByRole('dialog').getByRole('button', { name: 'Tutup', exact: true }).click();
 
 	await coordinatorPage.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
 	const coordinatorOther = card(coordinatorPage, other);
@@ -801,7 +801,7 @@ test('card details restore focus and retain management forms', async ({ browser 
 	await open.focus();
 	await open.click();
 	await expect(dinaPage.getByRole('dialog')).toContainText(title);
-	await dinaPage.getByRole('button', { name: 'Tutup' }).click();
+	await dinaPage.getByRole('dialog').getByRole('button', { name: 'Tutup', exact: true }).click();
 	await expect(dinaPage.getByRole('dialog')).toBeHidden();
 	await expect.poll(() => dinaPage.evaluate(() => document.activeElement?.id)).toBe(`task-${task.id}`);
 
@@ -821,7 +821,7 @@ test('card details restore focus and retain management forms', async ({ browser 
 	await detail.getByRole('button', { name: 'Alihkan PIC' }).click();
 	await expect(toastMessage(coordinatorPage, '', 'success')).toContainText(/berhasil/i);
 	await expect(coordinatorPage.getByRole('dialog')).toContainText('Bima Pratama');
-	await coordinatorPage.getByRole('button', { name: 'Tutup' }).click();
+	await coordinatorPage.getByRole('dialog').getByRole('button', { name: 'Tutup', exact: true }).click();
 
 	await dinaPage.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
 	await expect(dinaPage.locator('.task-card').filter({ hasText: revised })).toHaveCount(0);
@@ -840,7 +840,7 @@ test('card details restore focus and retain management forms', async ({ browser 
 	await expect(column(coordinatorPage, 'Dibatalkan').locator('.task-card').filter({ hasText: cancelTitle })).toBeVisible();
 	await openButton(coordinatorPage, cancelTitle).click();
 	await expect(coordinatorPage.getByRole('dialog')).toContainText('Alasan batal dari detail.');
-	await coordinatorPage.getByRole('button', { name: 'Tutup' }).click();
+	await coordinatorPage.getByRole('dialog').getByRole('button', { name: 'Tutup', exact: true }).click();
 
 	const deletePrefix = unique('Hapus detail');
 	const deleteTitle = `${deletePrefix} tugas`;
@@ -912,7 +912,7 @@ test('board geometry, long content, mobile overflow, and evidence screenshots', 
 	await longCard.getByRole('button', { name: new RegExp(escape(token)) }).click();
 	await expect(page.getByRole('dialog')).toContainText(token);
 	await page.screenshot({ path: path.join(evidence, 'tugas-board-detail.png'), animations: 'disabled' });
-	await page.getByRole('button', { name: 'Tutup' }).click();
+	await page.getByRole('dialog').getByRole('button', { name: 'Tutup', exact: true }).click();
 
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.evaluate(() => document.fonts.ready);
@@ -921,7 +921,7 @@ test('board geometry, long content, mobile overflow, and evidence screenshots', 
 	await expect(mobileDetail).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 	await page.screenshot({ path: path.join(evidence, 'tugas-board-detail-mobile.png'), animations: 'disabled' });
-	await mobileDetail.getByRole('button', { name: 'Tutup' }).click();
+	await mobileDetail.getByRole('button', { name: 'Tutup', exact: true }).click();
 	const mobile = await page.evaluate(() => {
 		const board = document.querySelector<HTMLElement>('.task-board')!;
 		const columns = [...document.querySelectorAll<HTMLElement>('.task-column')];

@@ -147,7 +147,7 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await pic.getByLabel('Catatan tindakan').fill('Pemeriksaan diselesaikan melalui alur E2E.');
 	await pic.getByRole('button',{name:'Simpan catatan'}).click();
 	await expect(detail).toContainText('Pemeriksaan diselesaikan melalui alur E2E.');
-	await pic.getByRole('button',{name:'Tutup'}).click();
+	await detail.getByRole('button',{name:'Tutup',exact:true}).click();
 	await expect(detail).toBeHidden();
 	await card.getByRole('button',{name:'Pindahkan'}).click();
 	const move=pic.getByRole('dialog',{name:new RegExp(`Pindahkan ${title}`)});
@@ -188,7 +188,7 @@ test('role navigation only exposes the signed-in role’s screens and small scre
 	await form.getByLabel('Harga satuan (Rp)').fill('1.250,25');
 	await form.getByLabel('Jumlah jaminan BPJS (Rp)').fill('500');
 	await form.getByRole('button',{name:'Simpan tagihan'}).click();
-	await expect(admission.getByRole('status')).toContainText(/berhasil/i);
+	await expect(toastMessage(admission, 'Perubahan berhasil disimpan.', 'success')).toBeVisible();
 	await admission.reload();
 	await expect.poll(()=>createdInvoiceId,{timeout:7500}).not.toBe('');
 	const invoice=admission.getByRole('row').filter({hasText:createdInvoiceId});
