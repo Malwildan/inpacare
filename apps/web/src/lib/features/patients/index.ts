@@ -1,2 +1,2 @@
-export type { PatientContext } from './domain/models';
-export type { Patients, PatientPageData } from './application/patients';
+export type { PatientContext, NewPatient, PatientList } from './domain/models';
+export type { Patients, PatientPageData, PatientListData } from './application/patients';

@@ -2,7 +2,7 @@
 import { toast } from '$lib/shared/ui/sonner/index.js';
 import { page } from '$app/state';
 import { goto } from '$app/navigation';
-import { BedDouble, Bell, CalendarDays, Check, ClipboardList, FileHeart, LayoutDashboard, LogOut, Menu, ReceiptText, RefreshCw, X } from 'lucide-svelte';
+import { BedDouble, Bell, CalendarDays, Check, ClipboardList, FileHeart, LayoutDashboard, LogOut, Menu, ReceiptText, RefreshCw, Users, X } from 'lucide-svelte';
 import type { User, Auth } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
 import { NotificationDialog, type Notifications, type Notification } from '$lib/features/notifications';
@@ -32,6 +32,7 @@ let navigationBrand = $state<HTMLAnchorElement | null>(null);
 let loggingOut = $state(false);
 const navigation = [
     { path: '/dashboard', label: 'Ringkasan Siklus', icon: LayoutDashboard, roles: ['DOKTER', 'PERAWAT'] },
+    { path: '/patients', label: 'Data Pasien', icon: Users, roles: ['ADMISI'] },
     { path: '/rooms', label: 'Manajemen Ruangan', icon: BedDouble, roles: ['PERAWAT', 'ADMISI'] },
     { path: '/calendar', label: 'Kalender Ruangan', icon: CalendarDays, roles: ['PERAWAT', 'DOKTER', 'ADMISI'] },
     { path: '/medical-records', label: 'Rekam Medis', icon: FileHeart, roles: ['DOKTER', 'PERAWAT', 'ADMISI'] },

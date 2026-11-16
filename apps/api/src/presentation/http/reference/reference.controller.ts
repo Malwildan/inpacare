@@ -1,10 +1,21 @@
-import { Controller, Get, Param, Query } from "@nestjs/common";
-import { Actor, CurrentActor } from "../security/auth-context";
+import { Body, Controller, Get, HttpCode, Param, Post, Query } from "@nestjs/common";
+import { Actor, CurrentActor, Roles } from "../security/auth-context";
 import { ReferenceUseCases } from "../../../application/reference/reference.use-cases";
 import { PatientFilterDto } from "./dto/patient-filter.dto";
+import { CreatePatientDto } from "./dto/create-patient.dto";
+import { PatientsUseCases } from "../../../application/patients/patients.use-cases";
 @Controller()
 export class ReferenceController {
-  constructor(private readonly reference: ReferenceUseCases) {}
+  constructor(
+    private readonly reference: ReferenceUseCases,
+    private readonly registration: PatientsUseCases,
+  ) {}
+  @Post("patients")
+  @HttpCode(200)
+  @Roles("ADMISI")
+  createPatient(@CurrentActor() actor: Actor, @Body() dto: CreatePatientDto) {
+    return this.registration.create(actor, dto);
+  }
   @Get("patients")
   patients(
     @CurrentActor()

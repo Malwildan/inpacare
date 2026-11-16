@@ -53,7 +53,8 @@ export interface paths {
         /** Search scoped patients */
         get: operations["GET_patients"];
         put?: never;
-        post?: never;
+        /** Register patient (admissions only) */
+        post: operations["POST_patients"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1534,6 +1535,21 @@ export interface components {
             beforeTaskId: string | null;
             reason?: string;
         };
+        NewPatient: {
+            medicalRecordNo: string;
+            name: string;
+            /**
+             * Format: date
+             * @description Valid birth date, no later than today in Asia/Jakarta.
+             */
+            birthDate: string;
+            /** @enum {string} */
+            gender: "L" | "P";
+            bpjs: boolean;
+            /** @description Required when bpjs is true; omit or use null otherwise. */
+            bpjsNumber?: string | null;
+            address?: string | null;
+        };
     };
     responses: never;
     parameters: {
@@ -1848,6 +1864,7 @@ export interface operations {
             query?: {
                 q?: string;
                 limit?: number;
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -1862,6 +1879,87 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PatientPage"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    POST_patients: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must match the application origin. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewPatient"];
+            };
+        };
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Patient"];
                 };
             };
             /** @description Unauthenticated. */

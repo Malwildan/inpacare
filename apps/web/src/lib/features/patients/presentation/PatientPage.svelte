@@ -50,7 +50,7 @@ import { ArrowLeft, CalendarDays } from 'lucide-svelte';
 			<h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Ringkasan Pasien</h1>
 			<p class="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed text-muted-foreground">Informasi pasien dan keterkaitan rawat inap.</p>
 		</div>
-		<Button variant="outline" class="h-11 shrink-0 px-4" href={data.user.role === 'ADMISI' ? '/invoices' : '/dashboard'}><ArrowLeft aria-hidden="true" /> Kembali</Button>
+		<Button variant="outline" class="h-11 shrink-0 px-4" href={data.user.role === 'ADMISI' ? '/patients' : '/dashboard'}><ArrowLeft aria-hidden="true" /> Kembali</Button>
 	</header>
 
 	<Card>

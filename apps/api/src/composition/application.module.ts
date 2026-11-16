@@ -10,9 +10,11 @@ import { CyclesUseCases } from "../application/cycles/cycles.use-cases";
 import { RekamMedisUseCases } from "../application/medical-records/rekam-medis.use-cases";
 import { TagihanUseCases } from "../application/billing/tagihan.use-cases";
 import { ReferenceUseCases } from "../application/reference/reference.use-cases";
+import { PatientsUseCases } from "../application/patients/patients.use-cases";
 import { NotificationsUseCases } from "../application/notifications/notifications.use-cases";
 const SERVICES = Symbol("ApplicationServices");
 const bindings = [
+  [PatientsUseCases, "patients"],
   [AuthUseCases, "auth"],
   [TugasUseCases, "tasks"],
   [RuangInapUseCases, "rooms"],
