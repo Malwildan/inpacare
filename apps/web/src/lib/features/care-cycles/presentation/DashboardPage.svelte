@@ -84,7 +84,7 @@ async function filterCycles(event: SubmitEvent, draft = { roomId: roomFilter, pa
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries({ search: search.trim(), ...draft })) if (value) query.set(key, value);
     try {
-        await goto(`/dashboard${query.size ? '?' + query : ''}`, { keepFocus: true, noScroll: true });
+        await goto(`/dashboard${query.size ? '?' + query : ''}`, { reset: false });
         filterOpen = false;
     } catch (cause) { toast.error(sessionFailure(cause)); }
     finally { filterBusy = false; }

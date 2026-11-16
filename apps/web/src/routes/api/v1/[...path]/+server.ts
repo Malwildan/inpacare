@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import { API_ORIGIN } from '$app/env/private';
 import type { RequestHandler } from './$types';
 const proxy: RequestHandler = async ({ request, url, params, getClientAddress }) => {
  const headers = new Headers(request.headers);
@@ -6,7 +6,7 @@ const proxy: RequestHandler = async ({ request, url, params, getClientAddress })
  headers.set('x-forwarded-for', getClientAddress());
  headers.set('x-forwarded-host', url.host); headers.set('x-forwarded-proto', url.protocol.slice(0,-1));
  try {
-  const upstream = await fetch(`${env.API_ORIGIN ?? 'http://127.0.0.1:8080'}/api/v1/${params.path}${url.search}`, {
+  const upstream = await fetch(`${API_ORIGIN}/api/v1/${params.path}${url.search}`, {
    method: request.method, headers, body: ['GET','HEAD'].includes(request.method) ? undefined : await request.arrayBuffer(), redirect:'manual'
   });
   const output = new Headers(upstream.headers); output.delete('transfer-encoding'); output.delete('connection'); output.set('cache-control','no-store');
