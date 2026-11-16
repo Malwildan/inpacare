@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import { env } from 'node:process';
 import type { RequestHandler } from './$types';
 const proxy: RequestHandler = async ({ request, url, params, getClientAddress }) => {
  const headers = new Headers(request.headers);

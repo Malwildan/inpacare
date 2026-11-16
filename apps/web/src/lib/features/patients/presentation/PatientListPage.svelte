@@ -58,7 +58,7 @@ async function create(event: SubmitEvent) {
         savedId = patient.id;
         notice = `Pasien ${patient.name} berhasil ditambahkan.`;
         try {
-            await goto(`/patients?${new URLSearchParams({ q: patient.medicalRecordNo })}`, { invalidateAll: true, keepFocus: false });
+            await goto(`/patients?${new URLSearchParams({ q: patient.medicalRecordNo })}`, { refreshAll: true });
         } catch {
             error = 'Pasien sudah tersimpan, tetapi daftar belum dapat dimuat ulang. Buka ringkasan pasien atau muat ulang halaman.';
         }
