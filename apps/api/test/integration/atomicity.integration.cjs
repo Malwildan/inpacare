@@ -614,7 +614,7 @@ test("adoption upgrades an existing Nest schema without inventing negative claim
       { id: "legacy-approved", claim_result: "Terverifikasi (data lama)", total_amount: "10.00" },
       { id: "legacy-unknown", claim_result: null, total_amount: "10.00" },
     ]);
-    assert.equal((await legacy.query("SELECT count(*)::int n FROM migrations"))[0].n, 4);
+    assert.equal((await legacy.query("SELECT count(*)::int n FROM migrations"))[0].n, 5);
   } finally {
     if (legacy?.isInitialized) await legacy.destroy();
     await admin.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);

@@ -1,7 +1,6 @@
 import { PatientSummary } from "../reference/reference-store.port";
 
 export interface CreatePatientInput {
-  medicalRecordNo: string;
   name: string;
   birthDate: string;
   gender: "L" | "P";

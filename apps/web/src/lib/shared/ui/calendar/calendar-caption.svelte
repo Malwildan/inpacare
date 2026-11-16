@@ -41,6 +41,7 @@
 
 {#snippet MonthSelect()}
 	<CalendarMonthSelect
+		aria-label="Bulan"
 		{months}
 		{monthFormat}
 		value={month.month}
@@ -54,7 +55,7 @@
 {/snippet}
 
 {#snippet YearSelect()}
-	<CalendarYearSelect {years} {yearFormat} value={month.year} />
+	<CalendarYearSelect aria-label="Tahun" {years} {yearFormat} value={month.year} />
 {/snippet}
 
 {#if captionLayout === "dropdown"}

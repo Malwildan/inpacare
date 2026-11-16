@@ -13,7 +13,7 @@ Built as an educational project with an Indonesian-language interface and synthe
 
 | Module | Capabilities |
 | --- | --- |
-| Patient registration | Admissions-only registration, unique medical record numbers, and searchable patient identities. |
+| Patient registration | Admissions-only registration, automatically generated medical record numbers, and searchable patient identities. |
 | Rooms and equipment | Room inventory, equipment costs, capacity checks, and nurse assignments. |
 | Placement calendar | Weekly occupancy and admission placement with overlap and concurrent-capacity checks. |
 | Nursing tasks | Coordinator delegation, PIC progress, reassignment, cancellation, and change history. |

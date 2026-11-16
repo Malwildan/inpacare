@@ -1,7 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { selectOption } from '../select-option.mjs';
+import { selectDate } from '../select-date.mjs';
 
-const draft = { medicalRecordNo: '', name: 'Pasien Registrasi Sintetis', birthDate: '2000-02-29', gender: 'P', bpjs: false };
+const draft = { name: 'Pasien Registrasi Sintetis', birthDate: '2000-02-29', gender: 'P', bpjs: false };
 async function signIn(page: Page, username: string) {
     const origin = new URL(test.info().project.use.baseURL!).origin;
     const session = await page.request.post('/api/v1/session', {
@@ -17,21 +18,27 @@ async function headers(page: Page) {
     return { origin: new URL(page.url()).origin, 'x-csrf-token': csrf };
 }
 
-test('admissions registers a patient, finds the saved identity after reload, and rejects duplicates', async ({ page }, testInfo) => {
+test('admissions registers with a generated record number and finds it after reload', async ({ page }, testInfo) => {
     await signIn(page, 'admisi');
     await page.getByRole('navigation', { name: 'Navigasi utama', exact: true }).getByRole('link', { name: 'Data Pasien', exact: true }).click();
     await page.getByRole('button', { name: 'Tambah Pasien', exact: true }).click();
-    await expect(page.getByLabel('Nomor rekam medis', { exact: true })).toBeFocused();
-    const medicalRecordNo = `RM-E2E-${Date.now()}`;
-    await page.getByLabel('Nomor rekam medis', { exact: true }).fill(medicalRecordNo);
+    await expect(page.getByLabel('Nama lengkap')).toBeFocused();
+    await expect(page.getByLabel('Nomor rekam medis', { exact: true })).toHaveAttribute('readonly', '');
+    await expect(page.getByLabel('Nomor rekam medis', { exact: true })).toHaveValue('Dibuat otomatis saat disimpan');
     await page.getByLabel('Nama lengkap').fill(draft.name);
-    await page.getByLabel('Tanggal lahir', { exact: true }).fill(draft.birthDate);
+    await selectDate(page.getByLabel('Tanggal lahir', { exact: true }), draft.birthDate);
     await selectOption(page.getByRole('combobox', { name: 'Jenis kelamin', exact: true }), draft.gender);
     await page.getByLabel('Alamat (opsional)').fill('Alamat pasien sintetis');
     await page.getByLabel('Peserta BPJS').check();
     await page.getByLabel('Nomor BPJS', { exact: true }).fill('0001234567890');
     await page.screenshot({ path: testInfo.outputPath('registration-desktop.png'), fullPage: true });
+    const saved = page.waitForResponse(response => response.url().endsWith('/api/v1/patients') && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Simpan pasien', exact: true }).click();
+    const response = await saved;
+    expect(response.status()).toBe(200);
+    expect(response.request().postDataJSON()).not.toHaveProperty('medicalRecordNo');
+    const { medicalRecordNo } = await response.json();
+    expect(medicalRecordNo).toMatch(/^RM-\d{5,}$/);
     await expect(page.getByRole('status')).toContainText('berhasil ditambahkan');
     const row = page.getByRole('row').filter({ hasText: medicalRecordNo });
     await expect(row).toContainText(draft.name);
@@ -42,9 +49,9 @@ test('admissions registers a patient, finds the saved identity after reload, and
     await expect(page.getByText('0001234567890', { exact: true })).toBeVisible();
     const context = await page.request.get('/api/v1/reference');
     expect((await context.json()).patients.some((patient: { medicalRecordNo: string }) => patient.medicalRecordNo === medicalRecordNo)).toBe(true);
-    const duplicate = await page.request.post('/api/v1/patients', { headers: await headers(page), data: { ...draft, medicalRecordNo } });
-    expect(duplicate.status()).toBe(409);
-    expect((await duplicate.json()).error.message).toContain('sudah terdaftar');
+    const next = await page.request.post('/api/v1/patients', { headers: await headers(page), data: draft });
+    expect(next.status()).toBe(200);
+    expect((await next.json()).medicalRecordNo).not.toBe(medicalRecordNo);
 });
 
 test('registration keeps a rejected draft and fits a mobile viewport', async ({ page }, testInfo) => {
@@ -52,19 +59,32 @@ test('registration keeps a rejected draft and fits a mobile viewport', async ({ 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/patients');
     await page.getByRole('button', { name: 'Tambah Pasien', exact: true }).click();
-    await page.getByLabel('Nomor rekam medis', { exact: true }).fill('RM-DRAFT-TEST');
     await page.getByLabel('Nama lengkap').fill(draft.name);
-    await page.getByLabel('Tanggal lahir', { exact: true }).fill(draft.birthDate);
+    const birthDate = page.getByLabel('Tanggal lahir', { exact: true });
+    await birthDate.focus();
+    await birthDate.press('Enter');
+    const calendar = page.locator('[data-calendar-root]');
+    await expect(calendar.getByLabel('Tahun', { exact: true })).toBeVisible();
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    await expect(calendar.locator(`[data-calendar-cell][data-value="${today}"] [data-calendar-day]`).first()).not.toBeDisabled();
+    await calendar.getByLabel('Tahun', { exact: true }).selectOption(String(Number(today.slice(0, 4))));
+    const future = calendar.locator('[data-calendar-cell]:not([data-outside-month]) [data-calendar-day][data-disabled]');
+    if (Number(today.slice(8)) < new Date(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0).getDate()) await expect(future.first()).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('birth-date-mobile.png'), fullPage: true });
+    await page.keyboard.press('Escape');
+    await expect(birthDate).toBeFocused();
+    await selectDate(birthDate, draft.birthDate);
     await selectOption(page.getByRole('combobox', { name: 'Jenis kelamin', exact: true }), draft.gender);
     let writes = 0;
     await page.route('**/api/v1/patients', async route => {
         if (route.request().method() !== 'POST') return route.continue();
         writes++;
-        await route.fulfill({ status: 409, json: { error: { code: 'CONFLICT', message: 'Nomor rekam medis sudah terdaftar.' } } });
+        await route.fulfill({ status: 503, json: { error: { code: 'UNAVAILABLE', message: 'Penyimpanan pasien sementara tidak tersedia.' } } });
     });
     await page.getByRole('button', { name: 'Simpan pasien', exact: true }).click();
-    await expect(page.getByRole('alert')).toContainText('sudah terdaftar');
+    await expect(page.getByRole('alert')).toContainText('sementara tidak tersedia');
     await expect(page.getByLabel('Nama lengkap')).toHaveValue(draft.name);
+    await expect(birthDate).toHaveAttribute('data-value', draft.birthDate);
     expect(writes).toBe(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
     await page.screenshot({ path: testInfo.outputPath('registration-mobile-error.png'), fullPage: true });
@@ -78,7 +98,7 @@ for (const username of ['hendra', 'dina', 'rina']) {
         expect(response.status()).toBe(403);
         const before = await page.request.get('/api/v1/patients');
         const count = (await before.json()).total;
-        const denied = await page.request.post('/api/v1/patients', { headers: await headers(page), data: { ...draft, medicalRecordNo: `RM-DENIED-${username}` } });
+        const denied = await page.request.post('/api/v1/patients', { headers: await headers(page), data: draft });
         expect(denied.status()).toBe(403);
         expect((await (await page.request.get('/api/v1/patients')).json()).total).toBe(count);
         if (username !== 'hendra') expect((await page.request.get('/patients/PT-001')).status()).toBe(200);
@@ -90,9 +110,8 @@ test('registration enforces session, CSRF and server validation', async ({ page 
     expect(anonymous.status()).toBe(401);
     await signIn(page, 'admisi');
     expect((await page.request.post('/api/v1/patients', { data: draft })).status()).toBe(403);
-    const valid = { ...draft, medicalRecordNo: `RM-INVALID-${Date.now()}` };
-    for (const fields of [{ name: ' ' }, { birthDate: '2001-02-29' }, { birthDate: '9999-01-01' }, { bpjs: true }, { bpjs: true, bpjsNumber: 'abc' }, { role: 'ADMISI' }]) {
-        const invalid = await page.request.post('/api/v1/patients', { headers: await headers(page), data: { ...valid, ...fields } });
+    for (const fields of [{ name: ' ' }, { birthDate: '2001-02-29' }, { birthDate: '9999-01-01' }, { bpjs: true }, { bpjs: true, bpjsNumber: 'abc' }, { role: 'ADMISI' }, { medicalRecordNo: 'RM-00001' }]) {
+        const invalid = await page.request.post('/api/v1/patients', { headers: await headers(page), data: { ...draft, ...fields } });
         expect(invalid.status()).toBe(422);
     }
 });
@@ -104,7 +123,7 @@ test('patient search remains paginated across navigation and reload', async ({ p
     for (let index = 0; index < 26; index++) {
         const response = await page.request.post('/api/v1/patients', {
             headers: requestHeaders,
-            data: { ...draft, medicalRecordNo: `${marker}-${index}`, name: `${marker} Pasien ${String(index).padStart(2, '0')}` },
+            data: { ...draft, name: `${marker} Pasien ${String(index).padStart(2, '0')}` },
         });
         expect(response.status()).toBe(200);
     }

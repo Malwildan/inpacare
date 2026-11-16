@@ -1535,8 +1535,8 @@ export interface components {
             beforeTaskId: string | null;
             reason?: string;
         };
+        /** @description New patient identity. The server assigns a unique medicalRecordNo when registration succeeds; clients must not supply it. */
         NewPatient: {
-            medicalRecordNo: string;
             name: string;
             /**
              * Format: date
