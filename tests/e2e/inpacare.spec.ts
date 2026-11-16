@@ -1,3 +1,4 @@
+import { toastMessage } from '../toast.mjs';
 import { test, expect, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -38,7 +39,7 @@ test('login rejects bad credentials, signs in, and revokes the session on logout
 	await page.getByLabel('ID petugas').fill('rina');
 	await page.getByLabel('Kata sandi', { exact: true }).fill('wrong');
 	await page.getByRole('button', { name: 'Masuk' }).click();
-	await expect(page.getByRole('alert')).toContainText(/tidak sesuai/i);
+	await expect(toastMessage(page, /tidak sesuai/i)).toContainText(/tidak sesuai/i);
 	await page.getByLabel('Kata sandi', { exact: true }).fill(password);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);
@@ -120,7 +121,7 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await coordinator.getByLabel('Waktu mulai').fill(local(starts));
 	await coordinator.getByLabel('Waktu selesai').fill(local(ends));
 	await coordinator.getByRole('button', { name: 'Simpan tugas' }).click();
-	await expect(coordinator.locator('p.success')).toContainText(/berhasil/i);
+	await expect(toastMessage(coordinator, '', 'success')).toContainText(/berhasil/i);
 	await coordinator.goto(`/tasks?search=${encodeURIComponent(title)}`);
 	await expect(coordinator.locator('.task-card').filter({hasText:title})).toBeVisible();
 	await mkdir(evidence, { recursive: true });
@@ -152,7 +153,7 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await selectOption(move.getByLabel('Status tujuan'), 'in_progress');
 	await move.getByRole('button',{name:'Konfirmasi pindahkan'}).click();
 	await expect(move).toBeHidden();
-	await expect(pic.locator('p.success')).toContainText(/dipindahkan/i);
+	await expect(toastMessage(pic, '', 'success')).toContainText(/dipindahkan/i);
 	await expect(pic.getByRole('dialog')).toHaveCount(0);
 	await pic.reload();
 	const persistedColumn=pic.locator('.task-column').filter({hasText:title});

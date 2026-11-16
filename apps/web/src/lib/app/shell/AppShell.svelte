@@ -1,4 +1,5 @@
 <script lang="ts">
+import { toast } from '$lib/shared/ui/sonner/index.js';
 import { page } from '$app/state';
 import { goto } from '$app/navigation';
 import { LayoutDashboard, BedDouble, CalendarDays, ClipboardList, FileHeart, ReceiptText, LogOut, Bell, Menu, X } from 'lucide-svelte';
@@ -7,7 +8,6 @@ import type { Reference } from '$lib/features/reference-data';
 import type { Notifications, Notification } from '$lib/features/notifications';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { Button } from '$lib/shared/ui/button/index.js';
-import { Alert, AlertDescription } from '$lib/shared/ui/alert/index.js';
 import * as Breadcrumb from '$lib/shared/ui/breadcrumb/index.js';
 import * as Popover from '$lib/shared/ui/popover/index.js';
 import * as Sheet from '$lib/shared/ui/sheet/index.js';
@@ -23,7 +23,7 @@ let { data, children, auth, notificationService }: {
 let mobileOpen = $state(false);
 let notificationsOpen = $state(false);
 let notifications = $state<Notification[]>([]);
-let notificationError = $state('');
+let notificationsFailed = $state(false);
 let notificationsLoading = $state(false);
 let notificationButton = $state<HTMLButtonElement | null>(null);
 let menuButton = $state<HTMLButtonElement | null>(null);
@@ -45,9 +45,10 @@ async function logout() {
     try {
         await auth.logout();
         await goto('/login', { invalidateAll: true });
+        toast.success('Berhasil keluar.');
     }
     catch (failure) {
-        sessionFailure(failure);
+        toast.error(sessionFailure(failure));
         loggingOut = false;
     }
 }
@@ -55,13 +56,14 @@ async function showNotifications() {
     if (notificationsLoading)
         return;
     notificationsLoading = true;
-    notificationError = '';
+    notificationsFailed = false;
     try {
         notifications = await notificationService.list();
-        notificationError = '';
+        toast.dismiss('notifications-load');
     }
     catch (error) {
-        notificationError = sessionFailure(error);
+        notificationsFailed = true;
+        toast.error(sessionFailure(error), { id: 'notifications-load' });
     }
     finally {
         notificationsLoading = false;
@@ -79,9 +81,10 @@ async function readNotification(id: string) {
     try {
         await notificationService.markRead(id);
         notifications = notifications.map((notice) => notice.id === id ? { ...notice, readAt: new Date().toISOString() } : notice);
+        toast.success('Notifikasi ditandai sudah dibaca.');
     }
     catch (error) {
-        notificationError = sessionFailure(error);
+        toast.error(sessionFailure(error));
     }
 }
 const home = $derived(data.user.role === 'ADMISI' ? '/invoices' : '/dashboard');
@@ -172,8 +175,7 @@ const home = $derived(data.user.role === 'ADMISI' ? '/invoices' : '/dashboard');
                     <div class="space-y-2 p-3">
                         {#if notificationsLoading}
                             <p role="status" class="p-3 text-sm text-muted-foreground">Memuat notifikasi…</p>
-                        {:else if notificationError}
-                            <Alert variant="destructive"><AlertDescription>{notificationError}</AlertDescription></Alert>
+                        {:else if notificationsFailed}
                             <Button variant="outline" class="h-11 w-full" onclick={showNotifications}>Coba lagi</Button>
                         {:else if notifications.length === 0}
                             <p class="p-3 text-sm text-muted-foreground">Belum ada notifikasi.</p>

@@ -1,3 +1,4 @@
+import { toastMessage } from '../toast.mjs';
 import { test, expect } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -57,7 +58,7 @@ test('medical record archive requires confirmation and keeps its reason after a 
 	const reason = dialog.getByLabel('Alasan pengarsipan');
 	await reason.fill('   ');
 	await dialog.getByRole('button', { name: 'Konfirmasi arsip' }).click();
-	await expect(dialog.getByRole('alert')).toContainText('Alasan pengarsipan wajib diisi.');
+	await expect(toastMessage(page, 'Alasan pengarsipan wajib diisi.')).toContainText('Alasan pengarsipan wajib diisi.');
 	expect(archiveRequests).toBe(0);
 
 	await reason.fill('Periksa konflik versi rekam medis');
@@ -66,7 +67,7 @@ test('medical record archive requires confirmation and keeps its reason after a 
 	await archived;
 	await expect(dialog).toBeVisible();
 	await expect(reason).toHaveValue('Periksa konflik versi rekam medis');
-	await expect(dialog.getByRole('alert')).toContainText('Versi rekam medis berubah.');
+	await expect(toastMessage(page, 'Versi rekam medis berubah.')).toContainText('Versi rekam medis berubah.');
 	expect(archiveRequests).toBe(1);
 	expect(archivePayload).toMatchObject({ reason: 'Periksa konflik versi rekam medis' });
 	expect(typeof archivePayload?.expectedVersion).toBe('number');

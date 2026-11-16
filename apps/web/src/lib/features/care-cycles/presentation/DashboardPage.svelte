@@ -1,4 +1,5 @@
 <script lang="ts">
+import { toast } from '$lib/shared/ui/sonner/index.js';
 import { Button } from '$lib/shared/ui/button/index.js';
 import { Card } from '$lib/shared/ui/card/index.js';
 import { Input } from '$lib/shared/ui/input/index.js';
@@ -26,19 +27,15 @@ $effect(() => { search = data.filters.search; roomFilter = data.filters.roomId; 
 let busy = $state(false);
 let deletingCycle = $state<CycleDetail | null>(null);
 let deletionReason = $state('');
-let error = $state('');
-let success = $state('');
 let createOpen = $state(false);
 let createPatientId = $state('');
 let createPlacementId = $state('');
-let createError = $state('');
 let matchingPlacements = $derived(data.reference.placements.filter(p => p.patientId === createPatientId && p.status === 'active'));
 function choosePatient() {
     const placements = data.reference.placements.filter(p => p.patientId === createPatientId && p.status === 'active');
     createPlacementId = placements.length === 1 ? placements[0].id : '';
-    createError = '';
 }
-function openCreate() { createPatientId = ''; createPlacementId = ''; createError = ''; error = ''; success = ''; createOpen = true; }
+function openCreate() { createPatientId = ''; createPlacementId = ''; createOpen = true; }
 let selectedCycleId = $state<string | null>(null);
 let selectedCycle = $state<CycleDetail | null>(null);
 let pendingRequest = $derived(selectedCycle?.requests.find(item => item.status === 'pending'));
@@ -51,8 +48,6 @@ async function openDetail(id: string) {
     selectedCycleId = id;
     selectedCycle = null;
     detailLoading = true;
-    error = '';
-    success = '';
     requestKind = 'release';
     try {
         const detail = await careCycles.detail(id);
@@ -61,7 +56,7 @@ async function openDetail(id: string) {
     }
     catch (cause) {
         if (selectedCycleId === id)
-            error = sessionFailure(cause);
+            toast.error(sessionFailure(cause));
     }
     finally {
         if (selectedCycleId === id)
@@ -71,20 +66,19 @@ async function openDetail(id: string) {
 async function filterCycles(event: SubmitEvent) { event.preventDefault(); const query = new URLSearchParams(); for (const [key, value] of Object.entries({ search: search.trim(), roomId: roomFilter, patientId: patientFilter, status: statusFilter }))
     if (value)
         query.set(key, value); await goto(`/dashboard${query.size ? '?' + query : ''}`, { keepFocus: true, noScroll: true }); }
-function closeDetail() { selectedCycleId = null; selectedCycle = null; error = ''; }
+function closeDetail() { selectedCycleId = null; selectedCycle = null; }
 async function send(operation: () => Promise<unknown>): Promise<boolean> {
     if (busy) return false;
     busy = true;
-    error = '';
-    success = '';
+    const toastId = toast.loading('Menyimpan perubahan…');
     try {
         await operation();
         await invalidateAll();
-        success = 'Perubahan berhasil disimpan.';
+        toast.success('Perubahan berhasil disimpan.', { id: toastId });
         return true;
     }
     catch (cause) {
-        error = sessionFailure(cause);
+        toast.error(sessionFailure(cause), { id: toastId });
         return false;
     }
     finally {
@@ -96,15 +90,15 @@ async function create(event: SubmitEvent) {
     if (busy) return;
     const form = new FormData(event.currentTarget as HTMLFormElement);
     busy = true;
-    createError = '';
+    const toastId = toast.loading('Membuat rekap pasien…');
     try {
         await careCycles.create({ patientId: createPatientId, doctorId: formText(form, 'doctorId'), placementId: createPlacementId || null });
         createOpen = false;
-        success = 'Rekap berhasil dibuat dengan status Pending. Buka Lihat detail untuk melanjutkan siklus.';
         await goto('/dashboard', { invalidateAll: true });
+        toast.success('Rekap berhasil dibuat dengan status Pending. Buka Lihat detail untuk melanjutkan siklus.', { id: toastId });
     } catch (cause) {
-        if (createOpen) createError = sessionFailure(cause);
-        else error = 'Rekap tersimpan, tetapi daftar gagal dimuat. Muat ulang halaman.';
+        if (createOpen) toast.error(sessionFailure(cause), { id: toastId });
+        else toast.warning('Rekap tersimpan, tetapi daftar gagal dimuat. Muat ulang halaman.', { id: toastId });
     }
     finally { busy = false; }
 }
@@ -132,7 +126,7 @@ async function assignPlacement(event: SubmitEvent, cycle: CycleDetail) { event.p
 async function deleteCycle(cycle: CycleDetail) {
     if (cycle.status !== 'pending' || busy) return;
     const reason = deletionReason.trim();
-    if (!reason) { error = 'Alasan penghapusan wajib diisi.'; return; }
+    if (!reason) { toast.error('Alasan penghapusan wajib diisi.'); return; }
     if (await send(() => careCycles.remove(cycle.id, { expectedVersion: cycle.version, reason }))) {
         deletingCycle = null;
         closeDetail();
@@ -145,8 +139,6 @@ async function deleteCycle(cycle: CycleDetail) {
 <section class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 	<div><h1 class="page-title">Dashboard Siklus Inpatient Care</h1><p class="page-subtitle">Pantau setiap pasien dan kelanjutan proses rawat inap sesuai kondisi terkini.</p></div>
 </section>
-{#if error}<p class="error" role="alert">{error}</p>{/if}
-{#if success}<p class="success" role="status">{success}</p>{/if}
 
 <section class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" aria-label="Ringkasan siklus">
 	{#each counts as item}<Card class="gap-1 p-4"><strong class="text-2xl font-semibold tabular-nums">{item.count}</strong><span class="text-sm text-muted-foreground">{({pending:'Pending',assigned:'Assigned',in_care:'In Care',extend:'Extend',released:'Pelepasan'} as Record<string,string>)[item.status]}</span></Card>{/each}
@@ -158,7 +150,6 @@ async function deleteCycle(cycle: CycleDetail) {
 {#if createOpen}
     <Modal busy={busy} title="Tambah rekap pasien" description="Pilih pasien dan dokter penanggung jawab untuk rekap perawatan baru." onclose={() => { if (!busy) createOpen = false; }}>
         <p class="create-help">Buat siklus rawat inap untuk pasien yang sudah terdaftar. Status awal rekap adalah Pending.</p>
-        {#if createError}<p class="error" role="alert">{createError}</p>{/if}
         {#if data.creationCandidates.length === 0}
             <p class="empty">Belum ada pasien terdaftar tanpa rekap aktif. Periksa rekap yang ada atau minta data pasien didaftarkan terlebih dahulu.</p>
             <Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" onclick={() => createOpen = false}>Tutup</Button>
@@ -206,8 +197,7 @@ async function deleteCycle(cycle: CycleDetail) {
 				<div class="detail-item"><span>Perawat</span><strong>{selectedCycle.nurseName}</strong></div>
 				<div class="detail-item"><span>Status saat ini</span><strong><Badge value={selectedCycle.status}/></strong></div>
 			</div>
-			{#if error}<p class="error" role="alert">{error}</p>{/if}
-			{#if data.user.role==='PERAWAT'&&selectedCycle.status==='pending'}<section class="detail-section"><h3>Penempatan pasien</h3><p class="muted">Rekap pending dapat dihubungkan ke penempatan aktif atau dikembalikan menjadi belum ditempatkan.</p><form onsubmit={(event)=>assignPlacement(event,selectedCycle!)}><label class="field">Penempatan<FormSelect name="placementId" value={selectedCycle.placementId??''} options={[{ value: "", label: "Belum ditempatkan" }, ...(data.reference.placements.filter((p)=>p.status==='active'&&p.patientId===selectedCycle!.patientId)).map((placement) => ({ value: placement.id, label: (placement.roomName) + " · " + (placement.startsOn) + "–" + (placement.endsOn) }))]} /></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>Simpan penempatan</Button><Button variant="destructive" type="button" class="h-11 px-4 no-underline hover:no-underline" disabled={busy} onclick={()=>{ deletingCycle=selectedCycle; deletionReason=''; error=''; }}>Hapus rekap</Button></div></form></section>{/if}
+			{#if data.user.role==='PERAWAT'&&selectedCycle.status==='pending'}<section class="detail-section"><h3>Penempatan pasien</h3><p class="muted">Rekap pending dapat dihubungkan ke penempatan aktif atau dikembalikan menjadi belum ditempatkan.</p><form onsubmit={(event)=>assignPlacement(event,selectedCycle!)}><label class="field">Penempatan<FormSelect name="placementId" value={selectedCycle.placementId??''} options={[{ value: "", label: "Belum ditempatkan" }, ...(data.reference.placements.filter((p)=>p.status==='active'&&p.patientId===selectedCycle!.patientId)).map((placement) => ({ value: placement.id, label: (placement.roomName) + " · " + (placement.startsOn) + "–" + (placement.endsOn) }))]} /></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>Simpan penempatan</Button><Button variant="destructive" type="button" class="h-11 px-4 no-underline hover:no-underline" disabled={busy} onclick={()=>{ deletingCycle=selectedCycle; deletionReason=''; }}>Hapus rekap</Button></div></form></section>{/if}
 			{#if data.user.role === 'PERAWAT' && ['pending', 'assigned'].includes(selectedCycle.status)}
 				<section class="detail-section"><h3>Perbarui status</h3><p class="muted">Lanjutkan ke tahap berikutnya dalam siklus perawatan.</p>
 					<form onsubmit={(event) => transition(event, selectedCycle!)}><label class="field">Tahap berikutnya<FormSelect name="status" required options={[{ value: selectedCycle.status === 'pending' ? 'assigned' : 'in_care', label: (selectedCycle.status === 'pending' ? 'Assigned' : 'In Care') }]} /></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>Simpan status</Button></div></form>
@@ -225,7 +215,7 @@ async function deleteCycle(cycle: CycleDetail) {
 					{#if data.user.role === 'DOKTER' && item.status === 'pending'}<form onsubmit={(event) => decide(event, selectedCycle!, item.id, String((event.submitter as HTMLButtonElement)?.value))}><label class="field">Catatan keputusan<Input class="h-11 text-base md:text-sm" name="note" maxlength={500} required /></label><div class="form-actions"><Button variant="outline" type="submit" class="h-11 px-4 no-underline hover:no-underline" name="decision" value="reject" disabled={busy}>Tolak</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" name="decision" value="approve" disabled={busy}>Setujui</Button></div></form>{/if}
 				</div>{/each}{/if}
 			</section>
-		{:else}{#if error}<p class="error" role="alert">{error}</p>{/if}<Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" onclick={() => void openDetail(selectedCycleId!)}>Coba lagi</Button>{/if}
+		{:else}<Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" onclick={() => void openDetail(selectedCycleId!)}>Coba lagi</Button>{/if}
 	</Modal>
 {/if}
 
@@ -237,7 +227,6 @@ async function deleteCycle(cycle: CycleDetail) {
         <p class="text-sm text-muted-foreground">Hapus rekap {deletingCycle.patientName}? Masukkan alasan sebelum mengonfirmasi.</p>
         <form class="flex flex-col gap-4" onsubmit={(event) => { event.preventDefault(); if (deletingCycle) void deleteCycle(deletingCycle); }}>
             <label class="field">Alasan penghapusan<Textarea name="reason" bind:value={deletionReason} required maxlength={500}/></label>
-            {#if error}<p class="error" role="alert">{error}</p>{/if}
             <div class="flex justify-end gap-2">
                 <Button variant="outline" disabled={busy} onclick={() => deletingCycle = null}>Batal</Button>
                 <Button type="submit" variant="destructive" disabled={busy}>{busy ? 'Menghapus…' : 'Konfirmasi hapus'}</Button>
