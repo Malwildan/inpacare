@@ -124,6 +124,8 @@ jobs:
       API_ORIGIN: http://127.0.0.1:8081
       TRUSTED_ORIGINS: http://127.0.0.1:3000,http://127.0.0.1:8081
       INPACARE_TEST_URL: http://127.0.0.1:3000
+      # adapter-node otherwise assumes HTTPS, rejecting bodyless HTTP mutations.
+      ORIGIN: http://127.0.0.1:3000
       SEED_DEMO_PASSWORD: InpaCareDemo!2026
       HOST: 127.0.0.1
       PORT: '3000'
