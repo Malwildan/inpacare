@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { selectOption } from '../select-option.mjs';
+import { selectDate } from '../select-date.mjs';
 
 const password = 'InpaCareDemo!2026';
 const evidence = path.resolve('.local/evidence');
@@ -117,8 +118,8 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	const starts = new Date(Date.now() + 5 * 60_000);
 	const ends = new Date(starts.getTime() + 45 * 60_000);
 	const local = (value: Date) => {const date=new Date(value.getTime()-value.getTimezoneOffset()*60_000);return date.toISOString().slice(0,16);};
-	await coordinator.getByLabel('Waktu mulai').fill(local(starts));
-	await coordinator.getByLabel('Waktu selesai').fill(local(ends));
+	await selectDate(coordinator.getByLabel('Waktu mulai'), local(starts));
+	await selectDate(coordinator.getByLabel('Waktu selesai'), local(ends));
 	await coordinator.getByRole('button', { name: 'Simpan tugas' }).click();
 	await expect(coordinator.locator('p.success')).toContainText(/berhasil/i);
 	await coordinator.goto(`/tasks?search=${encodeURIComponent(title)}`);

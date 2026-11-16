@@ -9,6 +9,7 @@
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
 	import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '$lib/shared/ui/dialog/index.js';
 	import { Field, FieldGroup, FieldLabel } from '$lib/shared/ui/field/index.js';
+	import FormDatePicker from '$lib/shared/ui/form-date-picker.svelte';
 	import { Input } from '$lib/shared/ui/input/index.js';
 	import { Textarea } from '$lib/shared/ui/textarea/index.js';
 
@@ -178,7 +179,7 @@
 					<form class="flex flex-col gap-5" onsubmit={update}>
 						<Field>
 							<FieldLabel for="record-date">Tanggal</FieldLabel>
-							<Input id="record-date" type="date" name="recordDate" value={record.recordDate} required />
+							<FormDatePicker id="record-date" type="date" name="recordDate" value={record.recordDate} required />
 						</Field>
 						<FieldGroup class="grid gap-5 lg:grid-cols-2">
 							<Field><FieldLabel for="record-complaint">Keluhan</FieldLabel><Textarea id="record-complaint" name="complaint" value={record.complaint ?? ''} rows={3} required /></Field>
@@ -254,7 +255,7 @@
 							{#if editingObservation === observation.id}
 								<form class="mt-6 flex flex-col gap-5 rounded-lg bg-muted/40 p-4 sm:p-5" onsubmit={(event) => correctObservation(event, observation)}>
 									<FieldGroup class="grid gap-5 lg:grid-cols-2">
-										<Field><FieldLabel for="correction-time-{observation.id}">Waktu observasi</FieldLabel><Input id="correction-time-{observation.id}" name="observedAt" type="datetime-local" value={new Date(new Date(observation.observedAt).getTime() - new Date(observation.observedAt).getTimezoneOffset() * 60000).toISOString().slice(0, 16)} required /></Field>
+										<Field><FieldLabel for="correction-time-{observation.id}">Waktu observasi</FieldLabel><FormDatePicker id="correction-time-{observation.id}" name="observedAt" type="datetime-local" value={new Date(new Date(observation.observedAt).getTime() - new Date(observation.observedAt).getTimezoneOffset() * 60000).toISOString().slice(0, 16)} required /></Field>
 										<Field><FieldLabel for="correction-symptoms-{observation.id}">Gejala/kondisi</FieldLabel><Textarea id="correction-symptoms-{observation.id}" name="symptoms" value={observation.symptoms} rows={3} required /></Field>
 										<Field><FieldLabel for="correction-note-{observation.id}">Catatan keperawatan</FieldLabel><Textarea id="correction-note-{observation.id}" name="nursingNote" value={observation.nursingNote ?? ''} rows={3} /></Field>
 									</FieldGroup>
