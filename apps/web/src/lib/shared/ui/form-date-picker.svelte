@@ -1,6 +1,6 @@
 <script lang="ts">
 import { DateFormatter, parseDate, type DateValue } from '@internationalized/date';
-import { CalendarDays } from 'lucide-svelte';
+import { CalendarDays, Check, X } from 'lucide-svelte';
 import { Button } from './button/index.js';
 import { Calendar } from './calendar/index.js';
 import { Input } from './input/index.js';
@@ -80,12 +80,12 @@ function requireValue(event: Event & { currentTarget: HTMLInputElement }) {
                 <Label for={`${id}-time`}>Waktu</Label>
                 <Input id={`${id}-time`} type="time" value={time} {disabled} class="h-11 text-base"
                     oninput={(event) => { value = `${date?.toString() ?? ''}T${event.currentTarget.value}`; invalid = false; }} />
-                <Button class="h-11" disabled={!formValue} onclick={() => open = false}>Selesai</Button>
+                <Button class="h-11" disabled={!formValue} onclick={() => open = false}><Check aria-hidden="true" /> Selesai</Button>
             </div>
         {/if}
         {#if !required && value}
             <div class="border-t p-2">
-                <Button variant="ghost" class="h-11 w-full" onclick={() => { value = ''; invalid = false; open = false; }}>Hapus tanggal</Button>
+                <Button variant="ghost" class="h-11 w-full" onclick={() => { value = ''; invalid = false; open = false; }}><X aria-hidden="true" /> Hapus tanggal</Button>
             </div>
         {/if}
     </Popover.Content>

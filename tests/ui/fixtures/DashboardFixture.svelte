@@ -7,7 +7,7 @@ const candidate = { id: 'new-patient', name: 'Pasien Baru', medicalRecordNo: 'RM
 const data = $state({
     user: { id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT', coordinator: false },
     filters: { search: '', status: '', roomId: '', patientId: '' },
-    cycles: [cycle, readableCycle], notifications: [], creationCandidates: [candidate],
+    cycles: [cycle, readableCycle], creationCandidates: [candidate],
     reference: { patients: [candidate], rooms: [], placements: [], staff: [{ id: 'doctor', name: 'Dokter Uji', role: 'DOKTER', active: true }] }
 });
 const removals = [];
@@ -27,4 +27,4 @@ const careCycles = {
 };
 </script>
 
-<div class="min-w-0 p-4"><DashboardPage {data} {careCycles} markNotificationRead={async () => {}} /></div>
+<div class="min-w-0 p-4"><DashboardPage {data} {careCycles} /></div>

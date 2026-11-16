@@ -1,4 +1,5 @@
 <script lang="ts">
+import { Archive, ArrowLeft, Pencil, Plus, Save, X } from 'lucide-svelte';
 	import { toast } from '$lib/shared/ui/sonner/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { MedicalRecords, MedicalDetailData, Observation } from '$lib/features/medical-records';
@@ -137,11 +138,11 @@
 				{record.medicalRecordNo} · {new Date(record.recordDate + 'T12:00:00').toLocaleDateString('id-ID')}{#if record.doctorName} · {record.doctorName}{/if}
 			</p>
 		</div>
-		<div class="flex flex-wrap gap-2">
+		<div class="action-buttons">
 			{#if canEdit}
-				<Button variant="destructive" disabled={busy} onclick={() => { archiveOpen = true; }}>Arsipkan rekam medis</Button>
+				<Button variant="destructive" disabled={busy} onclick={() => { archiveOpen = true; }}><Archive aria-hidden="true" /> Arsipkan rekam medis</Button>
 			{/if}
-			<Button href="/medical-records" variant="outline">Kembali</Button>
+			<Button href="/medical-records" variant="outline"><ArrowLeft aria-hidden="true" /> Kembali</Button>
 		</div>
 	</header>
 
@@ -183,7 +184,7 @@
 							<FieldLabel for="record-reason">Alasan koreksi</FieldLabel>
 							<Input id="record-reason" name="reason" required maxlength={500} />
 						</Field>
-						<div><Button type="submit" disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan perubahan'}</Button></div>
+						<div><Button type="submit" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan perubahan'}</Button></div>
 					</form>
 				{:else}
 					<dl class="grid gap-x-8 gap-y-6 lg:grid-cols-2">
@@ -204,7 +205,7 @@
 			<CardContent>
 				{#if canObserve}
 					<div class="mb-6">
-						<Button variant="outline" type="button" aria-expanded={observeOpen} onclick={() => observeOpen = !observeOpen}>{observeOpen ? 'Tutup formulir observasi' : 'Tambah observasi'}</Button>
+						<Button variant="outline" type="button" aria-expanded={observeOpen} onclick={() => observeOpen = !observeOpen}>{#if observeOpen}<X aria-hidden="true" />{:else}<Plus aria-hidden="true" />{/if} {observeOpen ? 'Tutup formulir observasi' : 'Tambah observasi'}</Button>
 						{#if observeOpen}
 						<form class="mt-5 flex flex-col gap-5" onsubmit={observe}>
 							<FieldGroup class="grid gap-5 lg:grid-cols-2">
@@ -219,7 +220,7 @@
 								<Field><FieldLabel for="observation-respiratory">Pernapasan (/menit)</FieldLabel><Input id="observation-respiratory" name="respiratoryRate" type="number" min={0} step={1} /></Field>
 								<Field><FieldLabel for="observation-spo2">Saturasi O₂ (%)</FieldLabel><Input id="observation-spo2" name="spo2" type="number" min={0} max={100} step={0.01} /></Field>
 							</FieldGroup>
-							<div><Button type="submit" disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan observasi'}</Button></div>
+							<div><Button type="submit" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan observasi'}</Button></div>
 						</form>
 						{/if}
 					</div>
@@ -231,7 +232,7 @@
 							<div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
 								<div><h3 class="font-medium">{observation.nurseName}</h3><p class="mt-1 text-sm text-muted-foreground">{new Date(observation.observedAt).toLocaleString('id-ID')} · versi {observation.version}</p></div>
 								{#if canObserve && observation.nurseId === data.user.id}
-									<Button variant="outline" size="sm" aria-expanded={editingObservation === observation.id} onclick={() => editingObservation = editingObservation === observation.id ? null : observation.id}>{editingObservation === observation.id ? 'Tutup koreksi' : 'Koreksi observasi'}</Button>
+									<Button variant="outline" class="h-11" aria-expanded={editingObservation === observation.id} onclick={() => editingObservation = editingObservation === observation.id ? null : observation.id}>{#if editingObservation === observation.id}<X aria-hidden="true" />{:else}<Pencil aria-hidden="true" />{/if} {editingObservation === observation.id ? 'Tutup koreksi' : 'Koreksi observasi'}</Button>
 								{/if}
 							</div>
 							<p class="clinical-value mt-4"><strong>Gejala/kondisi:</strong> {observation.symptoms}</p>
@@ -260,7 +261,7 @@
 										<Field><FieldLabel for="correction-spo2-{observation.id}">Saturasi O₂ (%)</FieldLabel><Input id="correction-spo2-{observation.id}" name="spo2" type="number" step={0.01} value={observation.spo2 ?? ''} /></Field>
 									</FieldGroup>
 									<Field><FieldLabel for="correction-reason-{observation.id}">Alasan koreksi</FieldLabel><Input id="correction-reason-{observation.id}" name="reason" required maxlength={500} /></Field>
-									<div class="flex flex-wrap gap-2"><Button type="submit" disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan koreksi'}</Button><Button variant="outline" type="button" onclick={() => editingObservation = null}>Batal</Button></div>
+									<div class="action-buttons"><Button type="submit" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan koreksi'}</Button><Button variant="outline" type="button" onclick={() => editingObservation = null}><X aria-hidden="true" /> Batal</Button></div>
 								</form>
 							{/if}
 						</article>
@@ -285,8 +286,8 @@
 				<Textarea id="archive-reason" name="reason" bind:value={archiveReason} rows={3} maxlength={500} required />
 			</Field>
 			<DialogFooter>
-				<Button type="button" variant="outline" disabled={busy} onclick={() => archiveOpen = false}>Batal</Button>
-				<Button type="submit" variant="destructive" disabled={busy}>{busy ? 'Mengarsipkan…' : 'Konfirmasi arsip'}</Button>
+				<Button type="button" variant="outline" disabled={busy} onclick={() => archiveOpen = false}><X aria-hidden="true" /> Batal</Button>
+				<Button type="submit" variant="destructive" disabled={busy}><Archive aria-hidden="true" /> {busy ? 'Mengarsipkan…' : 'Konfirmasi arsip'}</Button>
 			</DialogFooter>
 		</form>
 	</DialogContent>

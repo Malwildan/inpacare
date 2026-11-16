@@ -4,7 +4,7 @@
 	import type { MedicalRecords, MedicalListData } from '$lib/features/medical-records';
 	import { sessionFailure } from '$lib/shared/presentation/session';
 	import { formText } from '$lib/shared/presentation/form';
-	import { ArrowRight, Plus } from 'lucide-svelte';
+	import { ArrowRight, Plus, Save, X } from 'lucide-svelte';
 	import { Button } from '$lib/shared/ui/button/index.js';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
 	import { Field, FieldGroup, FieldLabel } from '$lib/shared/ui/field/index.js';
@@ -131,9 +131,9 @@
 							<Textarea id="record-notes" name="notes" rows={2} maxlength={5000} class="text-base md:text-sm" />
 						</Field>
 					</FieldGroup>
-					<div class="flex flex-wrap justify-end gap-2">
-						<Button type="button" variant="outline" class="h-11 px-4" onclick={() => (creating = false)}>Batal</Button>
-						<Button type="submit" class="h-11 px-4" disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan rekam medis'}</Button>
+					<div class="action-buttons action-buttons--full">
+						<Button type="button" variant="outline" class="h-11 px-4" onclick={() => (creating = false)}><X aria-hidden="true" /> Batal</Button>
+						<Button type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan rekam medis'}</Button>
 					</div>
 				</form>
 			</CardContent>
@@ -190,9 +190,9 @@
 								<TableCell class="align-top tabular-nums">{record.observationCount}</TableCell>
 							{/if}
 							<TableCell class="px-4 align-top text-right sm:px-5">
-								<a class="inline-flex items-center gap-2 text-sm font-semibold whitespace-nowrap text-primary hover:underline" href={'/medical-records/' + record.id}>
+								<Button variant="outline" class="h-11 px-3 text-[13px] no-underline hover:no-underline" href={'/medical-records/' + record.id}>
 									Lihat detail <ArrowRight size={14} aria-hidden="true" />
-								</a>
+								</Button>
 							</TableCell>
 						</TableRow>
 					{:else}

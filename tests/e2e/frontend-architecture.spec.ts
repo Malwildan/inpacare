@@ -84,20 +84,24 @@ test('a rejected task update preserves the draft and sends a single versioned wr
 });
 
 
-test('notification read action remains connected through dashboard composition', async ({ page }) => {
+test('dashboard notifications remain available through the navbar', async ({ page }) => {
  await signIn(page);
  const response=await page.request.get('/api/v1/notifications');
  expect(response.ok()).toBe(true);
  const notices=(await response.json()).items as {id:string;readAt:string|null;message:string}[];
  await page.goto('/dashboard');
- const summary=page.locator('details').filter({has:page.locator('summary').filter({hasText:'Notifikasi'})});
- await summary.locator('summary').click();
- if(notices.some(notice=>!notice.readAt)) {
+ await expect(page.locator('#main-content summary').filter({hasText:'Notifikasi'})).toHaveCount(0);
+ await page.getByRole('button',{name:'Notifikasi',exact:true}).click();
+ const inbox=page.locator('[data-slot="popover-content"][aria-label="Notifikasi"]');
+ const unread=notices.find(notice=>!notice.readAt);
+ if(unread) {
   const changed=page.waitForResponse(response=>response.request().method()==='POST' && /\/notifications\/[^/]+\/read$/.test(new URL(response.url()).pathname));
-  await summary.getByRole('button',{name:'Tandai dibaca'}).first().click();
+  const notice=inbox.getByRole('button').filter({hasText:unread.message}).first();
+  await notice.click();
   expect((await changed).ok()).toBe(true);
+  await expect(notice).toContainText('Sudah dibaca');
  } else {
-  await expect(summary).toContainText(notices.length ? notices[0].message : 'Belum ada notifikasi.');
+  await expect(inbox).toContainText(notices.length ? notices[0].message : 'Belum ada notifikasi.');
  }
 });
 
