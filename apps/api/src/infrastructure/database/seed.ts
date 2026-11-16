@@ -87,6 +87,10 @@ async function main(): Promise<void> {
           ],
         );
       }
+      await manager.query(
+        "SELECT setval('patient_medical_record_no_seq',GREATEST((SELECT last_value FROM patient_medical_record_no_seq),$1),true)",
+        [4218 + patientNames.length - 1],
+      );
       const roomNames = [
         "Melati 01",
         "Melati 02",

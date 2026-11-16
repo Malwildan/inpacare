@@ -5,6 +5,10 @@ export async function selectDate(trigger, value) {
 	await trigger.click();
 	const calendar = page.locator('[data-calendar-root]');
 	await calendar.waitFor({ state: 'visible' });
+	const yearSelect = calendar.locator('[data-calendar-year-select]');
+	if (await yearSelect.count()) await yearSelect.selectOption(String(Number(date.slice(0, 4))));
+	const monthSelect = calendar.locator('[data-calendar-month-select]');
+	if (await monthSelect.count()) await monthSelect.selectOption(String(Number(date.slice(5, 7))));
 	// The visible month may start at today or at the field's current value.
 	for (let attempt = 0; attempt < 120; attempt++) {
 		const day = calendar.locator(`[data-calendar-cell][data-value="${date}"]:not([data-outside-month]) [data-calendar-day]`);

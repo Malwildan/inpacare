@@ -12,6 +12,7 @@ import { Checkbox } from '$lib/shared/ui/checkbox/index.js';
 import { Field, FieldLabel } from '$lib/shared/ui/field/index.js';
 import { Input } from '$lib/shared/ui/input/index.js';
 import FormSelect from '$lib/shared/ui/form-select.svelte';
+import FormDatePicker from '$lib/shared/ui/form-date-picker.svelte';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
 import { Textarea } from '$lib/shared/ui/textarea/index.js';
 
@@ -22,10 +23,11 @@ let bpjs = $state(false);
 let error = $state('');
 let notice = $state('');
 let savedId = $state('');
-let numberInput = $state<HTMLInputElement | null>(null);
+let nameInput = $state<HTMLInputElement | null>(null);
 const today = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
 }).format(new Date());
+const birthYears = Array.from({ length: Number(today.slice(0, 4)) - 1899 }, (_, index) => 1900 + index);
 const currentPage = $derived(data.offset / 25 + 1);
 const pageHref = (page: number) => `/patients?${new URLSearchParams({ q: data.search, page: String(page) })}`;
 
@@ -33,7 +35,7 @@ async function toggleForm() {
     creating = !creating;
     error = '';
     bpjs = false;
-    if (creating) { await tick(); numberInput?.focus(); }
+    if (creating) { await tick(); nameInput?.focus(); }
 }
 
 async function create(event: SubmitEvent) {
@@ -46,7 +48,6 @@ async function create(event: SubmitEvent) {
     savedId = '';
     try {
         const patient = await patients.create({
-            medicalRecordNo: formText(form, 'medicalRecordNo').trim(),
             name: formText(form, 'name').trim(),
             birthDate: formText(form, 'birthDate'),
             gender: formText(form, 'gender') as 'L' | 'P',
@@ -56,7 +57,7 @@ async function create(event: SubmitEvent) {
         });
         creating = false;
         savedId = patient.id;
-        notice = `Pasien ${patient.name} berhasil ditambahkan.`;
+        notice = `Pasien ${patient.name} berhasil ditambahkan dengan nomor rekam medis ${patient.medicalRecordNo}.`;
         try {
             await goto(`/patients?${new URLSearchParams({ q: patient.medicalRecordNo })}`, { invalidateAll: true, keepFocus: false });
         } catch {
@@ -87,9 +88,9 @@ async function create(event: SubmitEvent) {
             <form onsubmit={create} aria-busy={busy}>
                 <fieldset class="grid min-w-0 gap-5 sm:grid-cols-2" disabled={busy}>
                     <legend class="sr-only">Identitas pasien baru</legend>
-                    <Field><FieldLabel for="patient-record-number">Nomor rekam medis</FieldLabel><Input id="patient-record-number" bind:ref={numberInput} name="medicalRecordNo" required maxlength={64} autocomplete="off" class="h-11 text-base md:text-base" /></Field>
-                    <Field><FieldLabel for="patient-name">Nama lengkap</FieldLabel><Input id="patient-name" name="name" required maxlength={200} autocomplete="off" class="h-11 text-base md:text-base" /></Field>
-                    <Field><FieldLabel for="patient-birth-date">Tanggal lahir</FieldLabel><Input id="patient-birth-date" type="date" name="birthDate" max={today} required class="h-11 text-base md:text-base" /></Field>
+                    <Field><FieldLabel for="patient-record-number">Nomor rekam medis</FieldLabel><Input id="patient-record-number" value="Dibuat otomatis saat disimpan" readonly class="h-11 bg-muted text-base text-muted-foreground md:text-base" /></Field>
+                    <Field><FieldLabel for="patient-name">Nama lengkap</FieldLabel><Input id="patient-name" bind:ref={nameInput} name="name" required maxlength={200} autocomplete="off" class="h-11 text-base md:text-base" /></Field>
+                    <Field><FieldLabel for="patient-birth-date">Tanggal lahir</FieldLabel><FormDatePicker id="patient-birth-date" name="birthDate" max={today} captionLayout="dropdown" years={birthYears} required disabled={busy} class="text-base md:text-base" /></Field>
                     <Field><FieldLabel for="patient-gender">Jenis kelamin</FieldLabel><FormSelect id="patient-gender" name="gender" required disabled={busy} options={[{ value: '', label: 'Pilih jenis kelamin' }, { value: 'L', label: 'Laki-laki' }, { value: 'P', label: 'Perempuan' }]} /></Field>
                     <Field class="sm:col-span-2"><FieldLabel for="patient-address">Alamat (opsional)</FieldLabel><Textarea id="patient-address" name="address" maxlength={1000} rows={2} class="text-base md:text-base" /></Field>
                     <div class="flex min-h-11 items-center gap-3"><Checkbox id="patient-bpjs" bind:checked={bpjs} disabled={busy} /><FieldLabel for="patient-bpjs" class="cursor-pointer">Peserta BPJS</FieldLabel></div>

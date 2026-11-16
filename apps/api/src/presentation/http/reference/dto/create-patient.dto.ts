@@ -4,10 +4,6 @@ import { CreatePatientInput } from "../../../../application/patients/patient-sto
 export class CreatePatientDto implements CreatePatientInput {
   @IsString()
   @MinLength(1)
-  @MaxLength(64)
-  medicalRecordNo!: string;
-  @IsString()
-  @MinLength(1)
   @MaxLength(200)
   name!: string;
   @Matches(/^\d{4}-\d{2}-\d{2}$/)

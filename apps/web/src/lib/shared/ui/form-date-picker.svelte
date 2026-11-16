@@ -12,7 +12,7 @@ import { toast } from './sonner/index.js';
 const autoId = $props.id();
 let {
     value = $bindable(''), name, id = autoId, type = 'date', required = false,
-    disabled = false, class: className, ...triggerProps
+    disabled = false, max, captionLayout = 'label', years, class: className, ...triggerProps
 }: {
     value?: string;
     name?: string;
@@ -20,6 +20,9 @@ let {
     type?: 'date' | 'datetime-local';
     required?: boolean;
     disabled?: boolean;
+    max?: string;
+    captionLayout?: 'label' | 'dropdown' | 'dropdown-months' | 'dropdown-years';
+    years?: number[];
     class?: string;
     'aria-label'?: string;
     'aria-labelledby'?: string;
@@ -40,8 +43,9 @@ const date = $derived.by(() => {
 });
 const time = $derived(value.split('T')[1] ?? '');
 const withTime = $derived(type === 'datetime-local');
+const maximum = $derived(max ? parseDate(max) : undefined);
 // Keep the API's date-only / local date-time strings, without timezone conversion.
-const formValue = $derived(date && (!withTime || time) ? value : '');
+const formValue = $derived(date && (!maximum || date.compare(maximum) <= 0) && (!withTime || time) ? value : '');
 
 function selectDate(next: DateValue | undefined) {
     value = next ? next.toString() + (withTime ? `T${time}` : '') : '';
@@ -74,7 +78,7 @@ function requireValue(event: Event & { currentTarget: HTMLInputElement }) {
     </Popover.Trigger>
     <Popover.Content align="start" class="w-auto max-w-[calc(100vw-1rem)] gap-0 p-0">
         <Calendar type="single" value={date} onValueChange={selectDate} locale="id-ID"
-            initialFocus preventDeselect={required} {disabled} calendarLabel="Pilih tanggal" />
+            initialFocus preventDeselect={required} {disabled} {captionLayout} {years} maxValue={maximum} calendarLabel="Pilih tanggal" />
         {#if withTime}
             <div class="grid gap-2 border-t p-3">
                 <Label for={`${id}-time`}>Waktu</Label>
