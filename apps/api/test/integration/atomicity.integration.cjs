@@ -515,7 +515,7 @@ test("task edits recheck active PIC and placement, and creation history retains 
   for (const table of ["nurses", "users"]) {
     const key = table === "nurses" ? "user_id" : "id";
     await ds.query(`UPDATE ${table} SET active=false WHERE ${key}=$1`, [nurse.id]);
-    try { await assert.rejects(useCases.tasks.update(nurse, task.id, { expectedVersion: 1, notes: "Must not persist" }), validationError(/PIC harus perawat aktif/)); }
+    try { await assert.rejects(useCases.tasks.update(nurse, task.id, { expectedVersion: 1, notes: "Must not persist" }), validationError(/Penanggung jawab harus perawat aktif/)); }
     finally { await ds.query(`UPDATE ${table} SET active=true WHERE ${key}=$1`, [nurse.id]); }
   }
   await ds.query("UPDATE placements SET status='cancelled' WHERE id=$1", [f.placementId]);

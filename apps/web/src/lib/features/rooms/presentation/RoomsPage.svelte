@@ -48,7 +48,7 @@ const rooms = $derived(data.rooms.filter((room: Room) => (!query || (room.name +
 
 const room = $derived(roomById(roomId));
 const item = $derived(itemById(room, itemId));
-const dialogTitles: Record<RoomDialogView, string> = { create: 'Tambah ruangan', detail: 'Detail ruangan', edit: 'Ubah ruangan', addItem: 'Tambah item', itemEdit: 'Ubah item', remove: 'Hapus ruangan?' };
+const dialogTitles: Record<RoomDialogView, string> = { create: 'Tambah ruangan', detail: 'Detail ruangan', edit: 'Ubah ruangan', addItem: 'Tambah perlengkapan', itemEdit: 'Ubah perlengkapan', remove: 'Hapus ruangan?' };
 
 function roomById(id: string | null | undefined): Room | null {
     if (!id) return null;
@@ -61,7 +61,7 @@ function itemById(room: Room | null, id: string | null | undefined): RoomItem | 
 }
 
 function statusLabel(room: Room): string {
-    return room.status === 'maintenance' ? 'Maintenance' : room.occupants > 0 ? 'Occupied' : 'Available';
+    return room.status === 'maintenance' ? 'Dalam pemeliharaan' : room.occupants > 0 ? 'Terisi' : 'Tersedia';
 }
 
 function statusTone(room: Room): BadgeVariant {
@@ -139,19 +139,19 @@ async function removeConfirmed() {
         <Card>
             <CardHeader class="gap-0.5">
                 <CardTitle class="text-2xl font-semibold tabular-nums">{available}</CardTitle>
-                <CardDescription class="text-[13px]">Available</CardDescription>
+                <CardDescription class="text-[13px]">Tersedia</CardDescription>
             </CardHeader>
         </Card>
         <Card>
             <CardHeader class="gap-0.5">
                 <CardTitle class="text-2xl font-semibold tabular-nums">{occupied}</CardTitle>
-                <CardDescription class="text-[13px]">Occupied</CardDescription>
+                <CardDescription class="text-[13px]">Terisi</CardDescription>
             </CardHeader>
         </Card>
         <Card>
             <CardHeader class="gap-0.5">
                 <CardTitle class="text-2xl font-semibold tabular-nums">{maintenance}</CardTitle>
-                <CardDescription class="text-[13px]">Maintenance</CardDescription>
+                <CardDescription class="text-[13px]">Dalam pemeliharaan</CardDescription>
             </CardHeader>
         </Card>
     </section>
@@ -173,7 +173,7 @@ async function removeConfirmed() {
                 </Field>
                 <Field>
                     <FieldLabel for="room-filter-status">Status</FieldLabel>
-                    <FormSelect id="room-filter-status" bind:value={statusFilter} class="w-full" options={[{ value: "", label: "Semua status" }, { value: "available", label: "Available" }, { value: "occupied", label: "Occupied" }, { value: "maintenance", label: "Maintenance" }]} />
+                    <FormSelect id="room-filter-status" bind:value={statusFilter} class="w-full" options={[{ value: "", label: "Semua status" }, { value: "available", label: "Tersedia" }, { value: "occupied", label: "Terisi" }, { value: "maintenance", label: "Dalam pemeliharaan" }]} />
                 </Field>
             </div>
 
@@ -182,7 +182,7 @@ async function removeConfirmed() {
                     <TableRow class="bg-muted/60 hover:bg-muted/60">
                         <TableHead class="px-4 whitespace-normal sm:px-5">ID / nama ruangan</TableHead>
                         <TableHead class="hidden md:table-cell">Tipe</TableHead>
-                        <TableHead class="hidden md:table-cell">PIC</TableHead>
+                        <TableHead class="hidden md:table-cell">Penanggung jawab</TableHead>
                         <TableHead class="hidden md:table-cell">Biaya inventaris</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead class="px-4 text-right sm:px-5">Aksi</TableHead>
@@ -227,7 +227,7 @@ async function removeConfirmed() {
 </div>
 
 {#if dialogView}
-<Modal title={dialogView === 'remove' && removeKind === 'item' ? 'Hapus item?' : dialogTitles[dialogView]}
+<Modal title={dialogView === 'remove' && removeKind === 'item' ? 'Hapus perlengkapan?' : dialogTitles[dialogView]}
  description={room ? `${room.name} · ${room.id}` : 'Lengkapi informasi ruangan baru.'}
  {busy} protectChanges={['create', 'edit', 'addItem', 'itemEdit'].includes(dialogView)}
  formKey={`${dialogView}-${roomId ?? ''}-${itemId ?? ''}`}
@@ -248,7 +248,7 @@ async function removeConfirmed() {
                     <Input id="room-capacity" name="capacity" type="number" min={1} max={20} value="1" required class="h-11 px-3 text-base md:text-base" />
                 </Field>
                 <Field>
-                    <FieldLabel for="room-pic">PIC</FieldLabel>
+                    <FieldLabel for="room-pic">Penanggung jawab</FieldLabel>
                     <FormSelect id="room-pic" name="picId" class="w-full" options={[{ value: "", label: "Pilih perawat" }, ...(nurses).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} />
                 </Field>
                 <MoneyInput id="room-daily-rate" label="Tarif harian (Rp)" name="dailyRate" value="0" class="sm:col-span-2" hint="Contoh: 250.000 atau 250.000,50" />
@@ -294,12 +294,12 @@ async function removeConfirmed() {
                         {/each}
                     </ul>
                 {:else}
-                    <p class="text-sm text-muted-foreground">Belum ada item yang dicatat.</p>
+                    <p class="text-sm text-muted-foreground">Belum ada perlengkapan yang dicatat.</p>
                 {/if}
             </section>
             <div class="form-actions">
                 {#if isNurse}
-                    <Button variant="outline" class="h-11 px-4" onclick={() => openAddItem(room.id)}><Plus aria-hidden="true" /> Tambah item</Button>
+                    <Button variant="outline" class="h-11 px-4" onclick={() => openAddItem(room.id)}><Plus aria-hidden="true" /> Tambah perlengkapan</Button>
                 {/if}
                 <Button class="h-11 px-4" disabled={busy} onclick={close}><X aria-hidden="true" /> Tutup detail ruangan</Button>
             </div>
@@ -320,10 +320,10 @@ async function removeConfirmed() {
                     </Field>
                     <Field>
                         <FieldLabel for="room-edit-status">Status</FieldLabel>
-                        <FormSelect id="room-edit-status" name="status" value={room.status} class="w-full" options={[{ value: "available", label: "Available" }, { value: "maintenance", label: "Maintenance" }]} />
+                        <FormSelect id="room-edit-status" name="status" value={room.status} class="w-full" options={[{ value: "available", label: "Tersedia" }, { value: "maintenance", label: "Dalam pemeliharaan" }]} />
                     </Field>
                     <Field>
-                        <FieldLabel for="room-edit-pic">PIC</FieldLabel>
+                        <FieldLabel for="room-edit-pic">Penanggung jawab</FieldLabel>
                         <FormSelect id="room-edit-pic" name="picId" value={room.picId ?? ''} class="w-full" options={[{ value: "", label: "Tidak ditentukan" }, ...(nurses).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} />
                     </Field>
                     <MoneyInput id="room-edit-daily-rate" label="Tarif harian (Rp)" name="dailyRate" value={room.dailyRate} required hint="Contoh: 250.000 atau 250.000,50" />
@@ -336,7 +336,7 @@ async function removeConfirmed() {
         {:else if dialogView === 'addItem'}<form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); void submit(() => roomService.addItem(room.id, { name: formText(f, 'name'), category: formText(f, 'category'), quantity: Number(formText(f, 'quantity')), unitPrice: formText(f, 'unitPrice') })); }}>
                 <FieldGroup class="grid gap-4 sm:grid-cols-2">
                     <Field>
-                        <FieldLabel for="item-name">Nama item</FieldLabel>
+                        <FieldLabel for="item-name">Nama perlengkapan</FieldLabel>
                         <Input id="item-name" name="name" required class="h-11 px-3 text-base md:text-base" />
                     </Field>
                     <Field>
@@ -359,7 +359,7 @@ async function removeConfirmed() {
                 {/if}
                 <div class="form-actions">
                     <Button type="button" variant="outline" class="h-11 px-4" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button>
-                    <Button type="submit" class="h-11 px-4" disabled={busy}><Plus aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Tambah item'}</Button>
+                    <Button type="submit" class="h-11 px-4" disabled={busy}><Plus aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Tambah perlengkapan'}</Button>
                 </div>
             </form>
         {:else if dialogView === 'itemEdit' && item}<form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); void submit(() => roomService.updateItem(room.id, item.id, { name: formText(f, 'name'), category: formText(f, 'category'), quantity: Number(formText(f, 'quantity')), unitPrice: String(formText(f, 'unitPrice')), expectedVersion: room.version })); }}>
@@ -380,12 +380,12 @@ async function removeConfirmed() {
                 </FieldGroup>
                 <div class="form-actions">
                     <Button type="button" variant="outline" class="h-11 px-4" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button>
-                    <Button type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan item'}</Button>
+                    <Button type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan perlengkapan'}</Button>
                 </div>
             </form>
         {:else if dialogView === 'remove'}
             <form class="flex flex-col gap-4" onsubmit={(event) => { event.preventDefault(); void removeConfirmed(); }}>
-                <p>{#if removeKind === 'item'}Item <strong>{item?.name}</strong> akan dihapus dari ruangan <strong>{room.name}</strong>.{:else}Ruangan <strong>{room.name}</strong> akan dihapus.{/if} Tindakan ini tidak dapat dibatalkan.</p>
+                <p>{#if removeKind === 'item'}Perlengkapan <strong>{item?.name}</strong> akan dihapus dari ruangan <strong>{room.name}</strong>.{:else}Ruangan <strong>{room.name}</strong> akan dihapus.{/if} Tindakan ini tidak dapat dibatalkan.</p>
                 <div class="form-actions"><Button variant="outline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button type="submit" variant="destructive" disabled={busy}><Trash2 aria-hidden="true" /> {busy ? 'Menghapus…' : 'Hapus'}</Button></div>
             </form>
         {/if}

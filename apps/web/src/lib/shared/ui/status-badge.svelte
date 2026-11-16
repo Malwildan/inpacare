@@ -2,9 +2,9 @@
 import { Badge, type BadgeVariant } from './badge/index.js';
 let { value, label }: { value: string; label?: string } = $props();
 const labels: Record<string, string> = {
-    pending: 'Pending', assigned: 'Assigned', in_care: 'In Care', extend: 'Extend', released: 'Pelepasan',
+    pending: 'Menunggu', assigned: 'Sudah ditempatkan', in_care: 'Dalam perawatan', extend: 'Diperpanjang', released: 'Pelepasan',
     todo: 'Belum Dikerjakan', in_progress: 'Sedang Dikerjakan', done: 'Selesai', cancelled: 'Dibatalkan',
-    high: 'Tinggi', normal: 'Normal', low: 'Rendah', available: 'Tersedia', maintenance: 'Pemeliharaan',
+    high: 'Tinggi', normal: 'Normal', low: 'Rendah', available: 'Tersedia', maintenance: 'Dalam pemeliharaan',
     paid: 'Lunas', unpaid: 'Belum Lunas', approved: 'Disetujui', rejected: 'Ditolak', active: 'Aktif', release: 'Pelepasan'
 };
 const tones: Record<string, BadgeVariant> = {
