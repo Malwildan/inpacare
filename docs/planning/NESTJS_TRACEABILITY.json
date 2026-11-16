@@ -5191,13 +5191,12 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/rooms/+page.server.ts#load",
-              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeRoom,removeItem"
+              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeConfirmed"
             ],
             "handlers": [
               "load",
               "submit",
-              "removeRoom",
-              "removeItem"
+              "removeConfirmed"
             ],
             "handlerState": "Mapped to listed current UI handlers or explicitly marked as having no direct consumer."
           },
@@ -5252,13 +5251,12 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/rooms/+page.server.ts#load",
-              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeRoom,removeItem"
+              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeConfirmed"
             ],
             "handlers": [
               "load",
               "submit",
-              "removeRoom",
-              "removeItem"
+              "removeConfirmed"
             ],
             "handlerState": "Mapped to listed current UI handlers or explicitly marked as having no direct consumer."
           },
@@ -5313,13 +5311,12 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/rooms/+page.server.ts#load",
-              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeRoom,removeItem"
+              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeConfirmed"
             ],
             "handlers": [
               "load",
               "submit",
-              "removeRoom",
-              "removeItem"
+              "removeConfirmed"
             ],
             "handlerState": "Mapped to listed current UI handlers or explicitly marked as having no direct consumer."
           },
@@ -5374,13 +5371,12 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/rooms/+page.server.ts#load",
-              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeRoom,removeItem"
+              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeConfirmed"
             ],
             "handlers": [
               "load",
               "submit",
-              "removeRoom",
-              "removeItem"
+              "removeConfirmed"
             ],
             "handlerState": "Mapped to listed current UI handlers or explicitly marked as having no direct consumer."
           },
@@ -5425,13 +5421,12 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/rooms/+page.server.ts#load",
-              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeRoom,removeItem"
+              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeConfirmed"
             ],
             "handlers": [
               "load",
               "submit",
-              "removeRoom",
-              "removeItem"
+              "removeConfirmed"
             ],
             "handlerState": "Mapped to listed current UI handlers or explicitly marked as having no direct consumer."
           },
@@ -5486,13 +5481,12 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/rooms/+page.server.ts#load",
-              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeRoom,removeItem"
+              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeConfirmed"
             ],
             "handlers": [
               "load",
               "submit",
-              "removeRoom",
-              "removeItem"
+              "removeConfirmed"
             ],
             "handlerState": "Mapped to listed current UI handlers or explicitly marked as having no direct consumer."
           },
@@ -5537,13 +5531,12 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/rooms/+page.server.ts#load",
-              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeRoom,removeItem"
+              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeConfirmed"
             ],
             "handlers": [
               "load",
               "submit",
-              "removeRoom",
-              "removeItem"
+              "removeConfirmed"
             ],
             "handlerState": "Mapped to listed current UI handlers or explicitly marked as having no direct consumer."
           },
@@ -5588,13 +5581,12 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/rooms/+page.server.ts#load",
-              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeRoom,removeItem"
+              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeConfirmed"
             ],
             "handlers": [
               "load",
               "submit",
-              "removeRoom",
-              "removeItem"
+              "removeConfirmed"
             ],
             "handlerState": "Mapped to listed current UI handlers or explicitly marked as having no direct consumer."
           },
@@ -5639,13 +5631,12 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/rooms/+page.server.ts#load",
-              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeRoom,removeItem"
+              "apps/web/src/lib/features/rooms/presentation/RoomsPage.svelte#submit,removeConfirmed"
             ],
             "handlers": [
               "load",
               "submit",
-              "removeRoom",
-              "removeItem"
+              "removeConfirmed"
             ],
             "handlerState": "Mapped to listed current UI handlers or explicitly marked as having no direct consumer."
           },
