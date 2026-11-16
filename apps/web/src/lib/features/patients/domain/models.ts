@@ -1,3 +1,14 @@
+export type NewPatient = {
+    medicalRecordNo: string;
+    name: string;
+    birthDate: string;
+    gender: 'L' | 'P';
+    bpjs: boolean;
+    bpjsNumber?: string | null;
+    address?: string | null;
+};
+export type PatientList = { items: PatientContext['patient'][]; total: number };
+
 export type PatientContext = {
     patient: {
         id: string;

@@ -10,6 +10,8 @@ import { CyclesUseCases } from "../application/cycles/cycles.use-cases";
 import { RekamMedisUseCases } from "../application/medical-records/rekam-medis.use-cases";
 import { TagihanUseCases } from "../application/billing/tagihan.use-cases";
 import { ReferenceUseCases } from "../application/reference/reference.use-cases";
+import { PatientsUseCases } from "../application/patients/patients.use-cases";
+import { TypeOrmPatientStore } from "../infrastructure/database/repositories/patients/typeorm-patient.store";
 import { NotificationsUseCases } from "../application/notifications/notifications.use-cases";
 import { TypeOrmReferenceStore } from "../infrastructure/database/repositories/reference/typeorm-reference.store";
 import { TypeOrmNotificationStore } from "../infrastructure/database/repositories/notifications/typeorm-notification.store";
@@ -22,6 +24,7 @@ export function createUseCases(database: DataSource) {
   const stores = createTransactionContext(database.manager);
   const unitOfWork = new TypeOrmUnitOfWork(database);
   return {
+    patients: new PatientsUseCases(new TypeOrmPatientStore(database.manager)),
     auth: new AuthUseCases(
       stores.auth,
       unitOfWork,
