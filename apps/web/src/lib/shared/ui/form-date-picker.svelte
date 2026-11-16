@@ -7,6 +7,7 @@ import { Input } from './input/index.js';
 import { Label } from './label/index.js';
 import * as Popover from './popover/index.js';
 import { cn } from '$lib/shared/utils';
+import { toast } from './sonner/index.js';
 
 const autoId = $props.id();
 let {
@@ -55,6 +56,7 @@ function requireValue(event: Event & { currentTarget: HTMLInputElement }) {
     // Only the first invalid field should take focus during form validation.
     if (input.form?.querySelector('input:invalid, select:invalid, textarea:invalid') === input) {
         trigger?.focus();
+        toast.error(withTime ? 'Pilih tanggal dan waktu.' : 'Pilih tanggal.', { id: 'date-validation' });
     }
 }
 </script>
@@ -64,7 +66,6 @@ function requireValue(event: Event & { currentTarget: HTMLInputElement }) {
         {#snippet child({ props })}
             <Button {...props} {...triggerProps} {id} bind:ref={trigger} variant="outline"
                 data-slot="date-picker" data-value={formValue} aria-invalid={invalid || undefined}
-                aria-describedby={[triggerProps['aria-describedby'], invalid ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined}
                 class={cn('h-11 w-full min-w-0 justify-between gap-2 px-3 text-left text-base font-normal md:text-sm', !date && 'text-muted-foreground', className)}>
                 <span class="truncate">{date ? formatter.format(date.toDate('UTC')) : 'Pilih tanggal'}{#if date && withTime} · {time || 'Pilih waktu'}{/if}</span>
                 <CalendarDays class="size-4 text-muted-foreground" aria-hidden="true" />
@@ -92,5 +93,3 @@ function requireValue(event: Event & { currentTarget: HTMLInputElement }) {
 <!-- A visually hidden text input preserves native required validation and FormData. -->
 <input type="text" class="sr-only" tabindex="-1" aria-hidden="true" {name}
     value={formValue} {required} {disabled} oninvalid={requireValue} />
-
-{#if invalid}<span id={`${id}-error`} class="text-sm text-destructive" role="alert">{withTime ? 'Pilih tanggal dan waktu.' : 'Pilih tanggal.'}</span>{/if}

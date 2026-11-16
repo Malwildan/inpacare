@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { toast } from '$lib/shared/ui/sonner/index.js';
+	import { goto, invalidateAll } from '$app/navigation';
 	import type { MedicalRecords, MedicalDetailData, Observation } from '$lib/features/medical-records';
 	import { sessionFailure } from '$lib/shared/presentation/session';
 	import { formText } from '$lib/shared/presentation/form';
-	import { Alert, AlertDescription } from '$lib/shared/ui/alert/index.js';
 	import { Badge } from '$lib/shared/ui/badge/index.js';
 	import { Button } from '$lib/shared/ui/button/index.js';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
@@ -15,13 +15,10 @@
 
 	let { data, medical }: { data: MedicalDetailData; medical: MedicalRecords } = $props();
 	let busy = $state(false);
-	let error = $state('');
-	let notice = $state('');
 	let editingObservation = $state<string | null>(null);
 	let observeOpen = $state(false);
 	let archiveOpen = $state(false);
 	let archiveReason = $state('');
-	let archiveError = $state('');
 	const record = $derived(data.record);
 	const canEdit = $derived(data.user.role === 'DOKTER' && data.user.id === record.doctorId);
 	const canObserve = $derived(data.user.role === 'PERAWAT');
@@ -29,15 +26,14 @@
 	async function send(operation: () => Promise<unknown>) {
 		if (busy) return;
 		busy = true;
-		error = '';
-		notice = '';
+		const toastId = toast.loading('Menyimpan perubahan…');
 		try {
 			await operation();
 			await invalidateAll();
 			editingObservation = null;
-			notice = 'Perubahan tersimpan.';
+			toast.success('Perubahan tersimpan.', { id: toastId });
 		} catch (e) {
-			error = sessionFailure(e);
+			toast.error(sessionFailure(e), { id: toastId });
 		} finally {
 			busy = false;
 		}
@@ -104,19 +100,18 @@
 		if (busy) return;
 		const reason = archiveReason.trim();
 		if (!reason) {
-			archiveError = 'Alasan pengarsipan wajib diisi.';
+			toast.error('Alasan pengarsipan wajib diisi.');
 			return;
 		}
 
 		busy = true;
-		archiveError = '';
 		try {
 			await medical.archive(record.id, { expectedVersion: record.version!, reason });
-			await invalidateAll();
 			archiveOpen = false;
-			location.assign('/medical-records');
+			await goto('/medical-records', { invalidateAll: true });
+			toast.success('Rekam medis berhasil diarsipkan.');
 		} catch (e) {
-			archiveError = sessionFailure(e);
+			toast.error(sessionFailure(e));
 		} finally {
 			busy = false;
 		}
@@ -144,14 +139,11 @@
 		</div>
 		<div class="flex flex-wrap gap-2">
 			{#if canEdit}
-				<Button variant="destructive" disabled={busy} onclick={() => { archiveError = ''; archiveOpen = true; }}>Arsipkan rekam medis</Button>
+				<Button variant="destructive" disabled={busy} onclick={() => { archiveOpen = true; }}>Arsipkan rekam medis</Button>
 			{/if}
 			<Button href="/medical-records" variant="outline">Kembali</Button>
 		</div>
 	</header>
-
-	{#if error}<Alert variant="destructive" role="alert"><AlertDescription>{error}</AlertDescription></Alert>{/if}
-	{#if notice}<Alert role="status"><AlertDescription>{notice}</AlertDescription></Alert>{/if}
 
 	{#if data.admisiProjection}
 		<Card>
@@ -290,9 +282,8 @@
 		<form class="flex flex-col gap-5" onsubmit={removeRecord}>
 			<Field>
 				<FieldLabel for="archive-reason">Alasan pengarsipan</FieldLabel>
-				<Textarea id="archive-reason" name="reason" bind:value={archiveReason} rows={3} maxlength={500} required aria-invalid={archiveError ? 'true' : undefined} />
+				<Textarea id="archive-reason" name="reason" bind:value={archiveReason} rows={3} maxlength={500} required />
 			</Field>
-			{#if archiveError}<Alert variant="destructive" role="alert"><AlertDescription>{archiveError}</AlertDescription></Alert>{/if}
 			<DialogFooter>
 				<Button type="button" variant="outline" disabled={busy} onclick={() => archiveOpen = false}>Batal</Button>
 				<Button type="submit" variant="destructive" disabled={busy}>{busy ? 'Mengarsipkan…' : 'Konfirmasi arsip'}</Button>

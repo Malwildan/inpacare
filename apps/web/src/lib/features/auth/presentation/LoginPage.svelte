@@ -1,9 +1,9 @@
 <script lang="ts">
+	import { toast } from '$lib/shared/ui/sonner/index.js';
 	import { goto } from '$app/navigation';
 	import { Eye, EyeOff } from 'lucide-svelte';
 	import type { Auth, User } from '$lib/features/auth';
 	import { sessionFailure } from '$lib/shared/presentation/session';
-	import { Alert, AlertDescription } from '$lib/shared/ui/alert/index.js';
 	import { Button } from '$lib/shared/ui/button/index.js';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
 	import { Field, FieldGroup, FieldLabel } from '$lib/shared/ui/field/index.js';
@@ -18,17 +18,16 @@
 	let password = $state('');
 	let visible = $state(false);
 	let pending = $state(false);
-	let message = $state('');
 
 	async function login(event: SubmitEvent) {
 		event.preventDefault();
 		pending = true;
-		message = '';
 		try {
 			const user = await auth.login({ username, password });
 			await goto(landingPage(user), { invalidateAll: true });
+			toast.success('Berhasil masuk.');
 		} catch (error) {
-			message = sessionFailure(error);
+			toast.error(sessionFailure(error));
 		} finally {
 			pending = false;
 		}
@@ -74,11 +73,6 @@
 
 			<CardContent class="px-6 pb-6">
 				<form class="flex flex-col gap-5" onsubmit={login}>
-					{#if message}
-						<Alert variant="destructive">
-							<AlertDescription>{message}</AlertDescription>
-						</Alert>
-					{/if}
 
 					<FieldGroup>
 						<Field>

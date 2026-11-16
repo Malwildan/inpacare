@@ -1,4 +1,5 @@
 <script lang="ts">
+import { toast } from '$lib/shared/ui/sonner/index.js';
 import { Button } from '$lib/shared/ui/button/index.js';
 import { Card } from '$lib/shared/ui/card/index.js';
 import FormDatePicker from '$lib/shared/ui/form-date-picker.svelte';
@@ -13,6 +14,7 @@ import Modal from '$lib/shared/ui/dialog-frame.svelte';
 import StatusBadge from '$lib/shared/ui/status-badge.svelte';
 import { Badge } from '$lib/shared/ui/badge/index.js';
 import { ChevronDown, Plus } from 'lucide-svelte';
+import { untrack } from 'svelte';
 let { data, tasks }: {
     data: TasksPageData;
     tasks: Tasks;
@@ -30,8 +32,6 @@ let creating = $state(false);
 let selected = $state<Task | null>(null);
 let history = $state<TaskHistory[]>([]);
 let busy = $state(false);
-let error = $state('');
-let notice = $state('');
 let deletingTask = $state<Task | null>(null);
 let deletionOpen = $state(false);
 let deletionReason = $state('');
@@ -51,7 +51,23 @@ let dragTarget = $state<{ status: BoardStatus; before: string | null } | null>(n
 let origin: HTMLElement | null = null;
 let suppressClick = false;
 const filtered = $derived(Object.values(data.filters).some(Boolean));
-$effect(() => { board = data.board; generation++; refreshErrors.clear(); dragTask = null; dragTarget = null; });
+$effect(() => {
+    const next = data.board;
+    board = next; generation++; refreshErrors.clear(); dragTask = null; dragTarget = null;
+    untrack(() => {
+        for (const [key] of statuses) {
+            const status = key as BoardStatus;
+            if (next[status].error) reportColumnFailure(status);
+        }
+    });
+});
+function reportColumnFailure(status: BoardStatus, description?: string) {
+    toast.error(`Daftar ${statusLabel(status)} gagal dimuat.`, {
+        id: `task-column-${status}`,
+        description,
+        action: { label: 'Coba lagi', onClick: () => { void loadMore(status); } }
+    });
+}
 function canOperate(task: Task) { return coordinator || task.picId === data.user.id; }
 function allowed(task: Task, status: BoardStatus) {
     if (task.status === 'done' || task.status === 'cancelled') return false;
@@ -83,31 +99,44 @@ function auditActionLabel(action: string) {
 }
 function startMove(task: Task, status?: BoardStatus, before: string | null = null) {
     if (pending.includes(task.id)) return;
-    if (reasonTaskId !== task.id) reason = ''; reasonTaskId = task.id; moving = task; destination = status ?? (filtered ? (task.status === 'todo' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'cancelled') : task.status as BoardStatus); beforeId = before ?? ''; error = '';
+    if (reasonTaskId !== task.id) reason = ''; reasonTaskId = task.id; moving = task; destination = status ?? (filtered ? (task.status === 'todo' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'cancelled') : task.status as BoardStatus); beforeId = before ?? '';
 }
 async function refreshColumn(status: BoardStatus, current = generation) {
     if (data.filters.status && data.filters.status !== status) return;
     const column = board[status];
     try {
         const page = await tasks.list({ ...data.filters, status, order: 'board', limit: 50, offset: 0 });
-        if (current === generation && board[status] === column) { refreshErrors.delete(status); board[status] = { items: page.items, total: page.total, error: false, filtered: false }; }
-    } catch (failure) { sessionFailure(failure); if (current === generation && board[status] === column) { refreshErrors.add(status); board[status] = { ...column, error: true }; } }
+        if (current === generation && board[status] === column) { refreshErrors.delete(status); board[status] = { items: page.items, total: page.total, error: false, filtered: false }; toast.dismiss(`task-column-${status}`); }
+    } catch (failure) {
+        const description = sessionFailure(failure);
+        if (current === generation && board[status] === column) {
+            refreshErrors.add(status); board[status] = { ...column, error: true };
+            reportColumnFailure(status, description);
+        }
+    }
 }
 async function loadMore(status: BoardStatus) {
     if (loading.includes(status)) return;
     const current = generation; const column = board[status]; const reset = refreshErrors.has(status); loading = [...loading, status];
     try {
         const page = await tasks.list({ ...data.filters, status, order: 'board', limit: 50, offset: reset ? 0 : column.items.length });
-        if (current === generation && board[status] === column) { refreshErrors.delete(status); board[status] = { items: reset ? page.items : [...column.items, ...page.items], total: page.total, error: false, filtered: false }; }
-    } catch (failure) { sessionFailure(failure); if (current === generation && board[status] === column) board[status] = { ...column, error: true }; } finally { loading = loading.filter(item => item !== status); }
+        if (current === generation && board[status] === column) { refreshErrors.delete(status); board[status] = { items: reset ? page.items : [...column.items, ...page.items], total: page.total, error: false, filtered: false }; toast.dismiss(`task-column-${status}`); }
+    } catch (failure) {
+        const description = sessionFailure(failure);
+        if (current === generation && board[status] === column) {
+            board[status] = { ...column, error: true };
+            reportColumnFailure(status, description);
+        }
+    } finally { loading = loading.filter(item => item !== status); }
 }
 async function moveTask(task: Task, status: BoardStatus, before: string | null, cancellationReason?: string) {
     if (!allowed(task, status) || pending.includes(task.id)) return false;
-    if (status === 'cancelled' && task.status !== 'cancelled' && !cancellationReason?.trim()) { error = 'Masukkan alasan pembatalan.'; return false; }
+    if (status === 'cancelled' && task.status !== 'cancelled' && !cancellationReason?.trim()) { toast.error('Masukkan alasan pembatalan.'); return false; }
     const current = generation;
     const source = task.status as BoardStatus;
     const snapshot = structuredClone($state.snapshot(board));
-    pending = [...pending, task.id]; error = ''; notice = `Menyimpan ${task.title} ke ${statusLabel(status)}.`;
+    pending = [...pending, task.id];
+    const toastId = toast.loading(`Menyimpan ${task.title} ke ${statusLabel(status)}.`, { id: `task-move-${task.id}` });
     const next = { ...task, status };
     if (!board[status].filtered) {
         board[source] = { ...board[source], items: board[source].items.filter(item => item.id !== task.id) };
@@ -120,28 +149,27 @@ async function moveTask(task: Task, status: BoardStatus, before: string | null, 
         const saved = await tasks.move(task.id, { expectedVersion: task.version, status, beforeTaskId: filtered ? null : before, ...(cancellationReason ? { reason: cancellationReason.trim() } : {}) });
         if (current !== generation) {
             await Promise.all(statuses.map(([key]) => refreshColumn(key as BoardStatus)));
-            notice = `${task.title} dipindahkan ke ${statusLabel(status)}.`;
+            toast.success(`${task.title} dipindahkan ke ${statusLabel(status)}.`, { id: toastId });
             return true;
         }
         if (board[status].filtered) board[source] = { ...board[source], items: board[source].items.filter(item => item.id !== task.id) };
         else board[status] = { ...board[status], items: board[status].items.map(item => item.id === task.id ? saved : item) };
         await Promise.all([...new Set([source, status])].map(column => refreshColumn(column, current)));
+        toast.success(`${task.title} dipindahkan ke ${statusLabel(status)}.${board[status].filtered ? ' Tugas tidak ditampilkan karena filter status.' : ''}`, { id: toastId });
         if (current !== generation) return true;
-        notice = `${task.title} dipindahkan ke ${statusLabel(status)}.${board[status].filtered ? ' Tugas tidak ditampilkan karena filter status.' : ''}`;
-        if (board[source].error || board[status].error) notice += ' Daftar gagal diperbarui; coba lagi.';
         if (selected?.id === task.id) { selected = null; }
         requestAnimationFrame(() => (document.getElementById(`task-${task.id}`) ?? document.getElementById(`heading-${source}`))?.focus());
         return true;
     } catch (e) {
-        sessionFailure(e);
+        const message = sessionFailure(e);
         if (current !== generation) {
             await Promise.all(statuses.map(([key]) => refreshColumn(key as BoardStatus)));
-            error = sessionFailure(e); notice = '';
+            toast.error(message, { id: toastId });
             return false;
         }
         for (const column of new Set([source, status])) board[column] = snapshot[column];
         await Promise.all([...new Set([source, status])].map(column => refreshColumn(column, current)));
-        error = sessionFailure(e); notice = '';
+        toast.error(message, { id: toastId });
         return false;
     } finally { pending = pending.filter(id => id !== task.id); }
 }
@@ -177,32 +205,36 @@ const placements = $derived(data.reference.placements.filter((p) => p.status ===
 async function reloadHistory(id: string) { try {
     history = await tasks.history(id);
 }
-catch {
+catch (failure) {
     history = [];
+    toast.error('Riwayat tugas gagal dimuat.', { description: sessionFailure(failure) });
 } }
-async function open(task: Task | string) { const id = typeof task === 'string' ? task : task.id; error = ''; try {
+async function open(task: Task | string) { const id = typeof task === 'string' ? task : task.id; try {
     selected = await tasks.get(id);
     await reloadHistory(id);
 }
 catch (failure) {
-    error = sessionFailure(failure);
+    toast.error(sessionFailure(failure));
     selected = null;
 } }
-async function submit(operation: () => Promise<unknown>) { if (busy) return false; busy = true; error = ''; notice = ''; try {
-    await operation();
-    await invalidateAll();
-    notice = 'Perubahan berhasil disimpan.';
-    return true;
+async function submit(operation: () => Promise<unknown>) {
+    if (busy) return false;
+    busy = true;
+    const toastId = toast.loading('Menyimpan perubahan…');
+    try {
+        await operation();
+        await invalidateAll();
+        toast.success('Perubahan berhasil disimpan.', { id: toastId });
+        return true;
+    } catch (e) {
+        toast.error(sessionFailure(e), { id: toastId });
+        return false;
+    } finally {
+        busy = false;
+    }
 }
-catch (e) {
-    error = sessionFailure(e);
-    return false;
-}
-finally {
-    busy = false;
-} }
 async function createTask(event: SubmitEvent) { event.preventDefault(); const f = new FormData(event.currentTarget as HTMLFormElement); const placement = placements.find((p) => p.id === formText(f, 'placementId')); if (!placement) {
-    error = 'Pilih penempatan pasien yang masih aktif.';
+    toast.error('Pilih penempatan pasien yang masih aktif.');
     return;
 } const toIso = (s: string) => new Date(s).toISOString(); const ok = await submit(() => tasks.create({ patientId: placement.patientId, placementId: placement.id, picId: formText(f, 'picId'), title: formText(f, 'title'), description: formText(f, 'description'), notes: formText(f, 'notes'), priority: formText(f, 'priority') as NewTask['priority'], startsAt: toIso(String(formText(f, 'startsAt'))), endsAt: toIso(String(formText(f, 'endsAt'))) })); if (ok)
     creating = false; }
@@ -228,14 +260,13 @@ function startTaskDelete() {
     if (deletingTask?.id !== selected.id) deletionReason = '';
     deletingTask = selected;
     deletionOpen = true;
-    error = '';
 }
 async function removeTask(event: SubmitEvent) {
     event.preventDefault();
     const task = deletingTask;
     if (!task || busy) return;
     const reason = deletionReason.trim();
-    if (!reason) { error = 'Alasan penghapusan wajib diisi.'; return; }
+    if (!reason) { toast.error('Alasan penghapusan wajib diisi.'); return; }
     const removed = await submit(() => tasks.remove(task.id, { expectedVersion: task.version, reason }));
     if (removed) {
         deletionOpen = false;
@@ -264,8 +295,7 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 
 <svelte:head><title>Tugas Perawatan | InpaCare</title></svelte:head>
 <div class="tasks-page flex min-w-0 flex-col gap-6">
-<section class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="page-title">Tugas Perawatan</h1><p class="page-subtitle">Tugas pasien dengan PIC, rentang waktu, prioritas, dan riwayat perubahan.</p></div>{#if coordinator}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-expanded={creating} onclick={()=>{creating=!creating;error='';}}><Plus size={16} aria-hidden="true"/> Buat tugas</Button>{/if}</section>
-{#if error}<p class="error" role="alert">{error}</p>{/if}{#if notice}<p class="success" role="status">{notice}</p>{/if}
+<section class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="page-title">Tugas Perawatan</h1><p class="page-subtitle">Tugas pasien dengan PIC, rentang waktu, prioritas, dan riwayat perubahan.</p></div>{#if coordinator}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-expanded={creating} onclick={()=>{creating=!creating;}}><Plus size={16} aria-hidden="true"/> Buat tugas</Button>{/if}</section>
 
 {#if creating&&coordinator}<Card class="gap-4 p-5 sm:p-6 form-panel"><h2>Buat tugas perawatan</h2><form class="form-grid" onsubmit={createTask}>
 	<label class="field">Penempatan pasien<FormSelect name="placementId" required options={[{ value: "", label: "Pilih pasien / ruangan" }, ...(placements).map((p) => ({ value: p.id, label: (p.patientName) + " · " + (p.roomName) + " (" + (p.startsOn) + "–" + (p.endsOn) + ")" }))]} /></label>
@@ -292,14 +322,14 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
      </Card>
     {:else}{#if !column.error}<p class="empty">Tidak ada tugas.</p>{/if}{/each}
     {#if dragTarget?.status===status && !dragTarget.before}<div class="drop-marker" aria-label="Posisi penyisipan di akhir"></div>{/if}
-    {#if column.error}<p class="error" role="alert">Daftar gagal dimuat. <Button variant="link" class="h-11 px-4 no-underline hover:no-underline text-link" onclick={()=>loadMore(status)}>Coba lagi</Button></p>{:else if column.items.length < column.total}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" disabled={loading.includes(status)} onclick={()=>loadMore(status)}>{loading.includes(status) ? 'Memuat...' : 'Muat lebih banyak'}</Button>{/if}
-    {#if status==='todo' && coordinator}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline add-card" onclick={()=>{creating=true;error='';}}>+ Tambah tugas</Button>{/if}
+    {#if column.error}<Button variant="outline" class="h-11 px-4" disabled={loading.includes(status)} onclick={()=>loadMore(status)}>{loading.includes(status) ? 'Memuat...' : 'Coba lagi'}</Button>{:else if column.items.length < column.total}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" disabled={loading.includes(status)} onclick={()=>loadMore(status)}>{loading.includes(status) ? 'Memuat...' : 'Muat lebih banyak'}</Button>{/if}
+    {#if status==='todo' && coordinator}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline add-card" onclick={()=>{creating=true;}}>+ Tambah tugas</Button>{/if}
    {/if}
   </section>
  {/each}
 </div>
 <p class="muted">Tugas hanya dapat maju ke tahap berikutnya; tugas selesai atau dibatalkan tidak dapat dibuka kembali.{#if filtered} Urutan dinonaktifkan saat filter aktif. Perpindahan status ditambahkan di akhir daftar.{/if}</p>
-{#if moving}<Modal title={`Pindahkan ${moving.title}`} description="Pilih status tujuan dan posisi tugas. Pembatalan memerlukan alasan." onclose={()=>moving=null}><form class="move-form" onsubmit={confirmMove}><label class="field">Status tujuan<FormSelect bind:value={destination} onValueChange={()=>beforeId=''} options={[...(statuses).flatMap(([key,label]) => [...(moving && allowed(moving,key as BoardStatus) ? [{ value: key, label: (label) }] : [])])]} /></label>{#if !filtered}<label class="field">Posisi<FormSelect bind:value={beforeId} options={[{ value: "", label: "Akhir daftar" }, ...(board[destination].items.filter(t=>t.id!==moving?.id)).map((anchor) => ({ value: anchor.id, label: "Sebelum " + (anchor.title) }))]} /></label>{:else}<p class="muted">Hapus filter untuk mengatur posisi.</p>{/if}{#if destination==='cancelled' && moving.status!=='cancelled'}<label class="field">Alasan pembatalan<Textarea bind:value={reason} required maxlength={500}></Textarea></label><p>Konfirmasi pembatalan tugas ini.</p>{/if}{#if error}<p class="error" role="alert">{error}</p>{/if}<div class="card-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={pending.includes(moving.id)}>Konfirmasi pindahkan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={()=>moving=null}>Batal</Button></div></form></Modal>{/if}
+{#if moving}<Modal title={`Pindahkan ${moving.title}`} description="Pilih status tujuan dan posisi tugas. Pembatalan memerlukan alasan." onclose={()=>moving=null}><form class="move-form" onsubmit={confirmMove}><label class="field">Status tujuan<FormSelect bind:value={destination} onValueChange={()=>beforeId=''} options={[...(statuses).flatMap(([key,label]) => [...(moving && allowed(moving,key as BoardStatus) ? [{ value: key, label: (label) }] : [])])]} /></label>{#if !filtered}<label class="field">Posisi<FormSelect bind:value={beforeId} options={[{ value: "", label: "Akhir daftar" }, ...(board[destination].items.filter(t=>t.id!==moving?.id)).map((anchor) => ({ value: anchor.id, label: "Sebelum " + (anchor.title) }))]} /></label>{:else}<p class="muted">Hapus filter untuk mengatur posisi.</p>{/if}{#if destination==='cancelled' && moving.status!=='cancelled'}<label class="field">Alasan pembatalan<Textarea bind:value={reason} required maxlength={500}></Textarea></label><p>Konfirmasi pembatalan tugas ini.</p>{/if}<div class="card-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={pending.includes(moving.id)}>Konfirmasi pindahkan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={()=>moving=null}>Batal</Button></div></form></Modal>{/if}
 {#if selected}<Modal title={selected.title} description="Detail tugas, catatan tindakan dan riwayat perubahan." busy={busy || pending.includes(selected.id)} onclose={closeDetail}>
 <div class="detail-layout">
  <section class="detail-section" aria-labelledby="task-summary-heading">
@@ -315,7 +345,6 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
   </dl>
   {#if canOperate(selected) && selected.status!=='done' && selected.status!=='cancelled' && statuses.some(([key])=>allowed(selected!,key as BoardStatus))}<Button variant="default" class="h-11 px-4" onclick={()=>selected&&startMove(selected)}>Pindahkan</Button>{/if}
  </section>
- {#if error}<p class="error" role="alert">{error}</p>{/if}
  <section class="detail-section"><h3>Deskripsi</h3><p class="detail-copy">{selected.description||'Tidak ada deskripsi.'}</p></section>
  <section class="detail-section"><h3>Catatan tindakan</h3><p class="detail-copy">{selected.notes||'Belum ada catatan.'}</p></section>
  <p class="muted detail-version">Versi {selected.version}</p>
@@ -333,7 +362,6 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
     <Modal title="Hapus tugas?" description="Catat alasan penghapusan logis tugas untuk riwayat perubahan." {busy} onclose={() => deletionOpen = false}>
         <form onsubmit={removeTask}>
             <p>Tugas <strong>{deletingTask.title}</strong> akan dihapus secara logis. Riwayat perubahan tetap tersimpan.</p>
-            {#if error}<p class="error" role="alert">{error}</p>{/if}
             <label class="field">Alasan penghapusan<Textarea bind:value={deletionReason} maxlength={500} required /></label>
             <div class="form-actions">
                 <Button variant="destructive" type="submit" class="h-11" disabled={busy}>Konfirmasi hapus</Button>

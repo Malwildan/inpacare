@@ -1,3 +1,4 @@
+import { toastMessage } from '../toast.mjs';
 import { test, expect } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -57,7 +58,7 @@ test('medical record archive requires confirmation and keeps its reason after a 
 	const reason = dialog.getByLabel('Alasan pengarsipan');
 	await reason.fill('   ');
 	await dialog.getByRole('button', { name: 'Konfirmasi arsip' }).click();
-	await expect(dialog.getByRole('alert')).toContainText('Alasan pengarsipan wajib diisi.');
+	await expect(toastMessage(page, 'Alasan pengarsipan wajib diisi.')).toContainText('Alasan pengarsipan wajib diisi.');
 	expect(archiveRequests).toBe(0);
 
 	await reason.fill('Periksa konflik versi rekam medis');
@@ -66,7 +67,7 @@ test('medical record archive requires confirmation and keeps its reason after a 
 	await archived;
 	await expect(dialog).toBeVisible();
 	await expect(reason).toHaveValue('Periksa konflik versi rekam medis');
-	await expect(dialog.getByRole('alert')).toContainText('Versi rekam medis berubah.');
+	await expect(toastMessage(page, 'Versi rekam medis berubah.')).toContainText('Versi rekam medis berubah.');
 	expect(archiveRequests).toBe(1);
 	expect(archivePayload).toMatchObject({ reason: 'Periksa konflik versi rekam medis' });
 	expect(typeof archivePayload?.expectedVersion).toBe('number');
@@ -158,7 +159,7 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	await confirmation.getByLabel('Alasan penghapusan').fill('Hapus invoice uji');
 	await confirmation.getByRole('button', { name: 'Ya, hapus' }).click();
 	await expect(confirmation).toHaveCount(0);
-	await expect(page.getByRole('status')).toContainText(/berhasil/i);
+	await expect(toastMessage(page, 'Tagihan berhasil dihapus.', 'success')).toBeVisible();
 });
 
 test('a nurse can edit and remove a room item and archive the empty room', async ({ page }) => {
@@ -178,7 +179,7 @@ test('a nurse can edit and remove a room item and archive the empty room', async
 	await roomDialog.getByLabel('Tarif harian (Rp)').fill('0');
 	await roomDialog.getByRole('button', { name: 'Simpan ruangan' }).click();
 	await expect(roomDialog).toHaveCount(0);
-	await expect(page.getByRole('status')).toContainText(/berhasil/i);
+	await expect(toastMessage(page, 'Perubahan berhasil disimpan.', 'success')).toBeVisible();
 	const roomRow = page.getByRole('row').filter({ hasText: roomName });
 	await expect(roomRow).toBeVisible();
 
@@ -192,7 +193,7 @@ test('a nurse can edit and remove a room item and archive the empty room', async
 	await addItemDialog.getByLabel('Harga satuan').fill('100');
 	await addItemDialog.getByRole('button', { name: 'Tambah item' }).click();
 	await expect(addItemDialog).toHaveCount(0);
-	await expect(page.getByRole('status')).toContainText(/berhasil/i);
+	await expect(toastMessage(page, 'Perubahan berhasil disimpan.', 'success')).toBeVisible();
 
 	await roomRow.getByRole('button', { name: 'Lihat' }).click();
 	const detail = page.getByRole('dialog', { name: 'Detail ruangan' });
@@ -216,7 +217,7 @@ test('a nurse can edit and remove a room item and archive the empty room', async
 	await removeItemDialog.getByRole('button', { name: 'Hapus' }).click();
 	await expect(removeItemDialog).toHaveCount(0);
 	await expect(detail.getByRole('listitem').filter({ hasText: itemName })).toHaveCount(0);
-	await expect(page.getByRole('status')).toContainText(/berhasil/i);
+	await expect(toastMessage(page, 'Perubahan berhasil disimpan.', 'success')).toBeVisible();
 
 	await detail.getByRole('button', { name: 'Tutup detail ruangan', exact: true }).click();
 	await expect(detail).toHaveCount(0);

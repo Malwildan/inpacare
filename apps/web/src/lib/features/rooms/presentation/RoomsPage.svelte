@@ -1,4 +1,5 @@
 <script lang="ts">
+import { toast } from '$lib/shared/ui/sonner/index.js';
 import { invalidateAll } from '$app/navigation';
 import type { Rooms, RoomsPageData, Room, RoomItem, EditRoom } from '$lib/features/rooms';
 import { sessionFailure } from '$lib/shared/presentation/session';
@@ -6,7 +7,6 @@ import { formText } from '$lib/shared/presentation/form';
 import { Plus } from 'lucide-svelte';
 import { money } from '$lib/shared/format';
 import MoneyInput from '$lib/shared/ui/MoneyInput.svelte';
-import { Alert, AlertDescription } from '$lib/shared/ui/alert/index.js';
 import { Badge, type BadgeVariant } from '$lib/shared/ui/badge/index.js';
 import { Button } from '$lib/shared/ui/button/index.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
@@ -37,8 +37,6 @@ let classFilter = $state('');
 let statusFilter = $state('');
 
 let busy = $state(false);
-let error = $state('');
-let success = $state('');
 
 /* One controlled dialog per task. Targeted rows are stored by id so the dialog body
    always renders the current server copy instead of a stale object after invalidateAll(). */
@@ -65,8 +63,6 @@ const rooms = $derived(data.rooms.filter((room: Room) => (!query || (room.name +
     (!classFilter || room.roomClass === classFilter) && (!statusFilter ||
     (statusFilter === 'occupied' ? room.status === 'available' && room.occupants > 0 :
         statusFilter === 'available' ? room.status === 'available' && room.occupants === 0 : room.status === statusFilter))));
-
-const anyDialogOpen = $derived(createOpen || viewOpen || editOpen || addItemOpen || itemEditOpen || removeOpen);
 
 const viewRoom = $derived(roomById(viewId));
 const editRoom = $derived(roomById(editId));
@@ -96,16 +92,10 @@ function statusTone(room: Room): BadgeVariant {
     return room.occupants > 0 ? 'info' : 'success';
 }
 
-function startAction() {
-    error = '';
-    success = '';
-}
-
 async function submit(operation: () => Promise<unknown>) {
     if (busy) return false;
     busy = true;
-    error = '';
-    success = '';
+    const toastId = toast.loading('Menyimpan perubahan…');
     try {
         await operation();
         await invalidateAll();
@@ -113,10 +103,10 @@ async function submit(operation: () => Promise<unknown>) {
         editOpen = false;
         addItemOpen = false;
         itemEditOpen = false;
-        success = 'Perubahan berhasil disimpan.';
+        toast.success('Perubahan berhasil disimpan.', { id: toastId });
         return true;
     } catch (e) {
-        error = sessionFailure(e);
+        toast.error(sessionFailure(e), { id: toastId });
         return false;
     } finally {
         busy = false;
@@ -124,43 +114,36 @@ async function submit(operation: () => Promise<unknown>) {
 }
 
 function openCreate() {
-    startAction();
     createOpen = true;
 }
 
 function openView(id: string) {
-    startAction();
     viewId = id;
     viewOpen = true;
 }
 
 function openEdit(id: string) {
-    startAction();
     editId = id;
     editOpen = true;
 }
 
 function openAddItem(roomId: string) {
-    startAction();
     addItemId = roomId;
     addItemOpen = true;
 }
 
 function openItemEdit(roomId: string, itemId: string) {
-    startAction();
     itemEditTarget = { roomId, itemId };
     itemEditOpen = true;
 }
 
 function openRemoveRoom(room: Room) {
-    startAction();
     removeItemTarget = null;
     removeRoomId = room.id;
     removeOpen = true;
 }
 
 function openRemoveItem(room: Room, item: RoomItem) {
-    startAction();
     removeRoomId = null;
     removeItemTarget = { roomId: room.id, itemId: item.id };
     removeOpen = true;
@@ -199,15 +182,6 @@ async function removeItemConfirmed() {
             </Button>
         {/if}
     </header>
-
-    {#if error && !anyDialogOpen}
-        <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>
-    {/if}
-    {#if success}
-        <Alert role="status" class="border-success/30 bg-success-soft text-success">
-            <AlertDescription class="font-medium text-success">{success}</AlertDescription>
-        </Alert>
-    {/if}
 
     <section aria-label="Ringkasan ruangan" class="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card>
@@ -313,7 +287,6 @@ async function removeItemConfirmed() {
             <DialogDescription>Lengkapi data ruangan baru. Kolom bertanda wajib tidak boleh kosong.</DialogDescription>
         </DialogHeader>
         <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); const dailyRate = formText(f, 'dailyRate') || '0'; void submit(() => roomService.create({ name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), picId: formText(f, 'picId') || null, dailyRate })); }}>
-            {#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
             <FieldGroup class="grid gap-4 sm:grid-cols-2">
                 <Field>
                     <FieldLabel for="room-name">Nama ruangan</FieldLabel>
@@ -350,7 +323,6 @@ async function removeItemConfirmed() {
         {#if editRoom}
             {@const room = editRoom}
             <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); const dailyRate = formText(f, 'dailyRate'); void submit(() => roomService.update(room.id, { name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), status: formText(f, 'status') as EditRoom['status'], picId: formText(f, 'picId') || null, dailyRate, expectedVersion: room.version })); }}>
-                {#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
                 <FieldGroup class="grid gap-4 sm:grid-cols-2">
                     <Field>
                         <FieldLabel for="room-edit-name">Nama</FieldLabel>
@@ -391,9 +363,6 @@ async function removeItemConfirmed() {
         </DialogHeader>
         {#if viewRoom}
             {@const room = viewRoom}
-            {#if error && !addItemOpen && !itemEditOpen}
-                <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>
-            {/if}
             <dl class="grid grid-cols-2 gap-4">
                 <div class="flex min-w-0 flex-col gap-1">
                     <dt class="text-[13px] text-muted-foreground">Tipe</dt>
@@ -451,7 +420,6 @@ async function removeItemConfirmed() {
         {#if addItemRoom}
             {@const room = addItemRoom}
             <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); void submit(() => roomService.addItem(room.id, { name: formText(f, 'name'), category: formText(f, 'category'), quantity: Number(formText(f, 'quantity')), unitPrice: formText(f, 'unitPrice') })); }}>
-                {#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
                 <FieldGroup class="grid gap-4 sm:grid-cols-2">
                     <Field>
                         <FieldLabel for="item-name">Nama item</FieldLabel>
@@ -494,7 +462,6 @@ async function removeItemConfirmed() {
             {@const room = itemEditRoom}
             {@const item = itemEditItem}
             <form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); void submit(() => roomService.updateItem(room.id, item.id, { name: formText(f, 'name'), category: formText(f, 'category'), quantity: Number(formText(f, 'quantity')), unitPrice: String(formText(f, 'unitPrice')), expectedVersion: room.version })); }}>
-                {#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
                 <FieldGroup class="grid gap-4 sm:grid-cols-2">
                     <Field>
                         <FieldLabel for="item-edit-name">Nama</FieldLabel>

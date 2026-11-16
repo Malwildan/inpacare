@@ -1,3 +1,4 @@
+import { toastMessage } from '../toast.mjs';
 import { test, expect } from '@playwright/test';
 
 test('notifications show truthful loading, retry and keyboard dismissal', async ({ page }) => {
@@ -25,7 +26,7 @@ test('notifications show truthful loading, retry and keyboard dismissal', async 
  await trigger.click();
  await expect.poll(() => requests).toBe(1);
  release();
- await expect(page.getByRole('alert')).toContainText('Gagal memuat notifikasi.');
+ await expect(toastMessage(page, 'Gagal memuat notifikasi.')).toContainText('Gagal memuat notifikasi.');
  await page.keyboard.press('Escape');
  await expect(trigger).toBeFocused();
  await trigger.click();

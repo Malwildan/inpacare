@@ -1,3 +1,4 @@
+import { toastMessage } from '../toast.mjs';
 import { test, expect } from '@playwright/test';
 import { selectOption } from '../select-option.mjs';
 import { selectDate } from '../select-date.mjs';
@@ -46,7 +47,7 @@ test('calendar keeps an inclusive week and a failed placement form', async ({ pa
   else await route.continue();
  });
  await form.getByRole('button', { name: /Simpan penempatan/ }).click();
- await expect(page.getByRole('alert')).toContainText('Kapasitas telah berubah.');
+ await expect(toastMessage(page, 'Kapasitas telah berubah.')).toContainText('Kapasitas telah berubah.');
  await expect(form.getByLabel('Tanggal masuk')).toHaveAttribute('data-value', '2026-11-03');
  await expect(form.getByLabel('Tanggal keluar')).toHaveAttribute('data-value', '2026-11-04');
 });
@@ -77,7 +78,7 @@ test('a rejected task update preserves the draft and sends a single versioned wr
   } else await route.continue();
  });
  await dialog.getByRole('button',{name:'Simpan catatan'}).click();
- await expect(dialog.getByRole('alert')).toContainText('Data telah berubah.');
+ await expect(toastMessage(page, 'Data telah berubah.')).toContainText('Data telah berubah.');
  await expect(dialog.getByLabel('Catatan tindakan')).toHaveValue('Draft survives a stale version');
  expect(writes).toBe(1);
 });

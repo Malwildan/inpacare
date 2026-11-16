@@ -14,6 +14,7 @@
 		portalProps,
 		children,
 		showCloseButton = true,
+		onInteractOutside,
 		...restProps
 	}: WithoutChildrenOrChild<DialogPrimitive.ContentProps> & {
 		portalProps?: WithoutChildrenOrChild<ComponentProps<typeof DialogPortal>>;
@@ -32,6 +33,13 @@
 			className
 		)}
 		{...restProps}
+		onInteractOutside={(event) => {
+			if (event.target instanceof Element && event.target.closest('[data-sonner-toaster]')) {
+				event.preventDefault();
+				return;
+			}
+			onInteractOutside?.(event);
+		}}
 	>
 		{@render children?.()}
 		{#if showCloseButton}

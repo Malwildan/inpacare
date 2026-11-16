@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { toast } from '$lib/shared/ui/sonner/index.js';
+	import { goto } from '$app/navigation';
 	import type { MedicalRecords, MedicalListData } from '$lib/features/medical-records';
 	import { sessionFailure } from '$lib/shared/presentation/session';
 	import { formText } from '$lib/shared/presentation/form';
 	import { ArrowRight, Plus } from 'lucide-svelte';
-	import { Alert, AlertDescription } from '$lib/shared/ui/alert/index.js';
 	import { Button } from '$lib/shared/ui/button/index.js';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
 	import { Field, FieldGroup, FieldLabel } from '$lib/shared/ui/field/index.js';
@@ -22,8 +22,6 @@
 	let search = $state('');
 	let creating = $state(false);
 	let busy = $state(false);
-	let error = $state('');
-	let notice = $state('');
 
 	const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 	const doctors = $derived(data.user.role === 'DOKTER');
@@ -34,7 +32,6 @@
 		event.preventDefault();
 		const f = new FormData(event.currentTarget as HTMLFormElement);
 		busy = true;
-		error = '';
 		try {
 			const row = await medical.create({
 				patientId: formText(f, 'patientId'),
@@ -44,12 +41,11 @@
 				notes: formText(f, 'notes'),
 				recordDate: formText(f, 'recordDate')
 			});
-			await invalidateAll();
 			creating = false;
-			notice = 'Rekam medis tersimpan.';
-			location.href = `/medical-records/${row.id}`;
+			await goto(`/medical-records/${row.id}`, { invalidateAll: true });
+			toast.success('Rekam medis tersimpan.');
 		} catch (e) {
-			error = sessionFailure(e);
+			toast.error(sessionFailure(e));
 		} finally {
 			busy = false;
 		}
@@ -72,20 +68,12 @@
 				aria-expanded={creating}
 				onclick={() => {
 					creating = !creating;
-					error = '';
 				}}
 			>
 				<Plus aria-hidden="true" /> Tambah rekam medis
 			</Button>
 		{/if}
 	</header>
-
-	{#if error}<Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>{/if}
-	{#if notice}
-		<Alert role="status" class="border-success/30 bg-success-soft text-success">
-			<AlertDescription class="font-medium text-success">{notice}</AlertDescription>
-		</Alert>
-	{/if}
 
 	<section aria-label="Ringkasan rekam medis" class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 		<Card>

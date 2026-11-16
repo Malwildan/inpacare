@@ -13,6 +13,7 @@ InpaCare uses the actual shadcn-svelte registry source as its general UI foundat
 | `shared/ui/calendar`, `shared/ui/form-date-picker.svelte` | Registry Calendar and its shared Popover composition for Indonesian date/date-time fields, required validation, FormData and date filters |
 | `shared/ui/dialog-frame.svelte` | Shared composition of registry Dialog for callback-driven feature dialogs, pending-dismissal protection and focus return |
 | `shared/ui/status-badge.svelte` | Shared composition of registry Badge with Indonesian clinical/task labels and semantic tones |
+| `shared/ui/sonner` | App-wide toast host and feedback API using svelte-sonner |
 | `app/shell` | Role-filtered navigation, mobile Sheet, breadcrumbs and notification Popover |
 | `features/*/presentation` | Feature content, forms, field names, tables, board/schedule layouts and transient state |
 
@@ -28,6 +29,7 @@ Import components from their own `index.js`, for example `$lib/shared/ui/button/
 - Feature actions generally use 44px targets. Tables and the room schedule scroll inside their containers on narrow screens.
 - Badge variants carry status text as well as color. Never rely on color alone.
 - Controlled reason dialogs keep drafts on rejection and dismissal. Busy dialogs prevent dismissal and duplicate writes. Successful writes refresh server data; errors must not present unsaved changes as saved.
+- Report transient success, error, warning and progress feedback with `toast` from `$lib/shared/ui/sonner/index.js`. The root layout mounts one `Toaster` for login and authenticated routes, so messages survive client navigation and dialog closure. Update a loading toast by its ID when an operation settles. Keep retry controls available when data fails to load; error feedback belongs in the toast. Toasts use semantic icons/colors, live announcements, reduced-motion support and 44px dismiss targets. Toast interactions must not dismiss an open dialog.
 - The task move dialog retains the settled board behavior: it can be dismissed while its request finishes. The board keeps the card pending and prevents another move of that card until the response arrives.
 - Preserve decimal-string money, `expectedVersion`, roles and date/time serialization when changing markup. The API owns calculations, authorization and mutation rules.
 - Card Title is a generic container. Use a real heading or give it `role="heading"` and the appropriate `aria-level` when it names a section.
