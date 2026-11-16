@@ -190,9 +190,9 @@
 								<TableCell class="align-top tabular-nums">{record.observationCount}</TableCell>
 							{/if}
 							<TableCell class="px-4 align-top text-right sm:px-5">
-								<a class="inline-flex items-center gap-2 text-sm font-semibold whitespace-nowrap text-primary hover:underline" href={'/medical-records/' + record.id}>
+								<Button variant="outline" class="h-11 px-3 text-[13px] no-underline hover:no-underline" href={'/medical-records/' + record.id}>
 									Lihat detail <ArrowRight size={14} aria-hidden="true" />
-								</a>
+								</Button>
 							</TableCell>
 						</TableRow>
 					{:else}

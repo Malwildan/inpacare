@@ -4,7 +4,7 @@ import { invalidateAll } from '$app/navigation';
 import type { Rooms, RoomsPageData, Room, RoomItem, EditRoom } from '$lib/features/rooms';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
-import { Plus } from 'lucide-svelte';
+import { Eye, Pencil, Plus, Save, Trash2, X } from 'lucide-svelte';
 import { money } from '$lib/shared/format';
 import MoneyInput from '$lib/shared/ui/MoneyInput.svelte';
 import { Badge, type BadgeVariant } from '$lib/shared/ui/badge/index.js';
@@ -234,7 +234,7 @@ async function removeItemConfirmed() {
             <Table>
                 <TableHeader>
                     <TableRow class="bg-muted/60 hover:bg-muted/60">
-                        <TableHead class="px-4 sm:px-5">ID / nama ruangan</TableHead>
+                        <TableHead class="px-4 whitespace-normal sm:px-5">ID / nama ruangan</TableHead>
                         <TableHead class="hidden md:table-cell">Tipe</TableHead>
                         <TableHead class="hidden md:table-cell">PIC</TableHead>
                         <TableHead class="hidden md:table-cell">Biaya inventaris</TableHead>
@@ -255,16 +255,16 @@ async function removeItemConfirmed() {
                             <TableCell class="align-top"><Badge variant={statusTone(room)}>{statusLabel(room)}</Badge></TableCell>
                             <TableCell class="px-4 align-top sm:px-5">
                                 <div class="flex flex-wrap justify-end gap-2">
-                                    <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openView(room.id)}>Lihat</Button>
+                                    <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openView(room.id)}><Eye aria-hidden="true" /> Lihat</Button>
                                     {#if isNurse}
-                                        <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openEdit(room.id)}>Ubah</Button>
+                                        <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openEdit(room.id)}><Pencil aria-hidden="true" /> Ubah</Button>
                                         <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openAddItem(room.id)}><Plus aria-hidden="true" /> Item</Button>
                                         <Button
                                             variant="destructive"
                                             class="h-11 px-3 text-[13px]"
                                             disabled={busy || room.occupants > 0}
                                             title={room.occupants > 0 ? 'Kosongkan penempatan aktif sebelum menghapus' : undefined}
-                                            onclick={() => openRemoveRoom(room)}>Hapus</Button>
+                                            onclick={() => openRemoveRoom(room)}><Trash2 aria-hidden="true" /> Hapus</Button>
                                     {/if}
                                 </div>
                             </TableCell>
@@ -307,8 +307,8 @@ async function removeItemConfirmed() {
                 <MoneyInput id="room-daily-rate" label="Tarif harian (Rp)" name="dailyRate" value="0" class="sm:col-span-2" hint="Contoh: 250.000 atau 250.000,50" />
             </FieldGroup>
             <DialogFooter>
-                <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (createOpen = false)}>Batal</Button>
-                <Button type="submit" class="h-11 px-4" disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan ruangan'}</Button>
+                <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (createOpen = false)}><X aria-hidden="true" /> Batal</Button>
+                <Button type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan ruangan'}</Button>
             </DialogFooter>
         </form>
     </DialogContent>
@@ -347,8 +347,8 @@ async function removeItemConfirmed() {
                     <MoneyInput id="room-edit-daily-rate" label="Tarif harian (Rp)" name="dailyRate" value={room.dailyRate} required hint="Contoh: 250.000 atau 250.000,50" />
                 </FieldGroup>
                 <DialogFooter>
-                    <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (editOpen = false)}>Batal</Button>
-                    <Button type="submit" class="h-11 px-4" disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan'}</Button>
+                    <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (editOpen = false)}><X aria-hidden="true" /> Batal</Button>
+                    <Button type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan'}</Button>
                 </DialogFooter>
             </form>
         {/if}
@@ -390,8 +390,8 @@ async function removeItemConfirmed() {
                                 <span class="min-w-0 text-sm text-foreground">{item.name} · {item.category} · {item.quantity} × {money(item.unitPrice)}</span>
                                 {#if isNurse}
                                     <div class="flex items-center gap-1">
-                                        <Button variant="link" class="h-11 px-2 text-[13px]" onclick={() => openItemEdit(room.id, item.id)}>Ubah</Button>
-                                        <Button variant="link" class="h-11 px-2 text-[13px] text-destructive" onclick={() => openRemoveItem(room, item)}>Hapus</Button>
+                                        <Button variant="link" class="h-11 px-2 text-[13px]" onclick={() => openItemEdit(room.id, item.id)}><Pencil aria-hidden="true" /> Ubah</Button>
+                                        <Button variant="link" class="h-11 px-2 text-[13px] text-destructive" onclick={() => openRemoveItem(room, item)}><Trash2 aria-hidden="true" /> Hapus</Button>
                                     </div>
                                 {/if}
                             </li>
@@ -405,7 +405,7 @@ async function removeItemConfirmed() {
                 {#if isNurse}
                     <Button variant="outline" class="h-11 px-4" onclick={() => openAddItem(room.id)}><Plus aria-hidden="true" /> Tambah item</Button>
                 {/if}
-                <Button class="h-11 px-4" onclick={() => (viewOpen = false)}>Tutup detail ruangan</Button>
+                <Button class="h-11 px-4" onclick={() => (viewOpen = false)}><X aria-hidden="true" /> Tutup detail ruangan</Button>
             </DialogFooter>
         {/if}
     </DialogContent>
@@ -444,8 +444,8 @@ async function removeItemConfirmed() {
                     </div>
                 {/if}
                 <DialogFooter>
-                    <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (addItemOpen = false)}>Batal</Button>
-                    <Button type="submit" class="h-11 px-4" disabled={busy}>{busy ? 'Menyimpan…' : 'Tambah item'}</Button>
+                    <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (addItemOpen = false)}><X aria-hidden="true" /> Batal</Button>
+                    <Button type="submit" class="h-11 px-4" disabled={busy}><Plus aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Tambah item'}</Button>
                 </DialogFooter>
             </form>
         {/if}
@@ -478,8 +478,8 @@ async function removeItemConfirmed() {
                     <MoneyInput id="item-edit-unit-price" label="Harga satuan" name="unitPrice" value={item.unitPrice} required />
                 </FieldGroup>
                 <DialogFooter>
-                    <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (itemEditOpen = false)}>Batal</Button>
-                    <Button type="submit" class="h-11 px-4" disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan item'}</Button>
+                    <Button type="button" variant="outline" class="h-11 px-4" onclick={() => (itemEditOpen = false)}><X aria-hidden="true" /> Batal</Button>
+                    <Button type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan item'}</Button>
                 </DialogFooter>
             </form>
         {/if}
@@ -501,12 +501,12 @@ async function removeItemConfirmed() {
             </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-            <AlertDialogCancel class="h-11 px-4" disabled={busy}>Batal</AlertDialogCancel>
+            <AlertDialogCancel class="h-11 px-4" disabled={busy}><X aria-hidden="true" /> Batal</AlertDialogCancel>
             <AlertDialogAction
                 variant="destructive"
                 class="h-11 px-4"
                 disabled={busy}
-                onclick={(event) => { event.preventDefault(); if (removeItemTarget) void removeItemConfirmed(); else void removeRoomConfirmed(); }}>Hapus</AlertDialogAction>
+                onclick={(event) => { event.preventDefault(); if (removeItemTarget) void removeItemConfirmed(); else void removeRoomConfirmed(); }}><Trash2 aria-hidden="true" /> Hapus</AlertDialogAction>
         </AlertDialogFooter>
     </AlertDialogContent>
 </AlertDialog>

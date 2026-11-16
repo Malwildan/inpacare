@@ -1,6 +1,6 @@
 <script lang="ts">
 import { toast } from '$lib/shared/ui/sonner/index.js';
-import { Button } from '$lib/shared/ui/button/index.js';
+import { Button, buttonVariants } from '$lib/shared/ui/button/index.js';
 import { Card } from '$lib/shared/ui/card/index.js';
 import FormDatePicker from '$lib/shared/ui/form-date-picker.svelte';
 import { Input } from '$lib/shared/ui/input/index.js';
@@ -13,7 +13,7 @@ import { formText } from '$lib/shared/presentation/form';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
 import StatusBadge from '$lib/shared/ui/status-badge.svelte';
 import { Badge } from '$lib/shared/ui/badge/index.js';
-import { ChevronDown, Plus } from 'lucide-svelte';
+import { ChevronDown, Plus, SlidersHorizontal } from 'lucide-svelte';
 import { untrack } from 'svelte';
 let { data, tasks }: {
     data: TasksPageData;
@@ -305,7 +305,11 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 	<label class="field">Deskripsi<Textarea name="description" rows={2}></Textarea></label><label class="field">Catatan awal<Textarea name="notes" rows={2}></Textarea></label>
 	<div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>Simpan tugas</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={()=>creating=false}>Batal</Button></div>
 </form></Card>{/if}
-<Card class="gap-4 p-5 sm:p-6 filter-panel"><form class="filters task-filters" onsubmit={(event)=>{event.preventDefault();void filterTasks();}}><label class="field search-field">Cari tugas atau pasien<Input class="h-11 text-base md:text-sm" type="search" bind:value={search} placeholder="Nama pasien, nomor RM, judul tugas" /></label><details class="advanced"><summary>Filter lanjutan</summary><div class="filters"><label class="field">Status<FormSelect bind:value={statusFilter} options={[{ value: "", label: "Semua status" }, ...(statuses).map(([key,label]) => ({ value: key, label: (label) }))]} /></label><label class="field">Prioritas<FormSelect bind:value={priorityFilter} options={[{ value: "", label: "Semua prioritas" }, { value: "high", label: "Tinggi" }, { value: "normal", label: "Normal" }, { value: "low", label: "Rendah" }]} /></label><label class="field">Ruangan<FormSelect bind:value={roomFilter} options={[{ value: "", label: "Semua ruangan" }, ...(data.reference.rooms).map((room) => ({ value: room.id, label: (room.name) }))]} /></label><label class="field">Pasien<FormSelect bind:value={patientFilter} options={[{ value: "", label: "Semua pasien" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) }))]} /></label><label class="field">PIC<FormSelect bind:value={picFilter} options={[{ value: "", label: "Semua PIC" }, ...(data.reference.staff.filter((s)=>s.role==='PERAWAT')).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label><label class="field">Dari tanggal<FormDatePicker class="h-11 text-base md:text-sm" type="date" bind:value={fromFilter}/></label><label class="field">Sampai tanggal<FormDatePicker class="h-11 text-base md:text-sm" type="date" bind:value={toFilter}/></label></div></details><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="submit">Terapkan filter</Button></form>{#if filtered}<div class="applied"><span>Filter aktif:</span>{#each Object.entries(data.filters).filter(([,value])=>value) as [key,value]}<Button variant="default" class="h-auto min-h-11 max-w-full min-w-0 whitespace-normal break-words px-3 py-2 text-left no-underline hover:no-underline" onclick={()=>{ const q = new URLSearchParams(window.location.search); q.delete(key); q.delete('page'); void goto(`/tasks?${q}`, { keepFocus: true, noScroll: true }); }}>{key}: {value} - Hapus</Button>{/each}<Button variant="link" class="h-11 px-4 no-underline hover:no-underline text-link" onclick={()=>goto('/tasks')}>Hapus semua</Button></div>{/if}</Card>
+<Card class="gap-4 p-5 sm:p-6 filter-panel"><form class="filters task-filters" onsubmit={(event)=>{event.preventDefault();void filterTasks();}}><label class="field search-field">Cari tugas atau pasien<Input class="h-11 text-base md:text-sm" type="search" bind:value={search} placeholder="Nama pasien, nomor RM, judul tugas" /></label><details class="advanced group/filters">
+    <summary class={buttonVariants({ variant: 'outline', class: 'h-11 w-full cursor-pointer justify-between gap-3 px-3 group-open/filters:bg-muted [&::-webkit-details-marker]:hidden' })}>
+        <span class="inline-flex items-center gap-2"><SlidersHorizontal aria-hidden="true" /> Filter lanjutan</span>
+        <ChevronDown aria-hidden="true" class="size-4 transition-transform group-open/filters:rotate-180 motion-reduce:transition-none" />
+    </summary><div class="filters"><label class="field">Status<FormSelect bind:value={statusFilter} options={[{ value: "", label: "Semua status" }, ...(statuses).map(([key,label]) => ({ value: key, label: (label) }))]} /></label><label class="field">Prioritas<FormSelect bind:value={priorityFilter} options={[{ value: "", label: "Semua prioritas" }, { value: "high", label: "Tinggi" }, { value: "normal", label: "Normal" }, { value: "low", label: "Rendah" }]} /></label><label class="field">Ruangan<FormSelect bind:value={roomFilter} options={[{ value: "", label: "Semua ruangan" }, ...(data.reference.rooms).map((room) => ({ value: room.id, label: (room.name) }))]} /></label><label class="field">Pasien<FormSelect bind:value={patientFilter} options={[{ value: "", label: "Semua pasien" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) }))]} /></label><label class="field">PIC<FormSelect bind:value={picFilter} options={[{ value: "", label: "Semua PIC" }, ...(data.reference.staff.filter((s)=>s.role==='PERAWAT')).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label><label class="field">Dari tanggal<FormDatePicker class="h-11 text-base md:text-sm" type="date" bind:value={fromFilter}/></label><label class="field">Sampai tanggal<FormDatePicker class="h-11 text-base md:text-sm" type="date" bind:value={toFilter}/></label></div></details><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="submit">Terapkan filter</Button></form>{#if filtered}<div class="applied"><span>Filter aktif:</span>{#each Object.entries(data.filters).filter(([,value])=>value) as [key,value]}<Button variant="default" class="h-auto min-h-11 max-w-full min-w-0 whitespace-normal break-words px-3 py-2 text-left no-underline hover:no-underline" onclick={()=>{ const q = new URLSearchParams(window.location.search); q.delete(key); q.delete('page'); void goto(`/tasks?${q}`, { keepFocus: true, noScroll: true }); }}>{key}: {value} - Hapus</Button>{/each}<Button variant="link" class="h-11 px-4 no-underline hover:no-underline text-link" onclick={()=>goto('/tasks')}>Hapus semua</Button></div>{/if}</Card>
 <div class="task-board" role="region" aria-label="Papan tugas perawatan" ondragleave={(event)=>{if (!event.currentTarget.contains(event.relatedTarget as Node)) dragTarget=null;}}>
  {#each statuses as [key,label]}
   {@const status = key as BoardStatus}
@@ -323,7 +327,6 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
     {:else}{#if !column.error}<p class="empty">Tidak ada tugas.</p>{/if}{/each}
     {#if dragTarget?.status===status && !dragTarget.before}<div class="drop-marker" aria-label="Posisi penyisipan di akhir"></div>{/if}
     {#if column.error}<Button variant="outline" class="h-11 px-4" disabled={loading.includes(status)} onclick={()=>loadMore(status)}>{loading.includes(status) ? 'Memuat...' : 'Coba lagi'}</Button>{:else if column.items.length < column.total}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" disabled={loading.includes(status)} onclick={()=>loadMore(status)}>{loading.includes(status) ? 'Memuat...' : 'Muat lebih banyak'}</Button>{/if}
-    {#if status==='todo' && coordinator}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline add-card" onclick={()=>{creating=true;}}>+ Tambah tugas</Button>{/if}
    {/if}
   </section>
  {/each}
@@ -383,7 +386,6 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 .task-card-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; }
 .card-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
 .advanced { min-width:0; }
-.advanced summary { cursor:pointer; min-height:44px; display:flex; align-items:center; }
 .advanced .filters { margin-top:12px; }
 .applied { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
 .move-form { display:grid; gap:12px; }

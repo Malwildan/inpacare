@@ -1,7 +1,6 @@
 import type { Cycle, CycleSummary, NewCycle, ChangeCycle, NewRequest, Decision, DeleteCycle } from '../domain/models';
 import type { User } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
-import type { Notification } from '$lib/features/notifications';
 export type CycleFilters = Record<'search' | 'status' | 'roomId' | 'patientId', string>;
 export type CycleCandidate = { id: string; name: string; medicalRecordNo: string };
 export type CareCycles = {
@@ -20,7 +19,6 @@ export type DashboardData = {
     filters: CycleFilters;
     user: User;
     reference: Reference;
-    notifications: Notification[];
 };
 export function parseCycleSearch(params: URLSearchParams): CycleFilters {
     return { search: params.get('search') ?? '', status: params.get('status') ?? '', roomId: params.get('roomId') ?? '', patientId: params.get('patientId') ?? '' };

@@ -15,10 +15,9 @@ import Modal from '$lib/shared/ui/dialog-frame.svelte';
 const statusLabels: Record<string, string> = { pending: 'Pending', assigned: 'Assigned', in_care: 'In Care', extend: 'Extend', released: 'Pelepasan' };
 const requestLabels: Record<string, string> = { pending: 'Menunggu keputusan', approved: 'Disetujui', rejected: 'Ditolak' };
 import Badge from '$lib/shared/ui/status-badge.svelte';
-let { data, careCycles, markNotificationRead }: {
+let { data, careCycles }: {
     data: DashboardData;
     careCycles: CareCycles;
-    markNotificationRead: (id: string) => Promise<void>;
 } = $props();
 let search = $state('');
 let roomFilter = $state('');
@@ -168,11 +167,6 @@ async function deleteCycle(cycle: CycleDetail) {
     </Modal>
 {/if}
 
-<details class="notification-inbox">
-	<summary>Notifikasi <span class="muted">{data.notifications.filter((item) => !item.readAt).length} belum dibaca</span></summary>
-	{#if data.notifications.length === 0}<p class="empty">Belum ada notifikasi.</p>{:else}<ul>{#each data.notifications as item (item.id)}<li><span>{item.message}</span>{#if !item.readAt}<Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" disabled={busy} onclick={() => void send(()=>markNotificationRead(item.id))}>Tandai dibaca</Button>{/if}</li>{/each}</ul>{/if}
-</details>
-
 <Card class="gap-4 p-5 sm:p-6 ">
 	<div class="panel-header"><div><h2>Daftar rekap pasien</h2><span class="muted">{cycles.length} dari {data.cycles.length} pasien</span></div></div>
 	<form class="filters" onsubmit={filterCycles}><label class="field search-field">Cari nama atau nomor rekam medis<Input class="h-11 text-base md:text-sm" type="search" bind:value={search} placeholder="Cari nama pasien..." /></label><label class="field">Pasien<FormSelect bind:value={patientFilter} options={[{ value: "", label: "Semua pasien" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} /></label><label class="field">Ruangan<FormSelect bind:value={roomFilter} options={[{ value: "", label: "Semua ruangan" }, ...(rooms).map((room) => ({ value: room.id, label: (room.name) }))]} /></label><label class="field">Status<FormSelect bind:value={statusFilter} options={[{ value: "", label: "Semua status" }, ...(counts).flatMap((item) => [{ value: item.status, label: (({pending:'Pending',assigned:'Assigned',in_care:'In Care',extend:'Extend',released:'Pelepasan'} as Record<string,string>)[item.status]) }]), { value: "pending_approval", label: "Menunggu keputusan" }]} /></label><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="submit">Terapkan filter</Button></form>
@@ -245,12 +239,6 @@ async function deleteCycle(cycle: CycleDetail) {
 	.form-actions{display:flex;justify-content:flex-end;gap:12px}
 	.create-help{margin:12px 0 18px;font-size:13px}
 	.create-form{display:grid;gap:16px}
-	.notification-inbox{margin-bottom:24px;border-bottom:1px solid var(--border);padding:0 4px 16px}
-	.notification-inbox summary{cursor:pointer;font-weight:600}
-	.notification-inbox summary span{font-size:12px;font-weight:400;margin-left:12px}
-	.notification-inbox ul{list-style:none;padding:0;margin:12px 0 0}
-	.notification-inbox li{padding:12px 0;display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--border);font-size:13px}
-	.notification-inbox .empty{text-align:left;padding:16px 0 0}
 	.search-field{flex:2;min-width:220px}
 	.cell-meta{display:block;color:var(--muted-foreground);font-size:12px;margin-top:4px}
 	.request-item{border-top:1px solid var(--border);padding-top:12px;margin-top:12px;font-size:13px}
@@ -264,5 +252,4 @@ async function deleteCycle(cycle: CycleDetail) {
 	.request-item p{margin-top:8px;color:var(--foreground)}
 	.request-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 	.workflow-note{margin-top:20px;font-size:12px;max-width:80ch}
-	@media(max-width:600px){.notification-inbox li{align-items:flex-start;flex-direction:column}}
 </style>
