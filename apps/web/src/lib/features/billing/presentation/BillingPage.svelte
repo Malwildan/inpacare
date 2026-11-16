@@ -12,8 +12,7 @@ import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
 import { money as rupiah } from '$lib/shared/format';
 import MoneyInput from '$lib/shared/ui/MoneyInput.svelte';
-import { ChevronDown, Eye, Pencil, Plus, Save, Trash2, X } from 'lucide-svelte';
-import { tick } from 'svelte';
+import { Check, ChevronDown, Eye, List, Pencil, Plus, Save, Trash2, X } from 'lucide-svelte';
 import * as DropdownMenu from '$lib/shared/ui/dropdown-menu/index.js';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
 import StatusBadge from '$lib/shared/ui/status-badge.svelte';
@@ -31,18 +30,17 @@ let coveredAmount = $state('0');
 let busy = $state(false);
 let selected = $state<SelectedInvoice | null>(null);
 let claimResultDraft = $state('');
-let editingInvoice = $state(false);
+let invoiceView = $state<'detail' | 'edit' | 'line' | 'claim' | 'delete' | 'deleteLine' | 'payment'>('detail');
+let detailTab = $state('summary');
+let editingLine = $state<InvoiceLine | null>(null);
 let editLines = $state<InvoiceLine[]>([]);
 let editCovered = $state('0');
 let editReason = $state('');
 let deletingInvoice = $state<SelectedInvoice | null>(null);
 let deleteReason = $state('');
-let invoiceDeleteOpen = $state(false);
 let deletingLine = $state<InvoiceLine | null>(null);
-let lineDeleteOpen = $state(false);
 let lineDeleteReason = $state('');
-let paymentInvoice = $state<Invoice | null>(null);
-let paymentOpen = $state(false);
+let paymentInvoice = $state<Pick<Invoice, 'id' | 'version' | 'status' | 'patientName'> | null>(null);
 let paymentStatus = $state('paid');
 let paymentReason = $state('');
 let locked = $derived(selected?.status === 'paid');
@@ -95,7 +93,7 @@ async function create(event: SubmitEvent) {
 async function openInvoice(id: string) {
     try {
         const invoice = await billing.openInvoice(id);
-        editingInvoice = false;
+        invoiceView = 'detail';
         selected = invoice;
         claimResultDraft = invoice.claimResult ?? '';
     }
@@ -103,19 +101,18 @@ async function openInvoice(id: string) {
         toast.error(sessionFailure(cause));
     }
 }
-// Row button: open the detail right under the clicked row, or close it if it is already open.
-async function toggleInvoice(id: string) {
-    if (selected?.id === id) { selected = null; editingInvoice = false; return; }
-    await openInvoice(id);
-    await tick();
-    document.getElementById('invoice-detail')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+function closeInvoiceView() {
+    if (invoiceView === 'detail' || !selected) { selected = null; paymentInvoice = null; }
+    invoiceView = 'detail';
+    editingLine = null;
 }
+async function showInvoice(id: string) { detailTab = 'summary'; await openInvoice(id); }
 function startInvoiceEdit() {
     if (!selected || selected.status === 'paid') return;
     editLines = selected.lines.map((line) => ({ ...line }));
     editCovered = selected.coveredAmount;
     editReason = '';
-    editingInvoice = true;
+    invoiceView = 'edit';
 }
 async function saveInvoiceEdit(event: SubmitEvent) {
     event.preventDefault();
@@ -125,15 +122,15 @@ async function saveInvoiceEdit(event: SubmitEvent) {
         lines: editLines.map(({ roomItemId, kind, description, quantity, unitPrice }) => ({ roomItemId, kind, description, quantity: Number(quantity), unitPrice: String(unitPrice) })),
         coveredAmount: String(editCovered), reason: editReason, expectedVersion: selected!.version
     }));
-    if (result) { editingInvoice = false; await openInvoice(id); }
+    if (result) { invoiceView = 'detail'; await openInvoice(id); }
 }
-function startPaymentChange(invoice: Invoice) {
+function startPaymentChange(invoice: Pick<Invoice, 'id' | 'version' | 'status' | 'patientName'>) {
     if (paymentInvoice?.id !== invoice.id) {
         paymentReason = '';
         paymentStatus = invoice.status === 'paid' ? 'unpaid' : 'paid';
     }
     paymentInvoice = invoice;
-    paymentOpen = true;
+    invoiceView = 'payment';
 }
 async function updateStatus(event: SubmitEvent, invoice: Pick<Invoice, 'id' | 'version'>) {
     event.preventDefault();
@@ -142,7 +139,7 @@ async function updateStatus(event: SubmitEvent, invoice: Pick<Invoice, 'id' | 'v
     if (!reason) { toast.error('Alasan perubahan wajib diisi.'); return; }
     const result = await send(() => billing.changePayment(invoice.id, { status: formText(form, 'status') as ChangePayment['status'], reason, expectedVersion: invoice.version }));
     if (result) {
-        paymentOpen = false;
+        invoiceView = 'detail';
         paymentInvoice = null;
         paymentReason = '';
         if (selected?.id === invoice.id) await openInvoice(invoice.id);
@@ -157,7 +154,7 @@ async function editLine(event: SubmitEvent, line: InvoiceLine) { event.preventDe
 function startLineDelete(line: InvoiceLine) {
     if (deletingLine?.id !== line.id) lineDeleteReason = '';
     deletingLine = line;
-    lineDeleteOpen = true;
+    invoiceView = 'deleteLine';
 }
 async function deleteLine(event: SubmitEvent) {
     event.preventDefault();
@@ -168,7 +165,7 @@ async function deleteLine(event: SubmitEvent) {
     const lineId = deletingLine.id;
     const expectedVersion = selected.version;
     if (await send(async () => { await billing.deleteLine(id, lineId, { expectedVersion, reason }); return true; })) {
-        lineDeleteOpen = false;
+        invoiceView = 'detail';
         deletingLine = null;
         lineDeleteReason = '';
         await openInvoice(id);
@@ -180,7 +177,7 @@ function startInvoiceDelete() {
     if (!selected) return;
     if (deletingInvoice?.id !== selected.id) deleteReason = '';
     deletingInvoice = selected;
-    invoiceDeleteOpen = true;
+    invoiceView = 'delete';
 }
 async function deleteInvoice(event: SubmitEvent) {
     event.preventDefault();
@@ -189,11 +186,11 @@ async function deleteInvoice(event: SubmitEvent) {
     const reason = deleteReason.trim();
     if (!reason) { toast.error('Alasan penghapusan wajib diisi.'); return; }
     if (await send(async () => { await billing.remove(invoice.id, { expectedVersion: invoice.version, reason }); return true; }, 'Tagihan berhasil dihapus. Riwayat penghapusan tetap tercatat.')) {
-        invoiceDeleteOpen = false;
+        invoiceView = 'detail';
         deletingInvoice = null;
         deleteReason = '';
         if (selected?.id === invoice.id) selected = null;
-        editingInvoice = false;
+        invoiceView = 'detail';
     }
 }
 async function choosePatient(value: string) {
@@ -217,31 +214,43 @@ async function choosePatient(value: string) {
 
 <svelte:head><title>Manajemen Tagihan | InpaCare</title></svelte:head>
 <div class="billing-page flex min-w-0 flex-col gap-6">
-<section class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="page-title">Manajemen Tagihan</h1><p class="page-subtitle">Catat biaya layanan dan perlengkapan pasien, lalu ikuti status pembayarannya.</p></div><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-expanded={creating} onclick={() => { creating = !creating; }}><Plus size={16} aria-hidden="true"/> Buat tagihan</Button></section>
+<section class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="page-title">Manajemen Tagihan</h1><p class="page-subtitle">Catat biaya layanan dan perlengkapan pasien, lalu ikuti status pembayarannya.</p></div><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={() => { patientId = ''; creationContext = null; lines = [{ description: '', quantity: 1, unitPrice: '' }]; coveredAmount = '0'; creating = true; }}><Plus size={16} aria-hidden="true"/> Buat tagihan</Button></section>
 
-{#if creating}
-	<section class="create-layout">
-		<Card class="min-w-0 gap-4 p-5 sm:p-6"><form class="create-form" aria-label="Buat tagihan baru" onsubmit={create} oninvalidcapture={reportInvalid}>
-			<div class="panel-header"><div><h2>Buat tagihan baru</h2><p class="muted">Pilih pasien dan masukkan rincian biaya.</p></div></div>
-			<label class="field">Pasien<FormSelect name="patientId" value={patientId} onValueChange={choosePatient} required options={[{ value: "", label: "Pilih pasien" }, ...(data.reference.patients).map((item) => ({ value: item.id, label: (item.medicalRecordNo) + " · " + (item.name) }))]} /></label>
-			{#if patient}<div class="patient-card"><strong>{patient.name}</strong><span>{patient.medicalRecordNo}</span><span>Status BPJS: {patient.bpjs ? 'Terdaftar' : 'Tidak terdaftar'}</span></div>{/if}
-			{#if creationContext}<label class="field">Penempatan<FormSelect name="placementId" options={[{ value: "", label: "Tanpa penempatan" }, ...(creationContext.placements).map((placement) => ({ value: placement.id, label: (placement.room) + " · " + (placement.startsOn) + " – " + (placement.endsOn) }))]} /></label>{/if}
-			<div class="line-heading"><h3>Rincian layanan</h3><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="button" disabled={lines.length >= 30} onclick={() => lines = [...lines,{description:'',quantity:1,unitPrice:''}]}><Plus size={14} aria-hidden="true"/> Tambah baris</Button></div>
-			{#each lines as line, index (line)}<div class="line-row"><label class="field">Layanan<Input class="h-11 text-base md:text-sm" bind:value={line.description} maxlength={160} required placeholder="Contoh: Kamar kelas 2 (malam)" /></label><label class="field quantity-field">Qty<Input class="h-11 text-base md:text-sm" bind:value={line.quantity} type="number" min="1" max="10000" required /></label><MoneyInput label="Harga satuan (Rp)" bind:value={line.unitPrice} required /><Button variant="outline" size="icon" class="remove-line size-11 text-destructive hover:text-destructive" type="button" aria-label="Hapus baris rincian" title="Hapus baris" disabled={lines.length <= 1} onclick={() => lines = lines.filter((_, i) => i !== index)}><Trash2 size={18} aria-hidden="true" /></Button></div>{/each}
-			<MoneyInput label="Jumlah jaminan BPJS (Rp)" bind:value={coveredAmount} disabled={!patient?.bpjs} required hint={!patient ? 'Pilih pasien terlebih dahulu.' : patient.bpjs ? 'Nilai diisi sesuai hasil pemeriksaan petugas; aplikasi demo tidak memverifikasi BPJS.' : 'Pasien ini tidak terdaftar BPJS, jadi jaminan otomatis Rp 0.'} />
-			<div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || !patientId}><Save aria-hidden="true" /> Simpan tagihan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={() => creating=false}><X aria-hidden="true" /> Batal</Button></div>
-		</form></Card>
-		<Card class="summary h-max gap-0 p-5 sm:p-6" role="complementary" aria-label="Ringkasan biaya"><h2 class="mb-4">Ringkasan biaya</h2><div class="summary-row"><span>Total layanan</span><strong>{rupiah(total)}</strong></div><div class="summary-row"><span>Jaminan BPJS</span><strong>−{rupiah(covered)}</strong></div><div class="summary-row grand-total"><span>Total tagihan</span><strong>{rupiah(payable)}</strong></div></Card>
-	</section>
-{/if}
+{#if selected || (invoiceView === 'payment' && paymentInvoice)}
+<Modal title={invoiceView === 'detail' ? 'Rincian tagihan' : invoiceView === 'edit' ? 'Ubah tagihan' : invoiceView === 'line' ? 'Ubah rincian layanan' : invoiceView === 'claim' ? 'Verifikasi klaim' : invoiceView === 'delete' ? 'Hapus tagihan?' : invoiceView === 'deleteLine' ? 'Hapus rincian tagihan?' : 'Ubah status pembayaran'}
+ description={`${selected?.patientName ?? paymentInvoice?.patientName} · ${selected?.id ?? paymentInvoice?.id}`}
+ {busy} wide={['detail', 'edit'].includes(invoiceView)} protectChanges={['edit', 'line', 'claim', 'payment'].includes(invoiceView)}
+ formKey={invoiceView} backLabel={invoiceView !== 'detail' && selected ? 'Kembali ke detail' : undefined} onclose={closeInvoiceView}>
+ {#snippet children(close)}
+ <div class="billing-page">
+ {#if invoiceView === 'detail' && selected}
+  <nav class="mb-5 flex flex-wrap gap-2" aria-label="Bagian detail tagihan">
+   {#each [['summary','Ringkasan'],['lines','Rincian'],['history','Riwayat']] as [value,label]}<Button variant={detailTab === value ? 'secondary' : 'ghost'} aria-pressed={detailTab === value} onclick={() => detailTab = value}><List aria-hidden="true" /> {label}</Button>{/each}
+  </nav>
+  <section aria-label="Rincian tagihan">
+   {#if detailTab === 'summary'}<div class="patient-card"><strong>{selected.patientContext.patient.name}</strong><span>{selected.medicalRecordNo}</span><span>Status BPJS: {selected.patientContext.patient.bpjs ? 'Terdaftar' : 'Tidak terdaftar'}</span><StatusBadge value={selected.status} label={selected.status === 'paid' ? 'Lunas' : 'Belum dibayar'} /></div>
+<div class="detail-totals"><span>{selected.bpjsSnapshot ? `Jaminan BPJS: ${rupiah(selected.coveredAmount)}` : 'Tanpa jaminan BPJS'}</span><strong>Total: {rupiah(selected.totalAmount)} · Dibayar pasien: {rupiah(selected.payableAmount)}</strong></div>
+<p>Hasil verifikasi klaim: <strong>{selected.claimResult ?? 'Belum ada hasil verifikasi'}</strong></p>
+<p class="muted">Riwayat tagihan pasien: {selected.patientContext.invoices.length}</p>
 
-{#snippet detailPanel()}
-{#if selected}
-	<div id="invoice-detail" class="invoice-detail invoice-detail-inline" role="region" aria-label="Rincian tagihan">
-		<div class="panel-header"><div><h2>Rincian tagihan · {selected.patientName}</h2><span class="muted">{selected.id} · {selected.medicalRecordNo}</span></div><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" onclick={() => { selected = null; editingInvoice = false; }}><X aria-hidden="true" /> Tutup</Button></div>
-		<div class="patient-card"><strong>{selected.patientContext.patient.name}</strong><span>Status BPJS pasien: {selected.patientContext.patient.bpjs ? 'Terdaftar' : 'Tidak terdaftar'}</span><span>Riwayat tagihan pasien: {selected.patientContext.invoices.length}</span></div>
-		<div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Layanan</TableHead><TableHead>Qty</TableHead><TableHead>Harga satuan</TableHead><TableHead>Subtotal</TableHead></TableRow></TableHeader><TableBody>{#each selected.lines as line}<TableRow><TableCell>{line.description}</TableCell><TableCell>{line.quantity}</TableCell><TableCell>{rupiah(line.unitPrice)}</TableCell><TableCell>{rupiah(line.lineTotal)}</TableCell></TableRow>{/each}</TableBody></Table></div>
-		{#if data.user.role==='ADMISI'}<div class="invoice-line-editors">{#if locked}<p class="locked-note" role="note">Tagihan ini sudah <strong>Lunas</strong>, jadi rincian, jaminan, dan penghapusan terkunci. Ubah status ke &ldquo;Belum dibayar&rdquo; dulu kalau perlu mengubahnya.</p>{/if}<div class="line-heading"><h3>Rincian dan jaminan</h3><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||selected.status==='paid'} onclick={startInvoiceEdit}><Pencil aria-hidden="true" /> Ubah tagihan</Button></div>{#if editingInvoice}<form onsubmit={saveInvoiceEdit} oninvalidcapture={reportInvalid}><div class="line-heading"><h3>Edit rincian</h3><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="button" disabled={editLines.length>=30} onclick={()=>editLines=[...editLines,{id:'',description:'',quantity:1,unitPrice:'0',lineTotal:'0',roomItemId:null,kind:'service'}]}><Plus aria-hidden="true" /> Tambah baris</Button></div>{#each editLines as line,index (line)}<div class="line-editor editing"><label class="field">Jenis<Input class="h-11 text-base md:text-sm" bind:value={line.kind} maxlength={40}/></label><label class="field">Item ruangan<FormSelect bind:value={line.roomItemId} options={[{ value: null, label: "Layanan tanpa item ruangan" }, ...(data.rooms).flatMap((room) => [...(room.items).map((roomItem) => ({ value: roomItem.id, label: (room.name) + " · " + (roomItem.name) }))])]} /></label><label class="field">Deskripsi<Input class="h-11 text-base md:text-sm" bind:value={line.description} required maxlength={160}/></label><label class="field">Jumlah<Input class="h-11 text-base md:text-sm" bind:value={line.quantity} type="number" min="1" max="10000" required/></label><MoneyInput label="Harga satuan" bind:value={line.unitPrice} required /><Button variant="outline" size="icon" class="remove-line size-11 text-destructive hover:text-destructive" type="button" aria-label="Hapus baris rincian" title="Hapus baris" disabled={editLines.length<=1} onclick={()=>editLines=editLines.filter((_,i)=>i!==index)}><Trash2 size={18} aria-hidden="true" /></Button></div>{/each}<MoneyInput label="Jumlah jaminan BPJS (Rp)" bind:value={editCovered} disabled={!selected.bpjsSnapshot} required hint={selected.bpjsSnapshot ? '' : 'Pasien ini tidak terdaftar BPJS, jadi jaminan otomatis Rp 0.'} /><label class="field">Alasan perubahan<Input class="h-11 text-base md:text-sm" bind:value={editReason} required maxlength={500}/></label><div class="detail-totals"><span>Total layanan: {rupiah(editTotal)}</span><strong>Dibayar pasien: {rupiah(Math.max(0,editTotal-Number(editCovered)))}</strong></div><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan perubahan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={()=>editingInvoice=false}><X aria-hidden="true" /> Batal</Button></div></form>{:else}{#each selected.lines as line (line.id)}<form class="line-editor" onsubmit={(event)=>editLine(event,line)}><fieldset class="contents" disabled={locked}><label class="field">Jenis<Input class="h-11 text-base md:text-sm" name="kind" value={line.kind??''} placeholder="layanan / item"/></label><label class="field">Item ruangan<FormSelect name="roomItemId" value={line.roomItemId??''} options={[{ value: "", label: "Layanan tanpa item ruangan" }, ...(data.rooms).flatMap((room) => [...(room.items).map((roomItem) => ({ value: roomItem.id, label: (room.name) + " · " + (roomItem.name) }))])]} /></label><label class="field">Deskripsi<Input class="h-11 text-base md:text-sm" name="description" value={line.description} required maxlength={160}/></label><label class="field">Jumlah<Input class="h-11 text-base md:text-sm" name="quantity" type="number" min="1" value={line.quantity} required/></label><MoneyInput label="Harga satuan" name="unitPrice" value={line.unitPrice} required /><label class="field">Alasan<Input class="h-11 text-base md:text-sm" name="reason" required maxlength={500}/></label><div class="action-buttons action-buttons--table"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||locked}><Save aria-hidden="true" /> Simpan</Button><Button variant="outline" size="icon" class="size-11 text-destructive hover:text-destructive" type="button" aria-label="Hapus rincian" title={locked ? 'Tagihan lunas tidak dapat diubah' : 'Hapus rincian'} disabled={busy||locked} onclick={()=>startLineDelete(line)}><Trash2 size={18} aria-hidden="true" /></Button></div></fieldset></form>{/each}{/if}</div><div class="invoice-management"><div><p>Status verifikasi klaim: <strong>{selected.claimResult??'Belum ada hasil verifikasi'}</strong></p>{#if !selected.bpjsSnapshot}<p class="muted note">Pasien tidak terdaftar BPJS, jadi verifikasi klaim tidak tersedia.</p>{/if}</div><div class="row-actions"><form class="form-grid" onsubmit={(event)=>selected&&verifyClaim(event,selected)}><div class="field"><label for="claim-result">Hasil verifikasi klaim</label><div class="relative">
+   {:else if detailTab === 'lines'}
+   <div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Layanan</TableHead><TableHead>Qty</TableHead><TableHead>Harga satuan</TableHead><TableHead>Subtotal</TableHead>{#if data.user.role === 'ADMISI'}<TableHead>Aksi</TableHead>{/if}</TableRow></TableHeader><TableBody>
+    {#each selected.lines as line (line.id)}<TableRow><TableCell class="whitespace-normal">{line.description}</TableCell><TableCell>{line.quantity}</TableCell><TableCell>{rupiah(line.unitPrice)}</TableCell><TableCell>{rupiah(line.lineTotal)}</TableCell>{#if data.user.role === 'ADMISI'}<TableCell><div class="action-buttons action-buttons--table"><Button variant="outline" disabled={busy || locked} onclick={() => { editingLine = line; invoiceView = 'line'; }}><Pencil aria-hidden="true" /> Ubah rincian</Button><Button variant="outline" disabled={busy || locked} onclick={() => startLineDelete(line)}><Trash2 aria-hidden="true" /> Hapus rincian</Button></div></TableCell>{/if}</TableRow>{/each}
+   </TableBody></Table></div>
+   {:else}<h3>Riwayat perubahan</h3>{#if selected.history.length}<ul class="history-list">{#each selected.history as item}<li><strong>{({created:'Tagihan dibuat',status_changed:'Status pembayaran diubah',updated:'Tagihan dan jaminan diperbarui',line_updated:'Rincian diperbarui',line_deleted:'Rincian dihapus',claim_verification:'Klaim diverifikasi',deleted:'Tagihan dihapus'} as Record<string,string>)[item.action] ?? item.action} · {item.actor}</strong><span>{item.reason} · {new Date(item.createdAt).toLocaleString('id-ID')}</span></li>{/each}</ul>{:else}<p class="muted">Belum ada riwayat.</p>{/if}{/if}
+  </section>
+  {#if data.user.role === 'ADMISI'}
+   {#if locked}<p class="locked-note">Tagihan lunas terkunci. Ubah status ke “Belum dibayar” untuk mengubah rincian atau menghapus tagihan.</p>{/if}
+   <div class="form-actions">
+    <Button variant="outline" disabled={busy || locked} onclick={startInvoiceEdit}><Pencil aria-hidden="true" /> Ubah tagihan</Button>
+    <Button variant="outline" disabled={busy || !selected.bpjsSnapshot} onclick={() => { claimResultDraft = selected!.claimResult ?? ''; invoiceView = 'claim'; }}><Check aria-hidden="true" /> Verifikasi klaim</Button>
+    <Button variant="outline" disabled={busy} onclick={() => selected && startPaymentChange(selected)}><Pencil aria-hidden="true" /> Ubah status</Button>
+    <Button variant="destructive" disabled={busy || locked} onclick={startInvoiceDelete}><Trash2 aria-hidden="true" /> Hapus tagihan</Button>
+   </div>
+  {/if}
+ {:else if invoiceView === 'edit' && selected}<form onsubmit={saveInvoiceEdit} oninvalidcapture={reportInvalid}><div class="line-heading"><h3>Edit rincian</h3><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="button" disabled={editLines.length>=30} onclick={()=>editLines=[...editLines,{id:'',description:'',quantity:1,unitPrice:'0',lineTotal:'0',roomItemId:null,kind:'service'}]}><Plus aria-hidden="true" /> Tambah baris</Button></div>{#each editLines as line,index (line)}<div class="line-editor editing grid"><label class="field">Jenis<Input class="h-11 text-base md:text-sm" bind:value={line.kind} maxlength={40}/></label><label class="field">Item ruangan<FormSelect bind:value={line.roomItemId} options={[{ value: null, label: "Layanan tanpa item ruangan" }, ...(data.rooms).flatMap((room) => [...(room.items).map((roomItem) => ({ value: roomItem.id, label: (room.name) + " · " + (roomItem.name) }))])]} /></label><label class="field">Deskripsi<Input class="h-11 text-base md:text-sm" bind:value={line.description} required maxlength={160}/></label><label class="field">Jumlah<Input class="h-11 text-base md:text-sm" bind:value={line.quantity} type="number" min="1" max="10000" required/></label><MoneyInput label="Harga satuan" bind:value={line.unitPrice} required /><Button variant="outline" size="icon" class="remove-line size-11 text-destructive hover:text-destructive" type="button" aria-label="Hapus baris rincian" title="Hapus baris" disabled={editLines.length<=1} onclick={()=>editLines=editLines.filter((_,i)=>i!==index)}><Trash2 size={18} aria-hidden="true" /></Button></div>{/each}<MoneyInput label="Jumlah jaminan BPJS (Rp)" bind:value={editCovered} disabled={!selected.bpjsSnapshot} required hint={selected.bpjsSnapshot ? '' : 'Pasien ini tidak terdaftar BPJS, jadi jaminan otomatis Rp 0.'} /><label class="field">Alasan perubahan<Input class="h-11 text-base md:text-sm" bind:value={editReason} required maxlength={500}/></label><div class="detail-totals"><span>Total layanan: {rupiah(editTotal)}</span><strong>Dibayar pasien: {rupiah(Math.max(0,editTotal-Number(editCovered)))}</strong></div><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan perubahan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={close}><X aria-hidden="true" /> Batal</Button></div></form>
+ {:else if invoiceView === 'line' && selected && editingLine}{@const line = editingLine}<form class="form-grid" onsubmit={(event)=>editLine(event,line)}><fieldset class="contents" disabled={locked}><label class="field">Jenis<Input class="h-11 text-base md:text-sm" name="kind" value={line.kind??''} placeholder="layanan / item"/></label><label class="field">Item ruangan<FormSelect name="roomItemId" value={line.roomItemId??''} options={[{ value: "", label: "Layanan tanpa item ruangan" }, ...(data.rooms).flatMap((room) => [...(room.items).map((roomItem) => ({ value: roomItem.id, label: (room.name) + " · " + (roomItem.name) }))])]} /></label><label class="field">Deskripsi<Input class="h-11 text-base md:text-sm" name="description" value={line.description} required maxlength={160}/></label><label class="field">Jumlah<Input class="h-11 text-base md:text-sm" name="quantity" type="number" min="1" value={line.quantity} required/></label><MoneyInput label="Harga satuan" name="unitPrice" value={line.unitPrice} required /><label class="field">Alasan<Input class="h-11 text-base md:text-sm" name="reason" required maxlength={500}/></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||locked}><Save aria-hidden="true" /> Simpan</Button><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button></div></fieldset></form>
+ {:else if invoiceView === 'claim' && selected}<form class="form-grid" onsubmit={(event)=>selected&&verifyClaim(event,selected)}><div class="field"><label for="claim-result">Hasil verifikasi klaim</label><div class="relative">
     <Input id="claim-result" class="h-11 pr-12 text-base md:text-sm" name="result" bind:value={claimResultDraft} required maxlength={120} />
     <DropdownMenu.Root>
         <DropdownMenu.Trigger>
@@ -255,51 +264,36 @@ async function choosePatient(value: string) {
             {/each}
         </DropdownMenu.Content>
     </DropdownMenu.Root>
-</div></div><label class="field">Keputusan klaim<FormSelect name="verified" value={String(selected.claimVerified)} options={[{ value: "false", label: "Belum disetujui" }, { value: "true", label: "Disetujui" }]} /></label><label class="field">Alasan verifikasi<Input class="h-11 text-base md:text-sm" name="reason" required maxlength={500}/></label><Button variant="outline" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||!selected.bpjsSnapshot}><Save aria-hidden="true" /> Simpan verifikasi klaim</Button></form><div class="delete-invoice"><Button variant="outline" class="h-11 gap-2 px-4 text-destructive no-underline hover:text-destructive hover:no-underline" disabled={busy||locked} onclick={startInvoiceDelete}><Trash2 size={16} aria-hidden="true" /> Hapus tagihan</Button>{#if locked}<span class="muted note">Tagihan lunas tidak dapat dihapus.</span>{/if}</div></div></div>{/if}
-		<div class="detail-totals"><span>{selected.bpjsSnapshot ? `Jaminan BPJS: ${rupiah(selected.coveredAmount)}` : 'Tanpa jaminan BPJS (pasien tidak terdaftar)'}</span><strong>Total: {rupiah(selected.totalAmount)} · Dibayar pasien: {rupiah(selected.payableAmount)}</strong></div>
-		<h3>Riwayat perubahan</h3>{#if selected.history.length}<ul class="history-list">{#each selected.history as item}<li><strong>{({created:'Tagihan dibuat',status_changed:'Status pembayaran diubah',updated:'Tagihan dan jaminan diperbarui',line_updated:'Rincian diperbarui',line_deleted:'Rincian dihapus',claim_verification:'Klaim diverifikasi',deleted:'Tagihan dihapus'} as Record<string,string>)[item.action] ?? item.action} · {item.actor}</strong><span>{item.reason} · {new Date(item.createdAt).toLocaleString('id-ID')}</span></li>{/each}</ul>{:else}<p class="muted">Belum ada riwayat.</p>{/if}
-	</div>
-{/if}
-{/snippet}
-
-{#if invoiceDeleteOpen && deletingInvoice}
-    <Modal title="Hapus tagihan?" description="Periksa tagihan dan masukkan alasan sebelum menghapusnya." {busy} onclose={() => invoiceDeleteOpen = false}>
-        <form onsubmit={deleteInvoice}>
+</div></div><label class="field">Keputusan klaim<FormSelect name="verified" value={String(selected.claimVerified)} options={[{ value: "false", label: "Belum disetujui" }, { value: "true", label: "Disetujui" }]} /></label><label class="field">Alasan verifikasi<Input class="h-11 text-base md:text-sm" name="reason" required maxlength={500}/></label><div class="form-actions"><Button variant="outline" onclick={close} disabled={busy}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||!selected.bpjsSnapshot}><Save aria-hidden="true" /> Simpan verifikasi klaim</Button></div></form>
+ {:else if invoiceView === 'delete' && deletingInvoice}<form onsubmit={deleteInvoice}>
             <p class="mb-4">Tagihan <strong>{deletingInvoice.id}</strong> atas nama <strong>{deletingInvoice.patientName}</strong> akan dihapus dari daftar. Riwayat penghapusan tetap tersimpan.</p>
             <label class="field">Alasan penghapusan<Input class="h-11 text-base md:text-sm" bind:value={deleteReason} maxlength={500} required /></label>
             <div class="form-actions">
                 <Button variant="destructive" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Trash2 aria-hidden="true" /> Ya, hapus</Button>
-                <Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" disabled={busy} onclick={() => invoiceDeleteOpen = false}><X aria-hidden="true" /> Batal</Button>
+                <Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button>
             </div>
         </form>
-    </Modal>
-{/if}
-
-{#if paymentOpen && paymentInvoice}
-    <Modal title="Ubah status pembayaran" description="Pilih status pembayaran dan catat alasan perubahan untuk riwayat tagihan." {busy} onclose={() => paymentOpen = false}>
-        <form onsubmit={(event) => paymentInvoice && updateStatus(event, paymentInvoice)}>
+ {:else if invoiceView === 'deleteLine' && deletingLine}<form onsubmit={deleteLine}>
+            <p class="mb-4">Rincian <strong>{deletingLine.description}</strong> akan dihapus. Riwayat perubahan tetap tersimpan.</p>
+            <label class="field">Alasan penghapusan<Textarea class="min-h-24" bind:value={lineDeleteReason} maxlength={500} required /></label>
+            <div class="form-actions">
+                <Button variant="destructive" type="submit" class="h-11" disabled={busy}><Trash2 aria-hidden="true" /> Konfirmasi hapus</Button>
+                <Button variant="outline" type="button" class="h-11" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button>
+            </div>
+        </form>
+ {:else if invoiceView === 'payment' && paymentInvoice}<form onsubmit={(event) => paymentInvoice && updateStatus(event, paymentInvoice)}>
             <p class="mb-4">Tagihan <strong>{paymentInvoice.id}</strong> · {paymentInvoice.patientName}</p>
             <label class="field">Status<FormSelect name="status" bind:value={paymentStatus} options={[{ value: "paid", label: "Lunas", disabled: paymentInvoice.status === 'paid' }, { value: "unpaid", label: "Belum dibayar", disabled: paymentInvoice.status === 'unpaid' }]} /></label>
             <label class="field">Alasan perubahan<Textarea name="reason" class="min-h-24" bind:value={paymentReason} maxlength={500} required /></label>
             <div class="form-actions">
                 <Button type="submit" class="h-11" disabled={busy}><Save aria-hidden="true" /> Simpan status</Button>
-                <Button variant="outline" type="button" class="h-11" disabled={busy} onclick={() => paymentOpen = false}><X aria-hidden="true" /> Batal</Button>
+                <Button variant="outline" type="button" class="h-11" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button>
             </div>
         </form>
-    </Modal>
-{/if}
-
-{#if lineDeleteOpen && deletingLine}
-    <Modal title="Hapus rincian tagihan?" description="Masukkan alasan penghapusan rincian. Total akan dihitung kembali oleh server." {busy} onclose={() => lineDeleteOpen = false}>
-        <form onsubmit={deleteLine}>
-            <p class="mb-4">Rincian <strong>{deletingLine.description}</strong> akan dihapus. Riwayat perubahan tetap tersimpan.</p>
-            <label class="field">Alasan penghapusan<Textarea class="min-h-24" bind:value={lineDeleteReason} maxlength={500} required /></label>
-            <div class="form-actions">
-                <Button variant="destructive" type="submit" class="h-11" disabled={busy}><Trash2 aria-hidden="true" /> Konfirmasi hapus</Button>
-                <Button variant="outline" type="button" class="h-11" disabled={busy} onclick={() => lineDeleteOpen = false}><X aria-hidden="true" /> Batal</Button>
-            </div>
-        </form>
-    </Modal>
+ {/if}
+ </div>
+ {/snippet}
+</Modal>
 {/if}
 
 <section class="grid min-w-0 grid-cols-2 gap-4 xl:grid-cols-4" aria-label="Ringkasan pembayaran">
@@ -313,17 +307,35 @@ async function choosePatient(value: string) {
 	<div class="panel-header"><div><h2>Daftar tagihan</h2><span class="muted">{invoices.length} dari {data.invoices.length} tagihan</span></div></div>
 	<div class="filters"><label class="field search-field">Cari pasien / nomor tagihan<Input class="h-11 text-base md:text-sm" type="search" bind:value={search} placeholder="Cari nama pasien..." /></label><label class="field">Status<FormSelect bind:value={statusFilter} options={[{ value: "", label: "Semua status" }, { value: "unpaid", label: "Belum dibayar" }, { value: "paid", label: "Lunas" }]} /></label></div>
 	<div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Pasien</TableHead><TableHead>Nomor tagihan</TableHead><TableHead>Total</TableHead><TableHead>Jaminan</TableHead><TableHead>Dibayar pasien</TableHead><TableHead>Status</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader><TableBody>
-		{#each invoices as invoice (invoice.id)}<TableRow><TableCell><strong>{invoice.patientName}</strong><span class="cell-meta">{invoice.medicalRecordNo}</span></TableCell><TableCell>{invoice.id}</TableCell><TableCell>{rupiah(invoice.totalAmount)}</TableCell><TableCell>{invoice.bpjsSnapshot ? rupiah(invoice.coveredAmount) : '—'}</TableCell><TableCell>{rupiah(invoice.payableAmount)}</TableCell><TableCell><StatusBadge value={invoice.status} label={invoice.status === 'paid' ? 'Lunas' : 'Belum dibayar'} /></TableCell><TableCell><div class="action-buttons action-buttons--table"><Button variant="outline" class="h-11 px-4" aria-expanded={selected?.id === invoice.id} onclick={() => void toggleInvoice(invoice.id)}>{#if selected?.id === invoice.id}<X aria-hidden="true" />{:else}<Eye aria-hidden="true" />{/if} {selected?.id === invoice.id ? 'Tutup detail' : 'Lihat detail'}</Button>{#if data.user.role === 'ADMISI'}<Button variant="outline" class="h-11" disabled={busy} onclick={() => startPaymentChange(invoice)}><Pencil aria-hidden="true" /> Ubah status</Button>{/if}</div></TableCell></TableRow>
-		{#if selected?.id === invoice.id}<TableRow class="detail-row hover:bg-transparent"><TableCell colspan={7} class="whitespace-normal p-0">{@render detailPanel()}</TableCell></TableRow>{/if}
+		{#each invoices as invoice (invoice.id)}<TableRow><TableCell><strong>{invoice.patientName}</strong><span class="cell-meta">{invoice.medicalRecordNo}</span></TableCell><TableCell>{invoice.id}</TableCell><TableCell>{rupiah(invoice.totalAmount)}</TableCell><TableCell>{invoice.bpjsSnapshot ? rupiah(invoice.coveredAmount) : '—'}</TableCell><TableCell>{rupiah(invoice.payableAmount)}</TableCell><TableCell><StatusBadge value={invoice.status} label={invoice.status === 'paid' ? 'Lunas' : 'Belum dibayar'} /></TableCell><TableCell><div class="action-buttons action-buttons--table"><Button variant="outline" class="h-11 px-4" aria-haspopup="dialog" onclick={() => void showInvoice(invoice.id)}><Eye aria-hidden="true" /> Lihat detail</Button>{#if data.user.role === 'ADMISI'}<Button variant="outline" class="h-11" disabled={busy} onclick={() => startPaymentChange(invoice)}><Pencil aria-hidden="true" /> Ubah status</Button>{/if}</div></TableCell></TableRow>
 		{:else}<TableRow><TableCell colspan={7} class="empty">Belum ada tagihan yang cocok.</TableCell></TableRow>{/each}
 	</TableBody></Table></div>
 </Card>
 <p class="muted scope-note">Status dan nilai jaminan di atas dicatat oleh petugas Admisi. Pembayaran dan verifikasi BPJS tidak terhubung ke layanan eksternal.</p>
 </div>
 
+{#if creating}
+<Modal title="Buat tagihan baru" description="Pilih pasien, rincian layanan, dan jaminan. Periksa ringkasan biaya sebelum menyimpan." {busy} protectChanges wide onclose={() => creating = false}>
+{#snippet children(close)}
+<div class="billing-page"><form class="create-form" aria-label="Buat tagihan baru" onsubmit={create} oninvalidcapture={reportInvalid}>	<section class="create-layout">
+		<Card class="min-w-0 gap-4 p-5 sm:p-6">
+
+			<label class="field">Pasien<FormSelect name="patientId" value={patientId} onValueChange={choosePatient} required options={[{ value: "", label: "Pilih pasien" }, ...(data.reference.patients).map((item) => ({ value: item.id, label: (item.medicalRecordNo) + " · " + (item.name) }))]} /></label>
+			{#if patient}<div class="patient-card"><strong>{patient.name}</strong><span>{patient.medicalRecordNo}</span><span>Status BPJS: {patient.bpjs ? 'Terdaftar' : 'Tidak terdaftar'}</span></div>{/if}
+			{#if creationContext}<label class="field">Penempatan<FormSelect name="placementId" options={[{ value: "", label: "Tanpa penempatan" }, ...(creationContext.placements).map((placement) => ({ value: placement.id, label: (placement.room) + " · " + (placement.startsOn) + " – " + (placement.endsOn) }))]} /></label>{/if}
+			<div class="line-heading"><h3>Rincian layanan</h3><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="button" disabled={lines.length >= 30} onclick={() => lines = [...lines,{description:'',quantity:1,unitPrice:''}]}><Plus size={14} aria-hidden="true"/> Tambah baris</Button></div>
+			{#each lines as line, index (line)}<div class="line-row"><label class="field">Layanan<Input class="h-11 text-base md:text-sm" bind:value={line.description} maxlength={160} required placeholder="Contoh: Kamar kelas 2 (malam)" /></label><label class="field quantity-field">Qty<Input class="h-11 text-base md:text-sm" bind:value={line.quantity} type="number" min="1" max="10000" required /></label><MoneyInput label="Harga satuan (Rp)" bind:value={line.unitPrice} required /><Button variant="outline" size="icon" class="remove-line size-11 text-destructive hover:text-destructive" type="button" aria-label="Hapus baris rincian" title="Hapus baris" disabled={lines.length <= 1} onclick={() => lines = lines.filter((_, i) => i !== index)}><Trash2 size={18} aria-hidden="true" /></Button></div>{/each}
+			<MoneyInput label="Jumlah jaminan BPJS (Rp)" bind:value={coveredAmount} disabled={!patient?.bpjs} required hint={!patient ? 'Pilih pasien terlebih dahulu.' : patient.bpjs ? 'Nilai diisi sesuai hasil pemeriksaan petugas; aplikasi demo tidak memverifikasi BPJS.' : 'Pasien ini tidak terdaftar BPJS, jadi jaminan otomatis Rp 0.'} />
+
+		</Card>
+		<Card class="summary h-max gap-0 p-5 sm:p-6" role="complementary" aria-label="Ringkasan biaya"><h2 class="mb-4">Ringkasan biaya</h2><div class="summary-row"><span>Total layanan</span><strong>{rupiah(total)}</strong></div><div class="summary-row"><span>Jaminan BPJS</span><strong>−{rupiah(covered)}</strong></div><div class="summary-row grand-total"><span>Total tagihan</span><strong>{rupiah(payable)}</strong></div></Card>
+	</section><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || !patientId}><Save aria-hidden="true" /> Simpan tagihan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={close}><X aria-hidden="true" /> Batal</Button></div></form>
+</div>{/snippet}</Modal>
+{/if}
+
+
 <style>
 	.create-layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(240px,0.8fr);gap:24px}
-	.create-form>.field{margin-bottom:20px}
 	.patient-card{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:16px 0;margin-bottom:16px;border-bottom:1px solid var(--border);font-size:13px}
 	.patient-card span{color:var(--muted-foreground)}
 	.line-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:20px 0 8px}
@@ -333,24 +345,23 @@ async function choosePatient(value: string) {
 	.grand-total{font-size:15px;border:0;border-top:1px solid var(--border);margin-top:12px;padding-top:20px}
 	.search-field{min-width:220px;flex:2}
 	.cell-meta{display:block;font-size:12px;color:var(--muted-foreground);margin-top:4px}
-	.row-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:160px}
 	.billing-page :global(.data-table th:nth-child(n+3):nth-child(-n+5)),.billing-page :global(.data-table td:nth-child(n+3):nth-child(-n+5)){text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 	.detail-totals{display:flex;justify-content:space-between;gap:16px;padding:20px 0;font-variant-numeric:tabular-nums}
 	.history-list{list-style:none;padding:0}
 	.history-list li{display:grid;gap:6px;border-top:1px solid var(--border);padding:16px 0;font-size:13px}
 	.history-list span{color:var(--muted-foreground)}
 	.scope-note{margin-top:20px;font-size:12px;max-width:80ch}
-	.invoice-line-editors{border-top:1px solid var(--border);padding:20px 0}.invoice-line-editors h3{margin-bottom:16px}
+
 	/* Jenis | Item ruangan | Deskripsi | Jumlah | Harga satuan | Alasan | Aksi */
 	.line-editor{display:grid;grid-template-columns:minmax(100px,.8fr) minmax(190px,1.3fr) minmax(170px,1.6fr) 72px minmax(120px,.9fr) minmax(130px,1fr) auto;align-items:end;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)}
-	.line-editor.editing{grid-template-columns:minmax(100px,.8fr) minmax(190px,1.3fr) minmax(170px,1.6fr) 72px minmax(120px,.9fr) auto}
+	.line-editor.editing{grid-template-columns:repeat(3,minmax(0,1fr))}
 	.billing-page :global(.table-wrap){container-type:inline-size}
-	.invoice-detail-inline{position:sticky;left:0;width:100cqw;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;padding:24px;background:var(--muted);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+
 	.locked-note{margin:0 0 16px;padding:12px 15px;border:1px solid var(--border);border-radius:8px;background:var(--background);font-size:13px}
-	.note{margin:4px 0 0;font-size:12px}.delete-invoice{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
-	:global([data-slot="dialog-content"] .form-actions){border-top:0;padding-top:0;margin-top:20px}.invoice-management{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding-top:18px}.invoice-management p{margin:0;font-size:13px}.row-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+
+
 	@media(max-width:1100px){.create-layout{grid-template-columns:1fr}}
 	@media(max-width:1200px){.line-editor,.line-editor.editing{grid-template-columns:repeat(2,minmax(0,1fr))}.line-editor :global(.field:nth-child(3)),.line-editor.editing :global(.field:nth-child(3)){grid-column:1/-1}}
-	@media(max-width:800px){.line-row{grid-template-columns:1fr 72px 1fr auto}.invoice-detail-inline{padding:16px}.detail-totals{flex-direction:column}}
+	@media(max-width:800px){.line-row{grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr) auto}.detail-totals{flex-direction:column}}
 	@media(max-width:550px){.line-row{grid-template-columns:80px minmax(0,1fr)}.line-row .field:first-child{grid-column:1/-1}.patient-card{align-items:flex-start;flex-direction:column}.line-heading{align-items:flex-start;flex-direction:column}}
 </style>

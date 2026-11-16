@@ -13,7 +13,7 @@ import { formText } from '$lib/shared/presentation/form';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
 import StatusBadge from '$lib/shared/ui/status-badge.svelte';
 import { Badge } from '$lib/shared/ui/badge/index.js';
-import { ArrowRightLeft, Ban, ChevronDown, Eye, Filter, ListPlus, Pencil, Plus, RefreshCw, Save, SlidersHorizontal, Trash2, UserRoundPen, X } from 'lucide-svelte';
+import { ArrowRightLeft, Ban, ChevronDown, Eye, Filter, ListPlus, Pencil, Plus, RefreshCw, Save, Search, SlidersHorizontal, Trash2, UserRoundPen, X } from 'lucide-svelte';
 import { untrack } from 'svelte';
 let { data, tasks }: {
     data: TasksPageData;
@@ -30,6 +30,9 @@ let toFilter = $state('');
 $effect(() => { search = data.filters.search; statusFilter = data.filters.status; priorityFilter = data.filters.priority; roomFilter = data.filters.roomId; patientFilter = data.filters.patientId; picFilter = data.filters.picId; fromFilter = data.filters.from; toFilter = data.filters.to; });
 let creating = $state(false);
 let selected = $state<Task | null>(null);
+let taskView = $state<'detail' | 'edit' | 'note' | 'reassign' | 'audit'>('detail');
+let selectedAudit = $state<TaskHistory | null>(null);
+let filterOpen = $state(false);
 let history = $state<TaskHistory[]>([]);
 let busy = $state(false);
 let deletingTask = $state<Task | null>(null);
@@ -194,9 +197,14 @@ function drop(event: DragEvent, status: BoardStatus) {
     else void moveTask(task, target.status, target.before);
 }
 function endDrag() { dragTask = null; dragTarget = null; setTimeout(() => suppressClick = false, 0); }
-function closeDetail() { selected = null; requestAnimationFrame(() => origin?.focus()); }
+function closeDetail() { taskView = 'detail'; selectedAudit = null; selected = null; requestAnimationFrame(() => origin?.focus()); }
 function openCard(task: Task, event: MouseEvent) { if (suppressClick) return; origin = event.currentTarget as HTMLElement; void open(task); }
 
+function closeFilters() {
+    statusFilter = data.filters.status; priorityFilter = data.filters.priority; roomFilter = data.filters.roomId;
+    patientFilter = data.filters.patientId; picFilter = data.filters.picId; fromFilter = data.filters.from; toFilter = data.filters.to;
+    filterOpen = false;
+}
 async function filterTasks() { dragTask = null; dragTarget = null; const q = new URLSearchParams(); for (const [key, value] of Object.entries({ search: search.trim(), status: statusFilter, priority: priorityFilter, roomId: roomFilter, patientId: patientFilter, picId: picFilter, from: fromFilter, to: toFilter }))
     if (value)
         q.set(key, value); await goto(`/tasks?${q}`, { keepFocus: true, noScroll: true }); }
@@ -210,7 +218,7 @@ catch (failure) {
     toast.error('Riwayat tugas gagal dimuat.', { description: sessionFailure(failure) });
 } }
 async function open(task: Task | string) { const id = typeof task === 'string' ? task : task.id; try {
-    selected = await tasks.get(id);
+    selected = await tasks.get(id); taskView = 'detail';
     await reloadHistory(id);
 }
 catch (failure) {
@@ -295,21 +303,9 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 
 <svelte:head><title>Tugas Perawatan | InpaCare</title></svelte:head>
 <div class="tasks-page flex min-w-0 flex-col gap-6">
-<section class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="page-title">Tugas Perawatan</h1><p class="page-subtitle">Tugas pasien dengan PIC, rentang waktu, prioritas, dan riwayat perubahan.</p></div>{#if coordinator}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-expanded={creating} onclick={()=>{creating=!creating;}}><Plus size={16} aria-hidden="true"/> Buat tugas</Button>{/if}</section>
+<section class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="page-title">Tugas Perawatan</h1><p class="page-subtitle">Tugas pasien dengan PIC, rentang waktu, prioritas, dan riwayat perubahan.</p></div>{#if coordinator}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={()=>{creating=!creating;}}><Plus size={16} aria-hidden="true"/> Buat tugas</Button>{/if}</section>
 
-{#if creating&&coordinator}<Card class="gap-4 p-5 sm:p-6 form-panel"><h2>Buat tugas perawatan</h2><form class="form-grid" onsubmit={createTask}>
-	<label class="field">Penempatan pasien<FormSelect name="placementId" required options={[{ value: "", label: "Pilih pasien / ruangan" }, ...(placements).map((p) => ({ value: p.id, label: (p.patientName) + " · " + (p.roomName) + " (" + (p.startsOn) + "–" + (p.endsOn) + ")" }))]} /></label>
-	<label class="field">Perawat PIC<FormSelect name="picId" required options={[{ value: "", label: "Pilih PIC aktif" }, ...(data.reference.staff.filter((u)=>u.role==='PERAWAT'&&u.active)).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label>
-	<label class="field">Judul<Input class="h-11 text-base md:text-sm" name="title" required maxlength={150} /></label><label class="field">Prioritas<FormSelect name="priority" options={[{ value: "normal", label: "Normal" }, { value: "high", label: "Tinggi" }, { value: "low", label: "Rendah" }]} /></label>
-	<label class="field">Waktu mulai<FormDatePicker class="h-11 text-base md:text-sm" name="startsAt" type="datetime-local" required /></label><label class="field">Waktu selesai<FormDatePicker class="h-11 text-base md:text-sm" name="endsAt" type="datetime-local" required /></label>
-	<label class="field">Deskripsi<Textarea name="description" rows={2}></Textarea></label><label class="field">Catatan awal<Textarea name="notes" rows={2}></Textarea></label>
-	<div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan tugas</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={()=>creating=false}><X aria-hidden="true" /> Batal</Button></div>
-</form></Card>{/if}
-<Card class="gap-4 p-5 sm:p-6 filter-panel"><form class="filters task-filters" onsubmit={(event)=>{event.preventDefault();void filterTasks();}}><label class="field search-field">Cari tugas atau pasien<Input class="h-11 text-base md:text-sm" type="search" bind:value={search} placeholder="Nama pasien, nomor RM, judul tugas" /></label><details class="advanced group/filters">
-    <summary class={buttonVariants({ variant: 'outline', class: 'h-11 w-full cursor-pointer justify-between gap-3 px-3 group-open/filters:bg-muted [&::-webkit-details-marker]:hidden' })}>
-        <span class="inline-flex items-center gap-2"><SlidersHorizontal aria-hidden="true" /> Filter lanjutan</span>
-        <ChevronDown aria-hidden="true" class="size-4 transition-transform group-open/filters:rotate-180 motion-reduce:transition-none" />
-    </summary><div class="filters"><label class="field">Status<FormSelect bind:value={statusFilter} options={[{ value: "", label: "Semua status" }, ...(statuses).map(([key,label]) => ({ value: key, label: (label) }))]} /></label><label class="field">Prioritas<FormSelect bind:value={priorityFilter} options={[{ value: "", label: "Semua prioritas" }, { value: "high", label: "Tinggi" }, { value: "normal", label: "Normal" }, { value: "low", label: "Rendah" }]} /></label><label class="field">Ruangan<FormSelect bind:value={roomFilter} options={[{ value: "", label: "Semua ruangan" }, ...(data.reference.rooms).map((room) => ({ value: room.id, label: (room.name) }))]} /></label><label class="field">Pasien<FormSelect bind:value={patientFilter} options={[{ value: "", label: "Semua pasien" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) }))]} /></label><label class="field">PIC<FormSelect bind:value={picFilter} options={[{ value: "", label: "Semua PIC" }, ...(data.reference.staff.filter((s)=>s.role==='PERAWAT')).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label><label class="field">Dari tanggal<FormDatePicker class="h-11 text-base md:text-sm" type="date" bind:value={fromFilter}/></label><label class="field">Sampai tanggal<FormDatePicker class="h-11 text-base md:text-sm" type="date" bind:value={toFilter}/></label></div></details><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="submit"><Filter aria-hidden="true" /> Terapkan filter</Button></form>{#if filtered}<div class="applied"><span>Filter aktif:</span>{#each Object.entries(data.filters).filter(([,value])=>value) as [key,value]}<Button variant="default" class="h-auto min-h-11 max-w-full min-w-0 whitespace-normal break-words px-3 py-2 text-left no-underline hover:no-underline" onclick={()=>{ const q = new URLSearchParams(window.location.search); q.delete(key); q.delete('page'); void goto(`/tasks?${q}`, { keepFocus: true, noScroll: true }); }}><X aria-hidden="true" /> {key}: {value} - Hapus</Button>{/each}<Button variant="link" class="h-11 px-4 no-underline hover:no-underline text-link" onclick={()=>goto('/tasks')}><X aria-hidden="true" /> Hapus semua</Button></div>{/if}</Card>
+<Card class="gap-4 p-5 sm:p-6 filter-panel"><form class="filters task-filters" onsubmit={(event)=>{event.preventDefault();void filterTasks();}}><label class="field search-field">Cari tugas atau pasien<Input class="h-11 text-base md:text-sm" type="search" bind:value={search} placeholder="Nama pasien, nomor RM, judul tugas" /></label><Button variant="outline" class="h-11" aria-haspopup="dialog" onclick={() => { statusFilter = data.filters.status; priorityFilter = data.filters.priority; roomFilter = data.filters.roomId; patientFilter = data.filters.patientId; picFilter = data.filters.picId; fromFilter = data.filters.from; toFilter = data.filters.to; filterOpen = true; }}><Filter aria-hidden="true" /> Filter lanjutan</Button><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="submit"><Search aria-hidden="true" /> Cari tugas</Button></form>{#if filtered}<div class="applied"><span>Filter aktif:</span>{#each Object.entries(data.filters).filter(([,value])=>value) as [key,value]}<Button variant="default" class="h-auto min-h-11 max-w-full min-w-0 whitespace-normal break-words px-3 py-2 text-left no-underline hover:no-underline" onclick={()=>{ const q = new URLSearchParams(window.location.search); q.delete(key); q.delete('page'); void goto(`/tasks?${q}`, { keepFocus: true, noScroll: true }); }}><Trash2 aria-hidden="true" /> {key}: {value} - Hapus</Button>{/each}<Button variant="link" class="h-11 px-4 no-underline hover:no-underline text-link" onclick={()=>goto('/tasks')}><X aria-hidden="true" /> Hapus semua</Button></div>{/if}</Card>
 <div class="task-board" role="region" aria-label="Papan tugas perawatan" ondragleave={(event)=>{if (!event.currentTarget.contains(event.relatedTarget as Node)) dragTarget=null;}}>
  {#each statuses as [key,label]}
   {@const status = key as BoardStatus}
@@ -332,9 +328,48 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
  {/each}
 </div>
 <p class="muted">Tugas hanya dapat maju ke tahap berikutnya; tugas selesai atau dibatalkan tidak dapat dibuka kembali.{#if filtered} Urutan dinonaktifkan saat filter aktif. Perpindahan status ditambahkan di akhir daftar.{/if}</p>
-{#if moving}<Modal title={`Pindahkan ${moving.title}`} description="Pilih status tujuan dan posisi tugas. Pembatalan memerlukan alasan." onclose={()=>moving=null}><form class="move-form" onsubmit={confirmMove}><label class="field">Status tujuan<FormSelect bind:value={destination} onValueChange={()=>beforeId=''} options={[...(statuses).flatMap(([key,label]) => [...(moving && allowed(moving,key as BoardStatus) ? [{ value: key, label: (label) }] : [])])]} /></label>{#if !filtered}<label class="field">Posisi<FormSelect bind:value={beforeId} options={[{ value: "", label: "Akhir daftar" }, ...(board[destination].items.filter(t=>t.id!==moving?.id)).map((anchor) => ({ value: anchor.id, label: "Sebelum " + (anchor.title) }))]} /></label>{:else}<p class="muted">Hapus filter untuk mengatur posisi.</p>{/if}{#if destination==='cancelled' && moving.status!=='cancelled'}<label class="field">Alasan pembatalan<Textarea bind:value={reason} required maxlength={500}></Textarea></label><p>Konfirmasi pembatalan tugas ini.</p>{/if}<div class="card-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={pending.includes(moving.id)}><ArrowRightLeft aria-hidden="true" /> Konfirmasi pindahkan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={()=>moving=null}><X aria-hidden="true" /> Batal</Button></div></form></Modal>{/if}
-{#if selected}<Modal title={selected.title} description="Detail tugas, catatan tindakan dan riwayat perubahan." busy={busy || pending.includes(selected.id)} onclose={closeDetail}>
-<div class="detail-layout">
+
+</div>
+
+{#if creating || selected || moving || (deletionOpen && deletingTask)}
+<Modal title={creating ? 'Buat tugas perawatan' : moving ? `Pindahkan ${moving.title}` : deletionOpen ? 'Hapus tugas?' : taskView === 'edit' ? 'Ubah detail tugas' : taskView === 'note' ? 'Tambah catatan' : taskView === 'reassign' ? 'Alihkan PIC' : taskView === 'audit' ? 'Rincian perubahan tugas' : selected?.title ?? 'Detail tugas'}
+ description={moving ? 'Pilih status tujuan dan posisi tugas. Pembatalan memerlukan alasan.' : 'Informasi tugas, penanggung jawab, dan catatan perawatan pasien.'}
+ busy={!moving && (busy || !!selected && pending.includes(selected.id))}
+ protectChanges={creating || !moving && !deletionOpen && ['edit', 'note', 'reassign'].includes(taskView)}
+ formKey={creating ? 'create' : moving ? 'move' : deletionOpen ? 'delete' : taskView === 'audit' ? `audit-${selectedAudit?.id}` : taskView}
+ backLabel={selected && (moving || deletionOpen || taskView !== 'detail') ? 'Kembali ke detail' : undefined}
+ onclose={() => { if (moving) moving = null; else if (deletionOpen) deletionOpen = false; else if (creating) creating = false; else if (taskView !== 'detail') taskView = 'detail'; else closeDetail(); }}>
+ {#snippet children(close)}
+ {#if creating && coordinator}<form class="form-grid" onsubmit={createTask}>
+	<label class="field">Penempatan pasien<FormSelect name="placementId" required options={[{ value: "", label: "Pilih pasien / ruangan" }, ...(placements).map((p) => ({ value: p.id, label: (p.patientName) + " · " + (p.roomName) + " (" + (p.startsOn) + "–" + (p.endsOn) + ")" }))]} /></label>
+	<label class="field">Perawat PIC<FormSelect name="picId" required options={[{ value: "", label: "Pilih PIC aktif" }, ...(data.reference.staff.filter((u)=>u.role==='PERAWAT'&&u.active)).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label>
+	<label class="field">Judul<Input class="h-11 text-base md:text-sm" name="title" required maxlength={150} /></label><label class="field">Prioritas<FormSelect name="priority" options={[{ value: "normal", label: "Normal" }, { value: "high", label: "Tinggi" }, { value: "low", label: "Rendah" }]} /></label>
+	<label class="field">Waktu mulai<FormDatePicker class="h-11 text-base md:text-sm" name="startsAt" type="datetime-local" required /></label><label class="field">Waktu selesai<FormDatePicker class="h-11 text-base md:text-sm" name="endsAt" type="datetime-local" required /></label>
+	<label class="field">Deskripsi<Textarea name="description" rows={2}></Textarea></label><label class="field">Catatan awal<Textarea name="notes" rows={2}></Textarea></label>
+	<div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan tugas</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={close}><X aria-hidden="true" /> Batal</Button></div>
+</form>
+ {:else if moving}<form class="move-form" onsubmit={confirmMove}><label class="field">Status tujuan<FormSelect bind:value={destination} onValueChange={()=>beforeId=''} options={[...(statuses).flatMap(([key,label]) => [...(moving && allowed(moving,key as BoardStatus) ? [{ value: key, label: (label) }] : [])])]} /></label>{#if !filtered}<label class="field">Posisi<FormSelect bind:value={beforeId} options={[{ value: "", label: "Akhir daftar" }, ...(board[destination].items.filter(t=>t.id!==moving?.id)).map((anchor) => ({ value: anchor.id, label: "Sebelum " + (anchor.title) }))]} /></label>{:else}<p class="muted">Hapus filter untuk mengatur posisi.</p>{/if}{#if destination==='cancelled' && moving.status!=='cancelled'}<label class="field">Alasan pembatalan<Textarea bind:value={reason} required maxlength={500}></Textarea></label><p>Konfirmasi pembatalan tugas ini.</p>{/if}<div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={pending.includes(moving.id)}><ArrowRightLeft aria-hidden="true" /> Konfirmasi pindahkan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={close}><X aria-hidden="true" /> Batal</Button></div></form>
+ {:else if deletionOpen && deletingTask}<form onsubmit={removeTask}>
+            <p>Tugas <strong>{deletingTask.title}</strong> akan dihapus secara logis. Riwayat perubahan tetap tersimpan.</p>
+            <label class="field">Alasan penghapusan<Textarea bind:value={deletionReason} maxlength={500} required /></label>
+            <div class="form-actions">
+                <Button variant="destructive" type="submit" class="h-11" disabled={busy}><Trash2 aria-hidden="true" /> Konfirmasi hapus</Button>
+                <Button variant="outline" type="button" class="h-11" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button>
+            </div>
+        </form>
+ {:else if selected}
+  {#if taskView === 'edit'}<form class="form-grid" onsubmit={updateTask}><label class="field">Judul<Input class="h-11 text-base md:text-sm" name="title" value={selected.title} required maxlength={150}/></label><label class="field">Prioritas<FormSelect name="priority" value={selected.priority} options={[{ value: "low", label: "Rendah" }, { value: "normal", label: "Normal" }, { value: "high", label: "Tinggi" }]} /></label><label class="field">Mulai<FormDatePicker class="h-11 text-base md:text-sm" name="startsAt" type="datetime-local" value={localInput(selected.startsAt)} required/></label><label class="field">Selesai<FormDatePicker class="h-11 text-base md:text-sm" name="endsAt" type="datetime-local" value={localInput(selected.endsAt)} required/></label><label class="field full">Deskripsi<Textarea value={[(selected.description)].join("")} name="description" rows={3}></Textarea></label><div class="form-actions"><Button variant="outline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> Simpan detail</Button></div></form>
+  {:else if taskView === 'note'}<form class="flex flex-col gap-4" onsubmit={addNote}><label class="field">Catatan tindakan<Textarea value={[(selected.notes)].join("")} name="notes" rows={2} maxlength={3000} required></Textarea></label><div class="form-actions"><Button variant="outline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> Simpan catatan</Button></div></form>
+  {:else if taskView === 'reassign'}<form class="flex flex-col gap-4" onsubmit={reassign}><label class="field">Alihkan ke perawat<FormSelect name="picId" required options={[...(data.reference.staff.filter((u)=>u.role==='PERAWAT'&&u.active&&u.id!==selected?.picId)).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label><label class="field">Alasan pengalihan<Input class="h-11 text-base md:text-sm" name="reason" required maxlength={500} /></label><div class="form-actions"><Button variant="outline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4" disabled={busy}><UserRoundPen aria-hidden="true" /> Alihkan PIC</Button></div></form>
+  {:else if taskView === 'audit' && selectedAudit}
+   {@const item = selectedAudit}
+   {@const beforeValues = item.before ?? {}}
+   {@const auditKeys = [...new Set([...Object.keys(beforeValues), ...Object.keys(item.after ?? {})])]}
+   <p class="mb-2 font-semibold">{auditActionLabel(item.action)} · {item.actorName}</p>
+   <p class="mb-4 text-sm text-muted-foreground">{local(item.createdAt)}</p>
+   {#if item.reason}<p class="mb-4">{item.reason}</p>{/if}
+   <section aria-label="Nilai sebelum dan sesudah"><div class="audit-columns"><span aria-hidden="true"></span><span>Sebelum</span><span>Sesudah</span></div>{#if auditKeys.length}{#each auditKeys as auditKey}<div class="audit-row"><strong>{auditFieldLabel(auditKey)}</strong><span><span class="sr-only">Sebelum: </span>{auditValue(beforeValues[auditKey],auditKey)}</span><span><span class="sr-only">Sesudah: </span>{auditValue(item.after?.[auditKey],auditKey)}</span></div>{/each}{:else}<p class="muted">Belum ada data perubahan.</p>{/if}</section>
+  {:else}<div class="detail-layout">
  <section class="detail-section" aria-labelledby="task-summary-heading">
   <h3 id="task-summary-heading">Ringkasan tugas</h3>
   <dl class="detail-grid">
@@ -352,28 +387,28 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
  <section class="detail-section"><h3>Catatan tindakan</h3><p class="detail-copy">{selected.notes||'Belum ada catatan.'}</p></section>
  <p class="muted detail-version">Versi {selected.version}</p>
  {#if coordinator&&selected.status!=='done'&&selected.status!=='cancelled'}
-  <details class="edit-task detail-section"><summary class="inline-flex min-h-11 items-center gap-2 text-link"><Pencil aria-hidden="true" class="size-4" /> Ubah detail tugas<ChevronDown aria-hidden="true" class="size-4" /></summary><form class="form-grid" onsubmit={updateTask}><label class="field">Judul<Input class="h-11 text-base md:text-sm" name="title" value={selected.title} required maxlength={150}/></label><label class="field">Prioritas<FormSelect name="priority" value={selected.priority} options={[{ value: "low", label: "Rendah" }, { value: "normal", label: "Normal" }, { value: "high", label: "Tinggi" }]} /></label><label class="field">Mulai<FormDatePicker class="h-11 text-base md:text-sm" name="startsAt" type="datetime-local" value={localInput(selected.startsAt)} required/></label><label class="field">Selesai<FormDatePicker class="h-11 text-base md:text-sm" name="endsAt" type="datetime-local" value={localInput(selected.endsAt)} required/></label><label class="field full">Deskripsi<Textarea value={[(selected.description)].join("")} name="description" rows={3}></Textarea></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> Simpan detail</Button></div></form></details>
+  <Button variant="outline" class="h-11" onclick={() => taskView = 'edit'}><Pencil aria-hidden="true" /> Ubah detail tugas</Button>
  {/if}
- {#if data.user.id===selected.picId||coordinator}<section class="detail-section"><h3>Tambah catatan</h3><form class="inline-edit" onsubmit={addNote}><label class="field">Catatan tindakan<Textarea value={[(selected.notes)].join("")} name="notes" rows={2} maxlength={3000} required></Textarea></label><Button variant="outline" type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> Simpan catatan</Button></form></section>{/if}
+ {#if data.user.id===selected.picId||coordinator}<section class="detail-section"><h3>Tambah catatan</h3><Button variant="outline" onclick={() => taskView = 'note'}><Plus aria-hidden="true" /> Tambah catatan</Button></section>{/if}
  {#if coordinator&&selected.status!=='done'&&selected.status!=='cancelled'}
-  <section class="detail-section"><h3>Penugasan dan tindakan</h3><form class="inline-edit" onsubmit={reassign}><label class="field">Alihkan ke perawat<FormSelect name="picId" required options={[...(data.reference.staff.filter((u)=>u.role==='PERAWAT'&&u.active&&u.id!==selected?.picId)).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label><label class="field">Alasan pengalihan<Input class="h-11 text-base md:text-sm" name="reason" required maxlength={500} /></label><Button variant="outline" type="submit" class="h-11 px-4" disabled={busy}><UserRoundPen aria-hidden="true" /> Alihkan PIC</Button></form><div class="card-actions"><Button variant="destructive" class="h-11 px-4" disabled={busy||selected.status==='cancelled'} onclick={()=>selected&&changeStatus(selected,'cancelled')}><Ban aria-hidden="true" /> Batalkan dengan alasan</Button><Button variant="destructive" class="h-11 px-4" disabled={busy} onclick={startTaskDelete}><Trash2 aria-hidden="true" /> Hapus logis dengan alasan</Button></div></section>
+  <section class="detail-section"><h3>Penugasan dan tindakan</h3><Button variant="outline" onclick={() => taskView = 'reassign'}><UserRoundPen aria-hidden="true" /> Alihkan PIC</Button><div class="card-actions"><Button variant="destructive" class="h-11 px-4" disabled={busy||selected.status==='cancelled'} onclick={()=>selected&&changeStatus(selected,'cancelled')}><Ban aria-hidden="true" /> Batalkan dengan alasan</Button><Button variant="destructive" class="h-11 px-4" disabled={busy} onclick={startTaskDelete}><Trash2 aria-hidden="true" /> Hapus logis dengan alasan</Button></div></section>
  {/if}
-  <section class="detail-section"><h3>Riwayat tugas</h3><ol class="history-list">{#each history as item}{@const beforeValues=item.before??{}}{@const auditKeys=[...new Set([...Object.keys(beforeValues),...Object.keys(item.after??{})])]}<li><strong>{auditActionLabel(item.action)}</strong> · {item.actorName} <time>{local(item.createdAt)}</time>{#if item.reason}<p>{item.reason}</p>{/if}<details class="audit-disclosure"><summary>Nilai sebelum dan sesudah<ChevronDown size={16} aria-hidden="true" /></summary><div class="audit-columns"><span aria-hidden="true"></span><span>Sebelum</span><span>Sesudah</span></div>{#if auditKeys.length}{#each auditKeys as auditKey}<div class="audit-row"><strong>{auditFieldLabel(auditKey)}</strong><span><span class="sr-only">Sebelum: </span>{auditValue(beforeValues[auditKey],auditKey)}</span><span><span class="sr-only">Sesudah: </span>{auditValue(item.after?.[auditKey],auditKey)}</span></div>{/each}{:else}<p class="muted">Belum ada data perubahan.</p>{/if}</details></li>{:else}<li class="muted">Belum ada riwayat.</li>{/each}</ol></section>
-</div></Modal>{/if}
-
-{#if deletionOpen && deletingTask}
-    <Modal title="Hapus tugas?" description="Catat alasan penghapusan logis tugas untuk riwayat perubahan." {busy} onclose={() => deletionOpen = false}>
-        <form onsubmit={removeTask}>
-            <p>Tugas <strong>{deletingTask.title}</strong> akan dihapus secara logis. Riwayat perubahan tetap tersimpan.</p>
-            <label class="field">Alasan penghapusan<Textarea bind:value={deletionReason} maxlength={500} required /></label>
-            <div class="form-actions">
-                <Button variant="destructive" type="submit" class="h-11" disabled={busy}><Trash2 aria-hidden="true" /> Konfirmasi hapus</Button>
-                <Button variant="outline" type="button" class="h-11" disabled={busy} onclick={() => deletionOpen = false}><X aria-hidden="true" /> Batal</Button>
-            </div>
-        </form>
-    </Modal>
+  <section class="detail-section"><h3>Riwayat tugas</h3><ol class="history-list">{#each history as item}<li><strong>{auditActionLabel(item.action)}</strong> · {item.actorName} <time>{local(item.createdAt)}</time>{#if item.reason}<p>{item.reason}</p>{/if}<Button variant="outline" class="mt-3 min-h-11" onclick={() => { selectedAudit = item; taskView = 'audit'; }}><Eye aria-hidden="true" /> Lihat perubahan</Button></li>{:else}<li class="muted">Belum ada riwayat.</li>{/each}</ol></section>
+</div>{/if}
+ {/if}
+ {/snippet}
+</Modal>
 {/if}
-</div>
+{#if filterOpen}
+<Modal title="Filter tugas" description="Batasi tugas berdasarkan status, pasien, ruangan, PIC, prioritas, dan tanggal." onclose={closeFilters}>
+ {#snippet children(close)}
+ <form onsubmit={(event) => { event.preventDefault(); void filterTasks().then(() => filterOpen = false); }}>
+ <div class="filters"><label class="field">Status<FormSelect bind:value={statusFilter} options={[{ value: "", label: "Semua status" }, ...(statuses).map(([key,label]) => ({ value: key, label: (label) }))]} /></label><label class="field">Prioritas<FormSelect bind:value={priorityFilter} options={[{ value: "", label: "Semua prioritas" }, { value: "high", label: "Tinggi" }, { value: "normal", label: "Normal" }, { value: "low", label: "Rendah" }]} /></label><label class="field">Ruangan<FormSelect bind:value={roomFilter} options={[{ value: "", label: "Semua ruangan" }, ...(data.reference.rooms).map((room) => ({ value: room.id, label: (room.name) }))]} /></label><label class="field">Pasien<FormSelect bind:value={patientFilter} options={[{ value: "", label: "Semua pasien" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) }))]} /></label><label class="field">PIC<FormSelect bind:value={picFilter} options={[{ value: "", label: "Semua PIC" }, ...(data.reference.staff.filter((s)=>s.role==='PERAWAT')).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label><label class="field">Dari tanggal<FormDatePicker class="h-11 text-base md:text-sm" type="date" bind:value={fromFilter}/></label><label class="field">Sampai tanggal<FormDatePicker class="h-11 text-base md:text-sm" type="date" bind:value={toFilter}/></label></div>
+ <div class="form-actions"><Button variant="outline" onclick={close}><X aria-hidden="true" /> Batal</Button><Button type="submit"><Filter aria-hidden="true" /> Terapkan filter</Button></div>
+ </form>
+ {/snippet}
+</Modal>
+{/if}
 
 <style>
 .task-board { display:flex; gap:16px; overflow-x:auto; align-items:flex-start; background:var(--muted); padding:16px; border-radius:12px; max-width:100%; }
@@ -385,15 +420,16 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 .drop-marker::before { content:''; position:absolute; top:-2px; left:0; right:0; border-top:4px dashed var(--primary); }
 .task-card-actions { margin-top:8px; }
 .card-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
-.advanced { min-width:0; }
-.advanced .filters { margin-top:12px; }
+
+
+
 .applied { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
 .move-form { display:grid; gap:12px; }
-.edit-task { margin:20px 0; border-top:1px solid var(--border); padding-top:14px; }
-.edit-task summary { cursor:pointer; min-height:44px; }
+
+
 .task-filters { align-items:end; }
-.inline-edit { display:flex; align-items:end; gap:12px; flex-wrap:wrap; margin:20px 0; }
-.inline-edit .field { flex:1; min-width:0; }
+
+
 .history-list { padding-left:20px; }
 .history-list li { padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; }
 .history-list time { display:block; color:var(--muted-foreground); font-size:12px; margin-top:4px; }
@@ -406,12 +442,9 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 .detail-grid dd { margin:3px 0 0; overflow-wrap:anywhere; }
 .detail-copy { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
 .detail-version { margin:0; }
-.audit-disclosure { min-width:0; margin-top:8px; }
-.audit-disclosure summary { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; }
-.audit-disclosure[open] :global(summary svg) { transform:rotate(180deg); }
 .audit-columns,.audit-row { display:grid; grid-template-columns:minmax(90px,.7fr) minmax(0,1fr) minmax(0,1fr); gap:8px; padding:8px; border-bottom:1px solid var(--border); }
 .audit-columns { color:var(--muted-foreground); font-size:.8rem; font-weight:600; }
 .audit-row > * { min-width:0; overflow-wrap:anywhere; white-space:pre-wrap; }
 .audit-row strong { font-weight:500; }
-@media(max-width:620px) { .inline-edit { align-items:stretch; flex-direction:column; } .detail-grid { grid-template-columns:minmax(0,1fr); } .audit-columns,.audit-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .audit-columns span:first-child { display:none; } .audit-row strong { grid-column:1 / -1; } }
+@media(max-width:620px) {  .detail-grid { grid-template-columns:minmax(0,1fr); } .audit-columns,.audit-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .audit-columns span:first-child { display:none; } .audit-row strong { grid-column:1 / -1; } }
 </style>

@@ -216,11 +216,12 @@ test('terminal cards stay readable in Detail and cannot be moved or dragged', as
 		await expect(terminalCard.getByRole('button', { name: 'Pindahkan' })).toHaveCount(0);
 		const detailButton = terminalCard.getByRole('button', { name: 'Detail', exact: true });
 		await detailButton.click();
-		const dialog = pic.getByRole('dialog', { name: title });
+		const dialog = pic.getByRole('dialog');
 		await expect(dialog).toBeVisible();
 		await expect(dialog.getByRole('button', { name: 'Pindahkan' })).toHaveCount(0);
 		if (label === 'Dibatalkan') await expect(dialog).toContainText('Perawatan tidak lagi diperlukan.');
-		await dialog.locator('.audit-disclosure summary').first().click();
+		await dialog.getByRole('button', { name: 'Lihat perubahan', exact: true }).first().click();
+		await expect(dialog).toHaveAccessibleName('Rincian perubahan tugas');
 		await expect(dialog.locator('.audit-row').first()).toBeVisible();
 		const auditText = (await dialog.locator('.audit-row').allTextContents()).join('\n');
 		expect(auditText).toContain('Status');
@@ -244,7 +245,7 @@ test('terminal cards stay readable in Detail and cannot be moved or dragged', as
 		expect(auditText).not.toContain('null');
 		if (label === 'Dibatalkan') {
 			await mkdir(evidence, { recursive: true });
-			await dialog.locator('.audit-disclosure').scrollIntoViewIfNeeded();
+			await dialog.locator('.audit-row').first().scrollIntoViewIfNeeded();
 			await pic.screenshot({ path: path.join(evidence, 'tugas-board-history.png'), animations: 'disabled' });
 			await pic.setViewportSize({ width: 390, height: 844 });
 			await dialog.locator('.audit-row').first().scrollIntoViewIfNeeded();
@@ -252,6 +253,7 @@ test('terminal cards stay readable in Detail and cannot be moved or dragged', as
 			await pic.screenshot({ path: path.join(evidence, 'tugas-board-history-mobile.png'), animations: 'disabled' });
 			await pic.setViewportSize({ width: 1440, height: 1000 });
 		}
+		await dialog.getByRole('button', { name: 'Kembali ke detail', exact: false }).click();
 		await dialog.getByRole('button', { name: 'Tutup', exact: true }).click();
 		await expect(detailButton).toBeFocused();
 	}
@@ -808,14 +810,15 @@ test('card details restore focus and retain management forms', async ({ browser 
 	await coordinatorPage.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
 	await openDetails(coordinatorPage, title);
 	const revised = `${prefix} revisi`;
-	let detail = coordinatorPage.getByRole('dialog', { name: new RegExp(escape(title)) });
+	let detail = coordinatorPage.getByRole('dialog');
 	await detail.getByText('Ubah detail tugas').click();
 	await detail.getByLabel('Judul').fill(revised);
 	await detail.getByRole('button', { name: 'Simpan detail' }).click();
 	await expect(toastMessage(coordinatorPage, '', 'success')).toContainText(/berhasil/i);
 	await expect(coordinatorPage.getByRole('dialog')).toContainText(revised);
 
-	detail = coordinatorPage.getByRole('dialog', { name: new RegExp(escape(revised)) });
+	detail = coordinatorPage.getByRole('dialog');
+	await detail.getByRole('button', { name: 'Alihkan PIC', exact: true }).click();
 	await selectOption(detail.getByLabel('Alihkan ke perawat'), { label: 'Bima Pratama' });
 	await detail.getByLabel('Alasan pengalihan').fill('Pengalihan uji peran.');
 	await detail.getByRole('button', { name: 'Alihkan PIC' }).click();

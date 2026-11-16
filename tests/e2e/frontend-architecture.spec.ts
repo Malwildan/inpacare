@@ -17,7 +17,7 @@ test('task filters survive direct navigation, reload and history', async ({ page
  await page.reload();
  await expect(page.getByLabel('Cari tugas atau pasien')).toHaveValue('unmatched-refactor');
  await page.getByLabel('Cari tugas atau pasien').fill('second-filter');
- await page.getByRole('button', { name: 'Terapkan filter' }).click();
+ await page.getByRole('button', { name: 'Cari tugas', exact: true }).click();
  await expect(page).toHaveURL(/search=second-filter/);
  await page.goBack();
  await expect(page.getByLabel('Cari tugas atau pasien')).toHaveValue('unmatched-refactor');
@@ -37,7 +37,7 @@ test('calendar keeps an inclusive week and a failed placement form', async ({ pa
  await page.goto('/calendar?from=2026-11-02');
  await expect(page.getByRole('heading', { name: 'Kalender Ruangan', exact: true })).toBeVisible();
  await page.getByRole('button', { name: /Tempatkan pasien/ }).click();
- const form=page.locator('.form-panel form');
+ const form=page.getByRole('dialog', { name: 'Penempatan pasien', exact: true }).locator('form');
  await selectOption(form.getByRole('combobox', { name: /^Pasien/ }), { index: 1 });
  await selectOption(form.getByRole('combobox', { name: /^Ruangan/ }), { index: 1 });
  await selectDate(form.getByLabel('Tanggal masuk'), '2026-11-03');
@@ -68,6 +68,7 @@ test('a rejected task update preserves the draft and sends a single versioned wr
  await page.locator('.task-card').first().getByRole('button').first().click();
  const dialog=page.getByRole('dialog');
  await expect(dialog).toBeVisible();
+ await dialog.getByRole('button', { name: 'Tambah catatan', exact: true }).click();
  await dialog.getByLabel('Catatan tindakan').fill('Draft survives a stale version');
  let writes=0;
  await page.route('**/api/v1/tasks/*',async route=>{
@@ -123,6 +124,7 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  await page.goto(`/tasks?search=${encodeURIComponent(task.title)}`);
  await page.locator('.task-card').getByRole('button').first().click();
  const detail=page.getByRole('dialog');
+ await detail.getByRole('button', { name: 'Alihkan PIC', exact: true }).click();
  await selectOption(detail.getByRole('combobox',{name:/Alihkan ke perawat/}), bima.id);
  await detail.getByLabel('Alasan pengalihan').fill('Pergantian shift sintetis');
  await detail.getByRole('button',{name:'Alihkan PIC',exact:true}).click();

@@ -19,7 +19,7 @@ const cancellations = [];
 window.calendarCancellations = cancellations;
 const placementService = {
     create: async input => { window.calendarCreate = input; throw new Error('Kapasitas telah berubah.'); },
-    update: async () => {},
+    update: async (id, input) => { window.calendarUpdate = { id, ...input }; throw new Error('Jadwal telah berubah.'); },
     cancel: async (id, input) => {
         cancellations.push({ id, ...input });
         if (cancellations.length === 1) {
