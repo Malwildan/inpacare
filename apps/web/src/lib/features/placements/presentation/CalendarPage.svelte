@@ -13,7 +13,7 @@ import type { Placements, CalendarPageData, Placement } from '$lib/features/plac
 import { todayJakarta } from '$lib/features/placements';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-svelte';
+import { ArrowLeft, Ban, CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Save, X } from 'lucide-svelte';
 let { data, placementService }: {
     data: CalendarPageData;
     placementService: Placements;
@@ -93,7 +93,7 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 		<label class="field">Ruangan<FormSelect name="roomId" required options={[{ value: "", label: "Pilih ruangan tersedia" }, ...(data.rooms.filter((r)=>r.status==='available')).map((room) => ({ value: room.id, label: (room.name) + " · " + (room.roomClass) + " · kapasitas " + (room.capacity) }))]} /></label>
 		<label class="field">Tanggal masuk<FormDatePicker class="h-11 text-base md:text-sm" name="startsOn" type="date" value={data.from} required /></label>
 		<label class="field">Tanggal keluar<FormDatePicker class="h-11 text-base md:text-sm" name="endsOn" type="date" value={data.to} required /></label>
-		<div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>{busy ? 'Menyimpan penempatan…' : 'Simpan penempatan'}</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={() => placing=false}>Batal</Button></div>
+		<div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan penempatan…' : 'Simpan penempatan'}</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={() => placing=false}><X aria-hidden="true" /> Batal</Button></div>
 	</form>
 </Card>{/if}
 <Card class="gap-4 p-5 sm:p-6 ">
@@ -102,7 +102,7 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 		<div class="week-navigation" aria-label="Navigasi kalender">
 			<Button variant="ghost" class="size-11 p-2 no-underline hover:no-underline" aria-label="Minggu sebelumnya" onclick={() => void moveWeek(-1)}><ChevronLeft size={18} aria-hidden="true"/></Button>
 			<strong>{titleDate(dates[0])} – {titleDate(dates[6])} {dates[6].getUTCFullYear()}</strong>
-			<Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" onclick={() => void goto('/calendar')}>Hari ini</Button>
+			<Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" onclick={() => void goto('/calendar')}><CalendarDays aria-hidden="true" /> Hari ini</Button>
 			<Button variant="ghost" class="size-11 p-2 no-underline hover:no-underline" aria-label="Minggu berikutnya" onclick={() => void moveWeek(1)}><ChevronRight size={18} aria-hidden="true"/></Button>
 		</div>
 	</div>
@@ -127,7 +127,7 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 	<div class="legend"><span><i class="dot available-dot"></i>Tersedia</span><span><i class="dot occupied-dot"></i>Occupied</span><span><i class="dot maintenance-dot"></i>Maintenance</span></div>
 	<p class="footnote">Rentang tanggal bersifat inklusif. Penempatan baru divalidasi kembali terhadap kapasitas dan jadwal pasien ketika disimpan.</p>
 </Card>
-{#if data.user?.role==='PERAWAT'}<Card class="gap-4 p-5 sm:p-6 placement-list"><div class="panel-header"><div><h2>Kelola penempatan</h2><p class="muted">Jadwal aktif dapat diubah atau dibatalkan. Pembatalan ditolak bila masih memiliki dependensi.</p></div></div><div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Pasien</TableHead><TableHead>Ruangan</TableHead><TableHead>Periode</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader><TableBody>{#each data.placements as placement (placement.id)}<TableRow><TableCell><strong>{placement.patientName}</strong><span class="cell-meta">{placement.medicalRecordNo}</span></TableCell><TableCell>{placement.roomName}</TableCell><TableCell>{placement.startsOn} – {placement.endsOn}</TableCell><TableCell><div class="actions"><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" aria-expanded={editingPlacement?.id===placement.id} onclick={()=>editingPlacement=editingPlacement?.id===placement.id?null:placement}>Ubah tanggal</Button><Button variant="destructive" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||placement.status!=='active'} onclick={()=>{ cancelling=placement; }}>Batalkan</Button></div></TableCell></TableRow>{#if editingPlacement?.id===placement.id}<TableRow><TableCell colspan={4}><form class="form-grid" onsubmit={(event)=>reschedule(event,placement)}><label class="field">Pasien<Input class="h-11 text-base md:text-sm" value={placement.patientName} disabled/></label><label class="field">Ruangan<Input class="h-11 text-base md:text-sm" value={placement.roomName} disabled/></label><label class="field">Tanggal masuk<FormDatePicker class="h-11 text-base md:text-sm" name="startsOn" type="date" value={placement.startsOn} required/></label><label class="field">Tanggal keluar<FormDatePicker class="h-11 text-base md:text-sm" name="endsOn" type="date" value={placement.endsOn} required/></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}>Simpan jadwal</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={()=>editingPlacement=null}>Batal</Button></div></form></TableCell></TableRow>{/if}{:else}<TableRow><TableCell colspan={4} class="empty">Tidak ada penempatan di rentang minggu ini.</TableCell></TableRow>{/each}</TableBody></Table></div></Card>{/if}
+{#if data.user?.role==='PERAWAT'}<Card class="gap-4 p-5 sm:p-6 placement-list"><div class="panel-header"><div><h2>Kelola penempatan</h2><p class="muted">Jadwal aktif dapat diubah atau dibatalkan. Pembatalan ditolak bila masih memiliki dependensi.</p></div></div><div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Pasien</TableHead><TableHead>Ruangan</TableHead><TableHead>Periode</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader><TableBody>{#each data.placements as placement (placement.id)}<TableRow><TableCell><strong>{placement.patientName}</strong><span class="cell-meta">{placement.medicalRecordNo}</span></TableCell><TableCell>{placement.roomName}</TableCell><TableCell>{placement.startsOn} – {placement.endsOn}</TableCell><TableCell><div class="action-buttons action-buttons--table"><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" aria-expanded={editingPlacement?.id===placement.id} onclick={()=>editingPlacement=editingPlacement?.id===placement.id?null:placement}><Pencil aria-hidden="true" /> Ubah tanggal</Button><Button variant="destructive" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||placement.status!=='active'} onclick={()=>{ cancelling=placement; }}><Ban aria-hidden="true" /> Batalkan</Button></div></TableCell></TableRow>{#if editingPlacement?.id===placement.id}<TableRow><TableCell colspan={4}><form class="form-grid" onsubmit={(event)=>reschedule(event,placement)}><label class="field">Pasien<Input class="h-11 text-base md:text-sm" value={placement.patientName} disabled/></label><label class="field">Ruangan<Input class="h-11 text-base md:text-sm" value={placement.roomName} disabled/></label><label class="field">Tanggal masuk<FormDatePicker class="h-11 text-base md:text-sm" name="startsOn" type="date" value={placement.startsOn} required/></label><label class="field">Tanggal keluar<FormDatePicker class="h-11 text-base md:text-sm" name="endsOn" type="date" value={placement.endsOn} required/></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan jadwal</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={()=>editingPlacement=null}><X aria-hidden="true" /> Batal</Button></div></form></TableCell></TableRow>{/if}{:else}<TableRow><TableCell colspan={4} class="empty">Tidak ada penempatan di rentang minggu ini.</TableCell></TableRow>{/each}</TableBody></Table></div></Card>{/if}
 </div>
 <AlertDialog.Root open={cancelling !== null} onOpenChange={(open) => { if (!open && !busy) cancelling = null; }}>
     <AlertDialog.Content onEscapeKeydown={(event) => { if (busy) event.preventDefault(); }}>
@@ -136,9 +136,9 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
             <AlertDialog.Description>Batalkan penempatan {cancelling?.patientName} di {cancelling?.roomName}? Ketergantungan dan versi data akan diperiksa saat disimpan.</AlertDialog.Description>
         </AlertDialog.Header>
         <AlertDialog.Footer>
-            <AlertDialog.Cancel disabled={busy}>Kembali</AlertDialog.Cancel>
+            <AlertDialog.Cancel disabled={busy}><ArrowLeft aria-hidden="true" /> Kembali</AlertDialog.Cancel>
             <AlertDialog.Action disabled={busy} variant="destructive" onclick={(event) => { event.preventDefault(); if (cancelling) void cancelPlacement(cancelling); }}>
-                {busy ? 'Membatalkan…' : 'Konfirmasi pembatalan'}
+                <Ban aria-hidden="true" /> {busy ? 'Membatalkan…' : 'Konfirmasi pembatalan'}
             </AlertDialog.Action>
         </AlertDialog.Footer>
     </AlertDialog.Content>
@@ -148,7 +148,6 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 .placement-page :global(.form-panel p){margin-bottom:20px;font-size:13px}
 .placement-page :global(.filters){justify-content:space-between;gap:20px}
 .placement-page :global(.room-filter){min-width:180px;max-width:300px}
-.placement-page :global(.actions){display:flex;gap:8px;flex-wrap:wrap}
 .placement-page :global(.cell-meta){display:block;color:var(--muted-foreground);font-size:12px;margin-top:4px}
 .placement-page :global(.placement-list){margin-top:24px}
 .placement-page :global(.week-navigation){display:flex;align-items:center;gap:8px;flex-wrap:wrap}

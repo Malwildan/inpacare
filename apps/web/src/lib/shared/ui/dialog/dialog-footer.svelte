@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { X } from "lucide-svelte";
 	import { Dialog as DialogPrimitive } from "bits-ui";
 	import { Button } from "$lib/shared/ui/button/index.js";
 	import { cn, type WithElementRef } from "$lib/shared/utils.js";
@@ -25,7 +26,7 @@
 	{#if showCloseButton}
 		<DialogPrimitive.Close>
 			{#snippet child({ props })}
-				<Button variant="outline" {...props}>Close</Button>
+				<Button variant="outline" {...props}><X aria-hidden="true" /> Close</Button>
 			{/snippet}
 		</DialogPrimitive.Close>
 	{/if}

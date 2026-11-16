@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { toast } from '$lib/shared/ui/sonner/index.js';
 	import { goto } from '$app/navigation';
-	import { Eye, EyeOff } from 'lucide-svelte';
+	import { Eye, EyeOff, LogIn } from 'lucide-svelte';
 	import type { Auth, User } from '$lib/features/auth';
 	import { sessionFailure } from '$lib/shared/presentation/session';
 	import { Button } from '$lib/shared/ui/button/index.js';
@@ -111,14 +111,14 @@
 									aria-label={visible ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
 									onclick={() => (visible = !visible)}
 								>
-									{#if visible}<EyeOff size={19} />{:else}<Eye size={19} />{/if}
+									{#if visible}<EyeOff size={19} aria-hidden="true" />{:else}<Eye size={19} aria-hidden="true" />{/if}
 								</Button>
 							</div>
 						</Field>
 					</FieldGroup>
 
 					<Button type="submit" size="lg" class="submit mt-0.5 h-11 w-full text-sm motion-reduce:transition-none" disabled={pending}>
-						{pending ? 'Memeriksa akun…' : 'Masuk'}
+						<LogIn aria-hidden="true" /> {pending ? 'Memeriksa akun…' : 'Masuk'}
 					</Button>
 				</form>
 

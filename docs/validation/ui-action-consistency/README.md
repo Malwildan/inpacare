@@ -1,17 +1,23 @@
-# UI action consistency
+# Action buttons and duplicate controls
 
-Synthetic screenshots of the real Svelte components, mounted with local fixture services. No live application data is used. Mobile captures use a 390px viewport; desktop captures use 1440px. The medical-records mobile table is scrolled to its action column.
+The action audit covers 123 application controls across all feature pages, the shell, error page, date picker and dialog footer. Each has a decorative Lucide icon beside its existing label. The default Button target is 44px high. Sibling actions share equal widths through the shared action layout or form/dialog footer rules; table actions and other action groups stack on narrow screens. Long dialog labels may wrap instead of overflowing.
 
-- [Room actions, mobile](rooms-390.png) and [desktop](rooms-1440.png): view, edit, add-item and delete icons; the room-name header can wrap so the action column fits on mobile.
-- [Room detail, mobile](room-detail-390.png): inventory and dialog actions also include icons.
-- [Billing actions, mobile](invoices-390.png) and [desktop](invoices-1440.png): view/close detail, update status, and billing form/dialog actions include icons.
-- [Medical records, mobile](medical-records-390.png) and [desktop](medical-records-1440.png): “Lihat detail” uses the shared outline button while retaining its navigation link.
-- [Cycle dashboard, mobile](dashboard-390.png) and [desktop](dashboard-1440.png): notifications are accessed through the navbar; the duplicate inbox and its dashboard fetch are removed.
-- [Tasks, mobile](tasks-390.png) and [desktop](tasks-1440.png): advanced filters use the shared outline-button appearance, a filter icon and a rotating chevron. Task creation is available in the page header; the duplicate button below “Belum Dikerjakan” is removed.
-- [Expanded task filters, mobile](tasks-expanded-390.png): the disclosure retains the existing filter fields and selected values.
+Synthetic screenshots mount the real Svelte components with local fixture services. Mobile captures use a 390px viewport; desktop captures use 1440px. Wide tables are scrolled to their action columns in mobile medical-record and billing captures.
 
-Validation: `npm run check`, `npm run check:web:architecture`, `npm run test:web` (88 unit tests and 9 architecture tests), `npm run build`, and `npm run test:web:ux` passed. Additional synthetic component checks passed at 390px, 768px and 1440px: room-action dialogs and permission visibility, the occupied-room delete restriction, medical navigation buttons for nursing and admission views, navbar notification reads, and filter opening/closing with pointer, Enter and Space, chevron rotation, retained selections and submission. The header create-task button remains available after removing its duplicate.
+| Surface | Mobile | Desktop |
+| --- | --- | --- |
+| Rooms | [Room actions](rooms-390.png) | [Room actions](rooms-1440.png) |
+| Billing | [Invoice actions](invoices-390.png) | [Invoice actions](invoices-1440.png) |
+| Medical records | [Detail links](medical-records-390.png) | [Detail links](medical-records-1440.png) |
+| Medical detail | [Record actions](medical-detail-390.png) | [Record actions](medical-detail-1440.png) |
+| Cycle dashboard | [Dashboard](dashboard-390.png) | [Dashboard](dashboard-1440.png) |
+| Tasks | [Task actions and filters](tasks-390.png) | [Task actions and filters](tasks-1440.png) |
+| Calendar | [Placement actions](calendar-390.png) | [Placement actions](calendar-1440.png) |
 
-The PostgreSQL-backed end-to-end suite was not run locally. Its existing notification workflow now exercises the navbar instead of the removed dashboard inbox. No API contracts or database migrations change.
+[Room detail](room-detail-390.png) also shows inventory/dialog actions. [Expanded task filters](tasks-expanded-390.png) shows the disclosure icon, rotated chevron and retained selection.
 
-Billing follow-up: `npm run check --workspace apps/web` (zero errors/warnings) and `npm run test:web:ux` passed after adding billing action icons. Billing screenshots were checked at 390px, 768px and 1440px.
+The cycle dashboard no longer loads or displays a duplicate notification inbox; the navbar remains the notification entry point. The duplicate “+ Tambah tugas” below “Belum Dikerjakan” is removed; task creation remains in the header. Medical detail links use the shared outline Button while retaining navigation semantics.
+
+Validation: `npm run check --workspace apps/web` (zero errors/warnings), `npm run check:web:architecture`, `npm run test:web` (88 unit tests and 9 architecture tests), the production web build and `npm run test:web:ux` passed. Synthetic component checks at 390px, 768px and 1440px also passed: equal widths within visible action groups (within 1px), no page overflow, room actions/permissions, occupied-room delete restriction, medical navigation links, navbar notification reads, and filter click/Enter/Space behavior, chevron rotation, retained values and submission. Dialog widths were checked through the portalled room-detail footer as well.
+
+The PostgreSQL-backed end-to-end suite was not run locally. Its notification workflow now exercises the navbar instead of the removed dashboard inbox. No API contracts or database migrations change.

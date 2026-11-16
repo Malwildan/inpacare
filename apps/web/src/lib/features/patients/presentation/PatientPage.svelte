@@ -1,4 +1,5 @@
 <script lang="ts">
+import { ArrowLeft, CalendarDays } from 'lucide-svelte';
 	import { Badge, type BadgeVariant } from '$lib/shared/ui/badge/index.js';
 	import { Button } from '$lib/shared/ui/button/index.js';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
@@ -49,7 +50,7 @@
 			<h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Ringkasan Pasien</h1>
 			<p class="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed text-muted-foreground">Informasi pasien dan keterkaitan rawat inap.</p>
 		</div>
-		<Button variant="outline" class="h-11 shrink-0 px-4" href={data.user.role === 'ADMISI' ? '/invoices' : '/dashboard'}>Kembali</Button>
+		<Button variant="outline" class="h-11 shrink-0 px-4" href={data.user.role === 'ADMISI' ? '/invoices' : '/dashboard'}><ArrowLeft aria-hidden="true" /> Kembali</Button>
 	</header>
 
 	<Card>
@@ -85,7 +86,7 @@
 	<Card class="gap-0 py-0">
 		<CardHeader class="flex-row flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-5">
 			<CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Riwayat Penempatan</CardTitle>
-			<a class="text-sm font-semibold text-primary hover:underline" href="/calendar">Lihat kalender</a>
+			<Button variant="outline" class="h-11" href="/calendar"><CalendarDays aria-hidden="true" /> Lihat kalender</Button>
 		</CardHeader>
 		<CardContent class="px-0">
 			<Table>

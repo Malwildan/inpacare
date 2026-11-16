@@ -2,7 +2,7 @@
 import { toast } from '$lib/shared/ui/sonner/index.js';
 import { page } from '$app/state';
 import { goto } from '$app/navigation';
-import { LayoutDashboard, BedDouble, CalendarDays, ClipboardList, FileHeart, ReceiptText, LogOut, Bell, Menu, X } from 'lucide-svelte';
+import { BedDouble, Bell, CalendarDays, Check, ClipboardList, FileHeart, LayoutDashboard, LogOut, Menu, ReceiptText, RefreshCw, X } from 'lucide-svelte';
 import type { User, Auth } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
 import type { Notifications, Notification } from '$lib/features/notifications';
@@ -176,13 +176,13 @@ const home = $derived(data.user.role === 'ADMISI' ? '/invoices' : '/dashboard');
                         {#if notificationsLoading}
                             <p role="status" class="p-3 text-sm text-muted-foreground">Memuat notifikasi…</p>
                         {:else if notificationsFailed}
-                            <Button variant="outline" class="h-11 w-full" onclick={showNotifications}>Coba lagi</Button>
+                            <Button variant="outline" class="h-11 w-full" onclick={showNotifications}><RefreshCw aria-hidden="true" /> Coba lagi</Button>
                         {:else if notifications.length === 0}
                             <p class="p-3 text-sm text-muted-foreground">Belum ada notifikasi.</p>
                         {:else}
                             {#each notifications as notice (notice.id)}
                                 <Button variant={notice.readAt ? 'ghost' : 'secondary'} class="h-auto min-h-11 w-full flex-col items-start gap-1 whitespace-normal p-3 text-left font-normal" onclick={() => readNotification(notice.id)}>
-                                    <span>{notice.message}</span>
+                                    <span class="inline-flex items-start gap-2">{#if notice.readAt}<Check aria-hidden="true" class="mt-0.5 size-4 shrink-0" />{:else}<Bell aria-hidden="true" class="mt-0.5 size-4 shrink-0" />{/if}<span>{notice.message}</span></span>
                                     <small class="text-xs text-muted-foreground">{new Date(notice.createdAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</small>
                                     <span class="sr-only">{notice.readAt ? 'Sudah dibaca' : 'Belum dibaca'}</span>
                                 </Button>

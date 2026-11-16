@@ -1,4 +1,5 @@
 <script lang="ts">
+import { ArrowLeft, LogIn } from 'lucide-svelte';
 import { Button } from '$lib/shared/ui/button/index.js';
 import { Card, CardContent, CardHeader } from '$lib/shared/ui/card/index.js';
 let { status, message }: { status: number; message: string | undefined } = $props();
@@ -13,9 +14,9 @@ let { status, message }: { status: number; message: string | undefined } = $prop
         </CardHeader>
         <CardContent class="space-y-6">
             <p class="break-words text-sm leading-relaxed text-muted-foreground">{message ?? 'Silakan coba kembali beberapa saat lagi.'}</p>
-            <div class="flex flex-wrap justify-center gap-3">
-                <Button href="/dashboard" class="min-h-11">Kembali ke aplikasi</Button>
-                <Button href="/login" variant="outline" class="min-h-11">Halaman masuk</Button>
+            <div class="action-buttons mx-auto">
+                <Button href="/dashboard" class="min-h-11"><ArrowLeft aria-hidden="true" /> Kembali ke aplikasi</Button>
+                <Button href="/login" variant="outline" class="min-h-11"><LogIn aria-hidden="true" /> Halaman masuk</Button>
             </div>
         </CardContent>
     </Card>

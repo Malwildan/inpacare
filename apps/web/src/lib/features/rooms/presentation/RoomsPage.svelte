@@ -254,7 +254,7 @@ async function removeItemConfirmed() {
                             <TableCell class="hidden align-top tabular-nums md:table-cell">{money(room.totalCost)}</TableCell>
                             <TableCell class="align-top"><Badge variant={statusTone(room)}>{statusLabel(room)}</Badge></TableCell>
                             <TableCell class="px-4 align-top sm:px-5">
-                                <div class="flex flex-wrap justify-end gap-2">
+                                <div class="action-buttons action-buttons--table">
                                     <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openView(room.id)}><Eye aria-hidden="true" /> Lihat</Button>
                                     {#if isNurse}
                                         <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openEdit(room.id)}><Pencil aria-hidden="true" /> Ubah</Button>
@@ -389,7 +389,7 @@ async function removeItemConfirmed() {
                             <li class="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5">
                                 <span class="min-w-0 text-sm text-foreground">{item.name} · {item.category} · {item.quantity} × {money(item.unitPrice)}</span>
                                 {#if isNurse}
-                                    <div class="flex items-center gap-1">
+                                    <div class="action-buttons">
                                         <Button variant="link" class="h-11 px-2 text-[13px]" onclick={() => openItemEdit(room.id, item.id)}><Pencil aria-hidden="true" /> Ubah</Button>
                                         <Button variant="link" class="h-11 px-2 text-[13px] text-destructive" onclick={() => openRemoveItem(room, item)}><Trash2 aria-hidden="true" /> Hapus</Button>
                                     </div>
