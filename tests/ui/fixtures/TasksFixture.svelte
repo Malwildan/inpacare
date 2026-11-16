@@ -7,9 +7,11 @@ const clone = value => JSON.parse(JSON.stringify(value));
 const data = $state({ user: { id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT', coordinator: true },
     filters: { search: '', status: '', priority: '', roomId: '', patientId: '', picId: '', from: '', to: '' },
     board: { todo: { items: clone(serverTasks.slice(0, 2)), total: 3, error: false, filtered: false }, in_progress: { items: [], total: 0, error: false, filtered: false }, done: { items: [], total: 0, error: false, filtered: false }, cancelled: { items: [], total: 0, error: false, filtered: false } },
-    reference: { patients: [{ id: 'patient', name: 'Pasien Uji' }, ...Array.from({ length: 12 }, (_, index) => ({ id: `fixture-patient-${index}`, name: `Pasien sintetis ${index + 1} dengan nama panjang untuk pemeriksaan tampilan` }))], rooms: [{ id: 'room', name: 'Ruangan Uji' }], staff: [{ id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT', active: true }], placements: [{ id: 'placement', patientId: 'patient', patientName: 'Pasien Uji', roomName: 'Ruangan Uji', status: 'active', startsOn: '2026-11-02', endsOn: '2026-11-08' }] }
+    reference: { patients: [{ id: 'patient', name: 'Pasien Uji' }, ...Array.from({ length: 12 }, (_, index) => ({ id: `fixture-patient-${index}`, name: `Pasien sintetis ${index + 1} dengan nama panjang untuk pemeriksaan tampilan` }))], rooms: [{ id: 'room', name: 'Ruangan Uji' }], staff: [{ id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT', active: true }, { id: 'other-nurse', name: 'Perawat Lain', role: 'PERAWAT', active: true }], placements: [{ id: 'placement', patientId: 'patient', patientName: 'Pasien Uji', roomName: 'Ruangan Uji', status: 'active', startsOn: '2026-11-02', endsOn: '2026-11-08' }] }
 });
+window.addEventListener('fixture-navigation', event => { const url = new URL(event.detail, location.origin); if (url.pathname === '/tasks') for (const key of Object.keys(data.filters)) data.filters[key] = url.searchParams.get(key) ?? ''; });
 window.setTaskCoordinator = coordinator => { data.user.coordinator = coordinator; };
+window.taskEdits = [];
 const writes = [];
 window.taskWrites = writes;
 window.taskReads = [];
@@ -20,9 +22,9 @@ const tasks = {
         return { items: clone(items.slice(query.offset, query.offset + query.limit)), total: items.length, counts: {} };
     },
     get: async id => clone(serverTasks.find(item => item.id === id)),
-    history: async () => [],
+    history: async () => [{ id: 'history', actorId: 'nurse', actorName: 'Perawat Uji', action: 'updated', reason: 'Koreksi sintetis', before: { title: 'Judul lama', priority: 'low' }, after: { title: 'Tugas Uji', priority: 'high' }, createdAt: '2026-11-02T01:00:00Z' }],
     create: async input => { window.taskCreate = input; throw new Error('Tugas gagal tersimpan.'); },
-    update: async () => {}, reassign: async () => {},
+    update: async (id,input) => { window.taskEdits.push({ action: 'update', id, ...input }); serverTasks = serverTasks.map(item => item.id === id ? { ...item, ...input } : item); }, reassign: async (id,input) => { window.taskEdits.push({ action: 'reassign', id, ...input }); serverTasks = serverTasks.map(item => item.id === id ? { ...item, ...input, picName: 'Perawat Lain' } : item); },
     move: async (id, input) => {
         writes.push({ action: 'move', id, ...input });
         if (writes.filter(write => write.action === 'move').length === 1) {

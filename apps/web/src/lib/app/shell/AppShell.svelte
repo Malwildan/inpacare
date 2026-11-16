@@ -5,7 +5,7 @@ import { goto } from '$app/navigation';
 import { BedDouble, Bell, CalendarDays, Check, ClipboardList, FileHeart, LayoutDashboard, LogOut, Menu, ReceiptText, RefreshCw, X } from 'lucide-svelte';
 import type { User, Auth } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
-import type { Notifications, Notification } from '$lib/features/notifications';
+import { NotificationDialog, type Notifications, type Notification } from '$lib/features/notifications';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { Button } from '$lib/shared/ui/button/index.js';
 import * as Breadcrumb from '$lib/shared/ui/breadcrumb/index.js';
@@ -22,6 +22,7 @@ let { data, children, auth, notificationService }: {
 } = $props();
 let mobileOpen = $state(false);
 let notificationsOpen = $state(false);
+let allNotificationsOpen = $state(false);
 let notifications = $state<Notification[]>([]);
 let notificationsFailed = $state(false);
 let notificationsLoading = $state(false);
@@ -189,6 +190,7 @@ const home = $derived(data.user.role === 'ADMISI' ? '/invoices' : '/dashboard');
                             {/each}
                         {/if}
                     </div>
+                    <div class="border-t p-3"><Button variant="outline" class="h-11 w-full" onclick={() => { notificationsOpen = false; allNotificationsOpen = true; }}><Bell aria-hidden="true" /> Lihat semua notifikasi</Button></div>
                 </Popover.Content>
             </Popover.Root>
             <span title={data.user.name} class="flex size-9 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground">{data.user.name.replace(/^dr\. /, '').split(' ').map(name => name[0]).slice(0, 2).join('')}</span>
@@ -196,3 +198,5 @@ const home = $derived(data.user.role === 'ADMISI' ? '/invoices' : '/dashboard');
     </header>
     <main id="main-content" tabindex="-1" class="mx-auto min-w-0 max-w-[1600px] p-4 sm:p-6 lg:p-8">{@render children()}</main>
 </div>
+
+{#if allNotificationsOpen}<NotificationDialog service={notificationService} onclose={() => { allNotificationsOpen = false; notificationButton?.focus(); }} />{/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+import Modal from '$lib/shared/ui/dialog-frame.svelte';
 	import { toast } from '$lib/shared/ui/sonner/index.js';
 	import { goto } from '$app/navigation';
 	import type { MedicalRecords, MedicalListData } from '$lib/features/medical-records';
@@ -65,7 +66,7 @@
 		{#if doctors}
 			<Button
 				class="h-11 shrink-0 px-4"
-				aria-expanded={creating}
+				aria-haspopup="dialog"
 				onclick={() => {
 					creating = !creating;
 				}}
@@ -99,12 +100,8 @@
 	</section>
 
 	{#if creating && doctors}
-		<Card>
-			<CardHeader>
-				<CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Tambah rekam medis</CardTitle>
-			</CardHeader>
-			<CardContent>
-				<form class="flex flex-col gap-5" onsubmit={create}>
+		<Modal title="Tambah rekam medis" description="Catat keluhan, diagnosis, tindakan, dan catatan medis pasien." {busy} protectChanges wide onclose={() => creating = false}>
+		{#snippet children(close)}<form class="flex flex-col gap-5" onsubmit={create}>
 					<FieldGroup class="grid gap-4 sm:grid-cols-2">
 						<Field>
 							<FieldLabel for="record-patient">Pasien</FieldLabel>
@@ -131,13 +128,12 @@
 							<Textarea id="record-notes" name="notes" rows={2} maxlength={5000} class="text-base md:text-sm" />
 						</Field>
 					</FieldGroup>
-					<div class="action-buttons action-buttons--full">
-						<Button type="button" variant="outline" class="h-11 px-4" onclick={() => (creating = false)}><X aria-hidden="true" /> Batal</Button>
+					<div class="form-actions">
+						<Button type="button" variant="outline" class="h-11 px-4" onclick={close}><X aria-hidden="true" /> Batal</Button>
 						<Button type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan rekam medis'}</Button>
 					</div>
-				</form>
-			</CardContent>
-		</Card>
+				</form>{/snippet}
+		</Modal>
 	{/if}
 
 	<Card class="gap-0 py-0">

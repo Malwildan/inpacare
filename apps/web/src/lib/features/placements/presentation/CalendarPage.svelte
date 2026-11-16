@@ -1,5 +1,6 @@
 <script lang="ts">
 import { toast } from '$lib/shared/ui/sonner/index.js';
+import Modal from '$lib/shared/ui/dialog-frame.svelte';
 import * as AlertDialog from '$lib/shared/ui/alert-dialog/index.js';
 import { Button } from '$lib/shared/ui/button/index.js';
 import { Card } from '$lib/shared/ui/card/index.js';
@@ -40,6 +41,7 @@ async function moveWeek(delta: number) {
 }
 async function place(event: SubmitEvent) {
     event.preventDefault();
+    if (busy) return;
     busy = true;
     const toastId = toast.loading('Menyimpan penempatan…');
     const form = new FormData(event.currentTarget as HTMLFormElement);
@@ -84,18 +86,9 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 <div class="placement-page flex min-w-0 flex-col gap-6">
 <section class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 	<div><h1 class="page-title">Kalender Ruangan</h1><p class="page-subtitle">Pantau ketersediaan dan durasi rawat inap setiap pasien.</p></div>
-	{#if data.user.role === 'PERAWAT'}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-expanded={placing} onclick={() => { placing=!placing; }}><Plus size={16} aria-hidden="true"/> Tempatkan pasien</Button>{/if}
+	{#if data.user.role === 'PERAWAT'}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={() => { placing=!placing; }}><Plus size={16} aria-hidden="true"/> Tempatkan pasien</Button>{/if}
 </section>
 
-{#if placing && data.user.role === 'PERAWAT'}<Card class="gap-4 p-5 sm:p-6 form-panel"><h2>Penempatan pasien</h2><p class="muted">Tanggal masuk dan keluar dihitung inklusif. Konflik kapasitas diperiksa saat disimpan.</p>
-	<form aria-label="Penempatan pasien" class="form-grid" onsubmit={place}>
-		<label class="field">Pasien<FormSelect name="patientId" required options={[{ value: "", label: "Pilih pasien" }, ...(data.patients).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} /></label>
-		<label class="field">Ruangan<FormSelect name="roomId" required options={[{ value: "", label: "Pilih ruangan tersedia" }, ...(data.rooms.filter((r)=>r.status==='available')).map((room) => ({ value: room.id, label: (room.name) + " · " + (room.roomClass) + " · kapasitas " + (room.capacity) }))]} /></label>
-		<label class="field">Tanggal masuk<FormDatePicker class="h-11 text-base md:text-sm" name="startsOn" type="date" value={data.from} required /></label>
-		<label class="field">Tanggal keluar<FormDatePicker class="h-11 text-base md:text-sm" name="endsOn" type="date" value={data.to} required /></label>
-		<div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan penempatan…' : 'Simpan penempatan'}</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={() => placing=false}><X aria-hidden="true" /> Batal</Button></div>
-	</form>
-</Card>{/if}
 <Card class="gap-4 p-5 sm:p-6 ">
 	<div class="filters">
 		<label class="field room-filter">Filter jadwal ruangan<FormSelect bind:value={roomFilter} options={[{ value: "", label: "Semua ruangan" }, ...(data.rooms).map((room) => ({ value: room.id, label: (room.name) }))]} /></label>
@@ -127,8 +120,21 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 	<div class="legend"><span><i class="dot available-dot"></i>Tersedia</span><span><i class="dot occupied-dot"></i>Occupied</span><span><i class="dot maintenance-dot"></i>Maintenance</span></div>
 	<p class="footnote">Rentang tanggal bersifat inklusif. Penempatan baru divalidasi kembali terhadap kapasitas dan jadwal pasien ketika disimpan.</p>
 </Card>
-{#if data.user?.role==='PERAWAT'}<Card class="gap-4 p-5 sm:p-6 placement-list"><div class="panel-header"><div><h2>Kelola penempatan</h2><p class="muted">Jadwal aktif dapat diubah atau dibatalkan. Pembatalan ditolak bila masih memiliki dependensi.</p></div></div><div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Pasien</TableHead><TableHead>Ruangan</TableHead><TableHead>Periode</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader><TableBody>{#each data.placements as placement (placement.id)}<TableRow><TableCell><strong>{placement.patientName}</strong><span class="cell-meta">{placement.medicalRecordNo}</span></TableCell><TableCell>{placement.roomName}</TableCell><TableCell>{placement.startsOn} – {placement.endsOn}</TableCell><TableCell><div class="action-buttons action-buttons--table"><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" aria-expanded={editingPlacement?.id===placement.id} onclick={()=>editingPlacement=editingPlacement?.id===placement.id?null:placement}><Pencil aria-hidden="true" /> Ubah tanggal</Button><Button variant="destructive" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||placement.status!=='active'} onclick={()=>{ cancelling=placement; }}><Ban aria-hidden="true" /> Batalkan</Button></div></TableCell></TableRow>{#if editingPlacement?.id===placement.id}<TableRow><TableCell colspan={4}><form class="form-grid" onsubmit={(event)=>reschedule(event,placement)}><label class="field">Pasien<Input class="h-11 text-base md:text-sm" value={placement.patientName} disabled/></label><label class="field">Ruangan<Input class="h-11 text-base md:text-sm" value={placement.roomName} disabled/></label><label class="field">Tanggal masuk<FormDatePicker class="h-11 text-base md:text-sm" name="startsOn" type="date" value={placement.startsOn} required/></label><label class="field">Tanggal keluar<FormDatePicker class="h-11 text-base md:text-sm" name="endsOn" type="date" value={placement.endsOn} required/></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan jadwal</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={()=>editingPlacement=null}><X aria-hidden="true" /> Batal</Button></div></form></TableCell></TableRow>{/if}{:else}<TableRow><TableCell colspan={4} class="empty">Tidak ada penempatan di rentang minggu ini.</TableCell></TableRow>{/each}</TableBody></Table></div></Card>{/if}
+{#if data.user?.role==='PERAWAT'}<Card class="gap-4 p-5 sm:p-6 placement-list"><div class="panel-header"><div><h2>Kelola penempatan</h2><p class="muted">Jadwal aktif dapat diubah atau dibatalkan. Pembatalan ditolak bila masih memiliki dependensi.</p></div></div><div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Pasien</TableHead><TableHead>Ruangan</TableHead><TableHead>Periode</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader><TableBody>{#each data.placements as placement (placement.id)}<TableRow><TableCell><strong>{placement.patientName}</strong><span class="cell-meta">{placement.medicalRecordNo}</span></TableCell><TableCell>{placement.roomName}</TableCell><TableCell>{placement.startsOn} – {placement.endsOn}</TableCell><TableCell><div class="action-buttons action-buttons--table"><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={()=>editingPlacement=placement}><Pencil aria-hidden="true" /> Ubah tanggal</Button><Button variant="destructive" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||placement.status!=='active'} onclick={()=>{ cancelling=placement; }}><Ban aria-hidden="true" /> Batalkan</Button></div></TableCell></TableRow>{:else}<TableRow><TableCell colspan={4} class="empty">Tidak ada penempatan di rentang minggu ini.</TableCell></TableRow>{/each}</TableBody></Table></div></Card>{/if}
 </div>
+{#if placing && data.user.role === 'PERAWAT'}<Modal title="Penempatan pasien" description="Pilih pasien, ruangan, dan periode rawat inap. Ketersediaan diperiksa saat disimpan." {busy} protectChanges onclose={() => placing = false}>
+{#snippet children(close)}
+	<form aria-label="Penempatan pasien" class="form-grid" onsubmit={place}>
+		<label class="field">Pasien<FormSelect name="patientId" required options={[{ value: "", label: "Pilih pasien" }, ...(data.patients).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} /></label>
+		<label class="field">Ruangan<FormSelect name="roomId" required options={[{ value: "", label: "Pilih ruangan tersedia" }, ...(data.rooms.filter((r)=>r.status==='available')).map((room) => ({ value: room.id, label: (room.name) + " · " + (room.roomClass) + " · kapasitas " + (room.capacity) }))]} /></label>
+		<label class="field">Tanggal masuk<FormDatePicker class="h-11 text-base md:text-sm" name="startsOn" type="date" value={data.from} required /></label>
+		<label class="field">Tanggal keluar<FormDatePicker class="h-11 text-base md:text-sm" name="endsOn" type="date" value={data.to} required /></label>
+		<div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan penempatan…' : 'Simpan penempatan'}</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={close}><X aria-hidden="true" /> Batal</Button></div>
+	</form>
+{/snippet}</Modal>{/if}
+
+{#if editingPlacement}<Modal title="Ubah tanggal penempatan" description="Perbarui periode rawat inap pasien. Ketersediaan diperiksa saat disimpan." {busy} protectChanges onclose={() => editingPlacement = null}>
+{#snippet children(close)}<form class="form-grid" onsubmit={(event)=>editingPlacement && reschedule(event,editingPlacement)}><label class="field">Pasien<Input class="h-11 text-base md:text-sm" value={editingPlacement!.patientName} disabled/></label><label class="field">Ruangan<Input class="h-11 text-base md:text-sm" value={editingPlacement!.roomName} disabled/></label><label class="field">Tanggal masuk<FormDatePicker class="h-11 text-base md:text-sm" name="startsOn" type="date" value={editingPlacement!.startsOn} required/></label><label class="field">Tanggal keluar<FormDatePicker class="h-11 text-base md:text-sm" name="endsOn" type="date" value={editingPlacement!.endsOn} required/></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan jadwal</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={close}><X aria-hidden="true" /> Batal</Button></div></form>{/snippet}</Modal>{/if}
 <AlertDialog.Root open={cancelling !== null} onOpenChange={(open) => { if (!open && !busy) cancelling = null; }}>
     <AlertDialog.Content onEscapeKeydown={(event) => { if (busy) event.preventDefault(); }}>
         <AlertDialog.Header>

@@ -14,6 +14,7 @@ test('doctor correction requires and submits its explanation', async ({ page }) 
   await page.getByRole('button', { name: 'Masuk' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.goto('/medical-records/MR-001');
+  await page.getByRole('button', { name: 'Ubah catatan dokter', exact: true }).click();
   const form = page.locator('form').filter({ has: page.getByRole('button', { name: 'Simpan perubahan' }) });
   await expect(form.getByLabel('Alasan koreksi')).toHaveAttribute('required', '');
   await form.getByLabel('Alasan koreksi').fill('Koreksi sumber sintetis pada E2E.');
@@ -83,7 +84,8 @@ test('dashboard cycle filters are restored from and submitted to the server', as
 	await page.goto('/dashboard?search=filter-e2e&status=pending_approval');
 	await expect(page.getByRole('heading', { name: 'Dashboard Siklus Inpatient Care' })).toBeVisible();
 	await expect(page.getByLabel('Cari nama atau nomor rekam medis')).toHaveValue('filter-e2e');
-	await expect(page.getByLabel('Status')).toHaveAttribute('data-value', 'pending_approval');
+	await page.getByRole('button', { name: /^Filter rekap/ }).click();
+	await expect(page.getByRole('dialog').getByRole('combobox', { name: /^Status/ })).toHaveAttribute('data-value', 'pending_approval');
 	await page.getByRole('button', { name: 'Terapkan filter' }).click();
 	await expect(page).toHaveURL(/search=filter-e2e.*status=pending_approval/);
 });
@@ -113,9 +115,11 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	const invoiceId = (await (await created).json()).id as string;
 	const row = page.getByRole('row').filter({ hasText: invoiceId });
 	await row.getByRole('button', { name: 'Lihat detail' }).click();
-	const detail = page.locator('.invoice-detail');
+	const detail = page.getByRole('dialog');
+	await detail.getByRole('button', { name: 'Rincian', exact: true }).click();
+	await detail.getByRole('button', { name: 'Ubah rincian', exact: true }).first().click();
 	const updatedDescription = `E2E dikoreksi ${Date.now()}`;
-	const line = detail.locator('.line-editor').first();
+	const line = detail.locator('form');
 	await line.getByLabel('Deskripsi').fill(updatedDescription);
 	await line.getByLabel('Alasan').fill('Koreksi rincian pada pengujian rebuild.');
 	await line.getByRole('button', { name: 'Simpan' }).click();
@@ -123,8 +127,8 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	await detail.getByRole('button', { name: 'Ubah tagihan', exact: true }).click();
 	const editor = detail.locator('form').filter({ has: page.getByRole('button', { name: 'Simpan perubahan', exact: true }) });
 	await editor.getByLabel('Deskripsi').fill('Draft yang tidak disimpan');
-	await detail.getByRole('button', { name: 'Tutup', exact: true }).click();
-	await row.getByRole('button', { name: 'Lihat detail' }).click();
+	await detail.getByRole('button', { name: 'Batal', exact: true }).click();
+	await page.getByRole('button', { name: 'Abaikan perubahan', exact: true }).click();
 	await expect(editor).toHaveCount(0);
 	await detail.getByRole('button', { name: 'Ubah tagihan', exact: true }).click();
 	await expect(editor.getByLabel('Deskripsi')).toHaveValue(updatedDescription);
@@ -142,19 +146,23 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	expect(await editResponse.json()).toMatchObject({ totalAmount: '2500.50', coveredAmount: '300.25', payableAmount: '2200.25' });
 	await expect(editor).toHaveCount(0);
 
+	await detail.getByRole('button', { name: 'Verifikasi klaim', exact: true }).click();
 	await detail.getByLabel('Hasil verifikasi klaim').fill('Ditolak');
 	await selectOption(detail.getByLabel('Keputusan klaim'), 'false');
 	await detail.getByLabel('Alasan verifikasi').fill('Berkas sintetis belum lengkap.');
 	await detail.getByRole('button', { name: 'Simpan verifikasi klaim' }).click();
+	await detail.getByRole('button', { name: 'Ringkasan', exact: true }).click();
 	await expect(detail).toContainText('Ditolak');
 	await page.reload();
 	await page.getByRole('row').filter({ hasText: invoiceId }).getByRole('button', { name: 'Lihat detail' }).click();
-	await expect(page.locator('.invoice-detail')).toContainText(updatedDescription);
-	await expect(page.locator('.invoice-detail')).toContainText('Ditolak');
+	await page.getByRole('dialog').getByRole('button', { name: 'Rincian', exact: true }).click();
+	await expect(page.getByRole('dialog')).toContainText(updatedDescription);
+	await page.getByRole('dialog').getByRole('button', { name: 'Ringkasan', exact: true }).click();
+	await expect(page.getByRole('dialog')).toContainText('Ditolak');
 	await mkdir(evidence, { recursive: true });
 	await page.screenshot({ path: path.join(evidence, 'e2e-invoice-detail.png'), fullPage: true, animations: 'disabled' });
 
-	await page.locator('.invoice-detail').getByRole('button', { name: 'Hapus tagihan' }).click();
+	await page.getByRole('dialog').getByRole('button', { name: 'Hapus tagihan' }).click();
 	const confirmation = page.getByRole('dialog', { name: 'Hapus tagihan?' });
 	await confirmation.getByLabel('Alasan penghapusan').fill('Hapus invoice uji');
 	await confirmation.getByRole('button', { name: 'Ya, hapus' }).click();
@@ -212,7 +220,7 @@ test('a nurse can edit and remove a room item and archive the empty room', async
 	await expect(detail.getByRole('listitem').filter({ hasText: itemName })).toContainText('2 ×');
 
 	await detail.getByRole('listitem').filter({ hasText: itemName }).getByRole('button', { name: 'Hapus' }).click();
-	const removeItemDialog = page.getByRole('alertdialog', { name: 'Hapus item?' });
+	const removeItemDialog = page.getByRole('dialog', { name: 'Hapus item?' });
 	await expect(removeItemDialog).toBeVisible();
 	await removeItemDialog.getByRole('button', { name: 'Hapus' }).click();
 	await expect(removeItemDialog).toHaveCount(0);
@@ -222,7 +230,7 @@ test('a nurse can edit and remove a room item and archive the empty room', async
 	await detail.getByRole('button', { name: 'Tutup detail ruangan', exact: true }).click();
 	await expect(detail).toHaveCount(0);
 	await page.getByRole('row').filter({ hasText: roomName }).getByRole('button', { name: 'Hapus' }).click();
-	const removeRoomDialog = page.getByRole('alertdialog', { name: 'Hapus ruangan?' });
+	const removeRoomDialog = page.getByRole('dialog', { name: 'Hapus ruangan?' });
 	await expect(removeRoomDialog).toBeVisible();
 	await removeRoomDialog.getByRole('button', { name: 'Hapus' }).click();
 	await expect(removeRoomDialog).toHaveCount(0);

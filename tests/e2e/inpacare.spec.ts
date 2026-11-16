@@ -115,7 +115,7 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await selectOption(coordinator.getByLabel('Penempatan pasien'), { index: 1 });
 	await selectOption(coordinator.getByLabel('Perawat PIC'), { label: 'Dina Putri' });
 	await coordinator.getByLabel('Judul', { exact: true }).fill(title);
-	await selectOption(coordinator.locator('.form-panel').getByLabel('Prioritas'), 'normal');
+	await selectOption(coordinator.getByRole('dialog', {name:'Buat tugas perawatan',exact:true}).getByLabel('Prioritas'), 'normal');
 	const starts = new Date(Date.now() + 5 * 60_000);
 	const ends = new Date(starts.getTime() + 45 * 60_000);
 	const local = (value: Date) => {const date=new Date(value.getTime()-value.getTimezoneOffset()*60_000);return date.toISOString().slice(0,16);};
@@ -139,11 +139,14 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await expect(detail.locator('.detail-grid > div').filter({hasText:'Dibuat oleh'})).toContainText('Rina Saputra');
 	const creation=detail.locator('.history-list > li').filter({hasText:'Tugas dibuat'});
 	await expect(creation).toContainText('Rina Saputra');
-	await creation.getByText('Nilai sebelum dan sesudah', {exact:true}).click();
-	await expect(creation.locator('.audit-row').filter({has:pic.getByText('Judul',{exact:true})}).locator(':scope > *')).toHaveText([
+	await creation.getByRole('button', {name:'Lihat perubahan',exact:true}).click();
+	const audit=pic.getByRole('dialog', {name:'Rincian perubahan tugas',exact:true});
+	await expect(audit.locator('.audit-row').filter({has:pic.getByText('Judul',{exact:true})}).locator(':scope > *')).toHaveText([
 		'Judul', 'Sebelum:Belum ada data', `Sesudah:${title}`
 	]);
-	await expect(creation.locator('.audit-row').filter({hasText:'Dibuat oleh'})).toContainText('Rina Saputra');
+	await expect(audit.locator('.audit-row').filter({hasText:'Dibuat oleh'})).toContainText('Rina Saputra');
+	await audit.getByRole('button', {name:'Kembali ke detail',exact:false}).click();
+	await detail.getByRole('button',{name:'Tambah catatan',exact:true}).click();
 	await pic.getByLabel('Catatan tindakan').fill('Pemeriksaan diselesaikan melalui alur E2E.');
 	await pic.getByRole('button',{name:'Simpan catatan'}).click();
 	await expect(detail).toContainText('Pemeriksaan diselesaikan melalui alur E2E.');
@@ -200,7 +203,8 @@ test('role navigation only exposes the signed-in role’s screens and small scre
 	await expect(payment).toHaveCount(0);
 	await expect(invoice).toContainText('Lunas');
 	await invoice.getByRole('button',{name:'Lihat detail'}).click();
-	await expect(admission.locator('.invoice-detail')).toContainText('Bukti penerimaan diverifikasi dalam uji demo.');
+	await admission.getByRole('dialog').getByRole('button',{name:'Riwayat',exact:true}).click();
+	await expect(admission.getByRole('dialog')).toContainText('Bukti penerimaan diverifikasi dalam uji demo.');
 	await mkdir(evidence,{recursive:true});
 	await admission.screenshot({path:path.join(evidence,'invoices-desktop.png'),fullPage:true});
 	await admission.setViewportSize({width:390,height:844});
