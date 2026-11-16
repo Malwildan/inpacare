@@ -2,6 +2,7 @@
 import { toast } from '$lib/shared/ui/sonner/index.js';
 import { Button } from '$lib/shared/ui/button/index.js';
 import { Card } from '$lib/shared/ui/card/index.js';
+import FormDatePicker from '$lib/shared/ui/form-date-picker.svelte';
 import { Input } from '$lib/shared/ui/input/index.js';
 import FormSelect from '$lib/shared/ui/form-select.svelte';
 import { Textarea } from '$lib/shared/ui/textarea/index.js';
@@ -206,7 +207,7 @@ async function deleteCycle(cycle: CycleDetail) {
 			{#if data.user.role === 'PERAWAT' && ['in_care', 'extend'].includes(selectedCycle.status)}
 				<section class="detail-section"><h3>Ajukan perpanjangan atau pelepasan</h3><p class="muted">Permintaan akan ditinjau oleh dokter penanggung jawab.</p>
 					{#if pendingRequest}<p class="approval-note" id="cycle-request-blocked" role="status">Pengajuan {pendingRequest.kind === 'extend' ? 'perpanjangan' : 'pelepasan'} sebelumnya masih menunggu keputusan <strong>{selectedCycle.doctorName}</strong>. Dokter perlu menyetujui atau menolak pengajuan itu terlebih dahulu. Pengajuan baru belum dapat dikirim; status pasien tetap <strong>{statusLabels[selectedCycle.status]}</strong> sampai ada persetujuan.</p>{/if}
-					<form onsubmit={(event) => request(event, selectedCycle!)}><fieldset class="request-fields" disabled={busy || !!pendingRequest} aria-describedby={pendingRequest ? 'cycle-request-blocked' : undefined}><legend class="request-legend">Pengajuan perubahan perawatan</legend><div class="form-grid"><label class="field">Jenis permintaan<FormSelect name="kind" bind:value={requestKind} options={[{ value: "release", label: "Pelepasan" }, { value: "extend", label: "Perpanjangan" }]} /></label>{#if requestKind === 'extend'}<label class="field">Perpanjang sampai tanggal<Input class="h-11 text-base md:text-sm" name="requestedEnd" type="date" required /></label>{/if}<label class="field full">Alasan<Textarea name="reason" maxlength={500} required></Textarea></label></div><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline">Ajukan ke dokter</Button></div></fieldset></form>
+					<form onsubmit={(event) => request(event, selectedCycle!)}><fieldset class="request-fields" disabled={busy || !!pendingRequest} aria-describedby={pendingRequest ? 'cycle-request-blocked' : undefined}><legend class="request-legend">Pengajuan perubahan perawatan</legend><div class="form-grid"><label class="field">Jenis permintaan<FormSelect name="kind" bind:value={requestKind} options={[{ value: "release", label: "Pelepasan" }, { value: "extend", label: "Perpanjangan" }]} /></label>{#if requestKind === 'extend'}<label class="field">Perpanjang sampai tanggal<FormDatePicker class="h-11 text-base md:text-sm" name="requestedEnd" type="date" required /></label>{/if}<label class="field full">Alasan<Textarea name="reason" maxlength={500} required></Textarea></label></div><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline">Ajukan ke dokter</Button></div></fieldset></form>
 				</section>
 			{/if}
 			<section class="detail-section"><h3>Riwayat permintaan</h3>

@@ -1,5 +1,6 @@
 import { toastMessage } from '../toast.mjs';
 import { selectOption } from '../select-option.mjs';
+import { selectDate } from '../select-date.mjs';
 import { createServer } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
@@ -106,12 +107,12 @@ try {
     assert.equal(await page.evaluate(() => window.calendarCreate), undefined);
     await selectOption(placementForm.getByRole('combobox', { name: 'Pasien', exact: true }), 'patient');
     await selectOption(placementForm.getByRole('combobox', { name: 'Ruangan', exact: true }), 'room');
-    await placementForm.getByLabel('Tanggal masuk').fill('2026-11-03');
-    await placementForm.getByLabel('Tanggal keluar').fill('2026-11-04');
+    await selectDate(placementForm.getByLabel('Tanggal masuk'), '2026-11-03');
+    await selectDate(placementForm.getByLabel('Tanggal keluar'), '2026-11-04');
     await placementForm.getByRole('button', { name: 'Simpan penempatan', exact: true }).click();
     await expect(toastMessage(page, 'Kapasitas telah berubah.')).toContainText('Kapasitas telah berubah.');
-    await expect(placementForm.getByLabel('Tanggal masuk')).toHaveValue('2026-11-03');
-    await expect(placementForm.getByLabel('Tanggal keluar')).toHaveValue('2026-11-04');
+    await expect(placementForm.getByLabel('Tanggal masuk')).toHaveAttribute('data-value', '2026-11-03');
+    await expect(placementForm.getByLabel('Tanggal keluar')).toHaveAttribute('data-value', '2026-11-04');
     assert.deepEqual(await page.evaluate(() => window.calendarCreate), { patientId: 'patient', roomId: 'room', startsOn: '2026-11-03', endsOn: '2026-11-04' });
     await placementForm.getByRole('button', { name: 'Batal', exact: true }).click();
 
@@ -357,6 +358,17 @@ try {
     assert.deepEqual(await page.evaluate(() => window.billingWrites.at(-1)), { action: 'deleteInvoice', id: 'invoice', expectedVersion: 13, reason: 'Koreksi tagihan' });
     assert.deepEqual(pageErrors, []);
     await page.goto(server.resolvedUrls.local[0] + '?surface=tasks', { waitUntil: 'domcontentloaded' });
+    await page.locator('.advanced > summary').click();
+    const fromDate = page.getByLabel('Dari tanggal');
+    await selectDate(fromDate, '2026-11-02');
+    await page.getByRole('button', { name: 'Terapkan filter', exact: true }).click();
+    assert.equal(new URL(await page.evaluate(() => window.lastNavigation), 'http://fixture').searchParams.get('from'), '2026-11-02');
+    await fromDate.click();
+    await page.getByRole('button', { name: 'Hapus tanggal', exact: true }).click();
+    await expect(fromDate).toHaveAttribute('data-value', '');
+    await page.getByRole('button', { name: 'Terapkan filter', exact: true }).click();
+    assert.equal(new URL(await page.evaluate(() => window.lastNavigation), 'http://fixture').searchParams.has('from'), false);
+    await page.locator('.advanced > summary').click();
     await page.locator('#task-task').click();
     const taskDetail = page.getByRole('dialog', { name: 'Tugas Uji', exact: true });
     await taskDetail.getByRole('button', { name: 'Hapus logis dengan alasan', exact: true }).click();
@@ -384,8 +396,13 @@ try {
     await selectOption(taskForm.getByLabel('Penempatan pasien'), 'placement');
     await selectOption(taskForm.getByLabel('Perawat PIC'), 'nurse');
     await taskForm.getByLabel('Judul', { exact: true }).fill('Tugas Baru');
-    await taskForm.getByLabel('Waktu mulai').fill('2026-11-02T08:30');
-    await taskForm.getByLabel('Waktu selesai').fill('2026-11-02T09:30');
+    await taskForm.getByRole('button', { name: 'Simpan tugas', exact: true }).click();
+    await expect(taskForm.getByLabel('Waktu mulai')).toBeFocused();
+    await expect(toastMessage(page, 'Pilih tanggal dan waktu.')).toBeVisible();
+    await expect(taskForm.getByRole('alert')).toHaveCount(0);
+    assert.equal(await page.evaluate(() => window.taskCreate), undefined);
+    await selectDate(taskForm.getByLabel('Waktu mulai'), '2026-11-02T08:30');
+    await selectDate(taskForm.getByLabel('Waktu selesai'), '2026-11-02T09:30');
     await taskForm.getByRole('button', { name: 'Simpan tugas', exact: true }).click();
     await expect(toastMessage(page, 'Tugas gagal tersimpan.')).toContainText('Tugas gagal tersimpan.');
     await expect(taskForm.getByLabel('Judul', { exact: true })).toHaveValue('Tugas Baru');

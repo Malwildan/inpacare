@@ -1,6 +1,7 @@
 import { toastMessage } from '../toast.mjs';
 import { test, expect } from '@playwright/test';
 import { selectOption } from '../select-option.mjs';
+import { selectDate } from '../select-date.mjs';
 
 test('task filters survive direct navigation, reload and history', async ({ page }) => {
  await page.goto('/login');
@@ -39,16 +40,16 @@ test('calendar keeps an inclusive week and a failed placement form', async ({ pa
  const form=page.locator('.form-panel form');
  await selectOption(form.getByRole('combobox', { name: /^Pasien/ }), { index: 1 });
  await selectOption(form.getByRole('combobox', { name: /^Ruangan/ }), { index: 1 });
- await form.getByLabel('Tanggal masuk').fill('2026-11-03');
- await form.getByLabel('Tanggal keluar').fill('2026-11-04');
+ await selectDate(form.getByLabel('Tanggal masuk'), '2026-11-03');
+ await selectDate(form.getByLabel('Tanggal keluar'), '2026-11-04');
  await page.route('**/api/v1/placements', async route => {
   if (route.request().method() === 'POST') await route.fulfill({status:409,json:{error:{code:'CAPACITY',message:'Kapasitas telah berubah.'}}});
   else await route.continue();
  });
  await form.getByRole('button', { name: /Simpan penempatan/ }).click();
  await expect(toastMessage(page, 'Kapasitas telah berubah.')).toContainText('Kapasitas telah berubah.');
- await expect(form.getByLabel('Tanggal masuk')).toHaveValue('2026-11-03');
- await expect(form.getByLabel('Tanggal keluar')).toHaveValue('2026-11-04');
+ await expect(form.getByLabel('Tanggal masuk')).toHaveAttribute('data-value', '2026-11-03');
+ await expect(form.getByLabel('Tanggal keluar')).toHaveAttribute('data-value', '2026-11-04');
 });
 
 test('patient context renders after direct navigation and reload', async ({ page }) => {
