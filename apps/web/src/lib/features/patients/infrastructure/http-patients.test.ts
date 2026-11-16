@@ -14,7 +14,7 @@ it('searches the requested page and registers through the shared CSRF client', a
     }, { csrfToken: () => 'synthetic-csrf' }));
     await patients.list('RM / 001', 25);
     expect(requests[0].url).toBe('/api/v1/patients?q=RM+%2F+001&limit=25&offset=25');
-    const input = { medicalRecordNo: 'RM-NEW', name: 'Pasien Uji', birthDate: '2000-01-01', gender: 'L' as const, bpjs: false };
+    const input = { name: 'Pasien Uji', birthDate: '2000-01-01', gender: 'L' as const, bpjs: false };
     await patients.create(input);
     expect(requests[1].url).toBe('/api/v1/patients');
     expect(requests[1].init?.method).toBe('POST');

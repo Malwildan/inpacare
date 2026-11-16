@@ -1,5 +1,4 @@
 export type NewPatient = {
-    medicalRecordNo: string;
     name: string;
     birthDate: string;
     gender: 'L' | 'P';
