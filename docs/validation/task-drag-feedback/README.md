@@ -2,7 +2,7 @@
 
 These captures use the real TasksPage component with synthetic task, patient and staff fixtures.
 
-- [Source column](cancel-desktop.png): **Cancel**, with the InpaCare primary color and hover glow. Releasing here keeps the original status and order without a request.
+- [Source column](cancel-desktop.png): **Cancel**, with red stripes and hover glow from the InpaCare `--destructive` token. Releasing here keeps the original status and order without a request.
 - [Destination column](destination-desktop.png): **Move here**, using `--primary`, while locked columns retain gray stripes and their explanations.
 - [Mobile source column](cancel-mobile.png): the Cancel message stays inside the horizontally scrolling board.
 

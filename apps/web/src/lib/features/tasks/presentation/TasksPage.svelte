@@ -501,6 +501,7 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 }
 .column-drop-overlay.active { box-shadow:inset 0 0 0 1px var(--drop-color), inset 0 0 28px color-mix(in srgb, var(--drop-color) 25%, transparent), 0 0 12px color-mix(in srgb, var(--drop-color) 30%, transparent); }
 .column-drop-overlay.locked { --drop-color:var(--muted-foreground); }
+.column-drop-overlay[data-drop-state="cancel"] { --drop-color:var(--destructive); }
 .drop-message { display:flex; flex-direction:column; align-items:center; gap:8px; max-width:100%; padding:16px; border:1px solid color-mix(in srgb, var(--drop-color) 35%, var(--border)); border-radius:10px; background:var(--card); color:var(--drop-color); text-align:center; overflow-wrap:anywhere; transition:transform 160ms cubic-bezier(.2,.8,.2,1); }
 .column-drop-overlay.active .drop-message { transform:translateY(-2px); }
 .drop-message strong { font-size:16px; }
