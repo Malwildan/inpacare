@@ -220,6 +220,11 @@ function drop(event: DragEvent, status: BoardStatus) {
 }
 function endDrag() { dragTask = null; dragTarget = null; setTimeout(() => suppressClick = false, 0); }
 function closeDetail() { taskView = 'detail'; selectedAudit = null; selected = null; requestAnimationFrame(() => origin?.focus()); }
+function closeMove() {
+    const task = moving;
+    moving = null;
+    if (task && pending.includes(task.id)) closeDetail();
+}
 function openCard(task: Task, event: MouseEvent) { if (suppressClick) return; origin = event.currentTarget as HTMLElement; void open(task); }
 
 function closeFilters() {
@@ -338,9 +343,8 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
    {#if column.filtered}<p class="empty">Disembunyikan oleh filter status.</p>
    {:else}
     {#each column.items as task (task.id)}
-     <Card role="article" data-task-id={task.id} class={`task-card mb-2 gap-2 overflow-visible p-3 [overflow-wrap:anywhere] ${dragTask?.id===task.id ? 'opacity-50' : ''}`} draggable={task.status!=='done' && task.status!=='cancelled' && canOperate(task) && !pending.includes(task.id)} ondragstart={(e)=>dragStart(e,task)} ondragend={endDrag}>
-      <Button variant="ghost" id={`task-${task.id}`} aria-label={`Detail ${task.title}`} class="card-open h-auto min-h-11 w-full flex-col items-start gap-1.5 whitespace-normal p-1 text-left font-normal hover:bg-accent/50" onclick={(event)=>openCard(task,event)}><strong class="card-title">{task.title}</strong><span>{task.patientName} - {task.roomName}</span><StatusBadge value={task.priority} label={`Prioritas ${priorityLabel(task.priority)}`} /><span>{local(task.startsAt)} - {local(task.endsAt)}</span><span>PIC: {task.picName}</span></Button>
-      <div class="task-card-actions action-buttons action-buttons--full"><Button variant="outline" class="h-11 px-3" onclick={(event)=>openCard(task,event)}><Eye aria-hidden="true" /> Detail</Button>{#if pending.includes(task.id)}<p role="status">Menyimpan...</p>{:else if task.status!=='done' && task.status!=='cancelled' && canOperate(task) && statuses.some(([key])=>allowed(task,key as BoardStatus))}<Button variant="default" class="h-11 px-3 move-button" onclick={()=>startMove(task)}><ArrowRightLeft aria-hidden="true" /> Pindahkan</Button>{/if}</div>
+     <Card role="article" data-task-id={task.id} class={`task-card mb-2 gap-0 overflow-visible p-0 [overflow-wrap:anywhere] ${dragTask?.id===task.id ? 'opacity-50' : ''}`} draggable={task.status!=='done' && task.status!=='cancelled' && canOperate(task) && !pending.includes(task.id)} ondragstart={(e)=>dragStart(e,task)} ondragend={endDrag}>
+      <Button variant="ghost" id={`task-${task.id}`} aria-label={`Detail ${task.title}`} aria-haspopup="dialog" aria-busy={pending.includes(task.id)} class="card-open h-auto min-h-11 w-full flex-col items-start gap-1.5 rounded-xl whitespace-normal p-4 text-left font-normal hover:bg-accent/50" onclick={(event)=>openCard(task,event)}><strong class="card-title">{task.title}</strong><span>{task.patientName} - {task.roomName}</span><StatusBadge value={task.priority} label={`Prioritas ${priorityLabel(task.priority)}`} /><span>{local(task.startsAt)} - {local(task.endsAt)}</span><span>PIC: {task.picName}</span>{#if pending.includes(task.id)}<span role="status">Menyimpan...</span>{/if}</Button>
      </Card>
     {:else}{#if !column.error}<p class="empty">Tidak ada tugas.</p>{/if}{/each}
     {#if column.error}<Button variant="outline" class="h-11 px-4" disabled={loading.includes(status)} onclick={()=>loadMore(status)}><RefreshCw aria-hidden="true" /> {loading.includes(status) ? 'Memuat...' : 'Coba lagi'}</Button>{:else if column.items.length < column.total}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" disabled={loading.includes(status)} onclick={()=>loadMore(status)}><ListPlus aria-hidden="true" /> {loading.includes(status) ? 'Memuat...' : 'Muat lebih banyak'}</Button>{/if}
@@ -358,7 +362,7 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
   </section>
  {/each}
 </div>
-<p class="muted">Tugas hanya dapat maju ke tahap berikutnya; tugas selesai atau dibatalkan tidak dapat dibuka kembali. Seret ke kolom tujuan untuk menaruh tugas di urutan paling bawah.{#if filtered} Urutan dinonaktifkan saat filter aktif. Perpindahan status ditambahkan di akhir daftar.{/if}</p>
+<p class="muted">Klik atau ketuk kartu untuk melihat detail dan tindakan. Seret ke kolom tujuan untuk menaruh tugas di urutan paling bawah. Tugas hanya dapat maju ke tahap berikutnya; tugas selesai atau dibatalkan tidak dapat dibuka kembali.{#if filtered} Urutan dinonaktifkan saat filter aktif. Perpindahan status ditambahkan di akhir daftar.{/if}</p>
 
 </div>
 
@@ -368,8 +372,8 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
  busy={!moving && (busy || !!selected && pending.includes(selected.id))}
  protectChanges={creating || !moving && !deletionOpen && ['edit', 'note', 'reassign'].includes(taskView)}
  formKey={creating ? 'create' : moving ? 'move' : deletionOpen ? 'delete' : taskView === 'audit' ? `audit-${selectedAudit?.id}` : taskView}
- backLabel={selected && (moving || deletionOpen || taskView !== 'detail') ? 'Kembali ke detail' : undefined}
- onclose={() => { if (moving) moving = null; else if (deletionOpen) deletionOpen = false; else if (creating) creating = false; else if (taskView !== 'detail') taskView = 'detail'; else closeDetail(); }}>
+ backLabel={selected && (moving && !pending.includes(moving.id) || deletionOpen || taskView !== 'detail') ? 'Kembali ke detail' : undefined}
+ onclose={() => { if (moving) closeMove(); else if (deletionOpen) deletionOpen = false; else if (creating) creating = false; else if (taskView !== 'detail') taskView = 'detail'; else closeDetail(); }}>
  {#snippet children(close)}
  {#if creating && coordinator}<form class="form-grid" onsubmit={createTask}>
 	<label class="field">Penempatan pasien<FormSelect name="placementId" required options={[{ value: "", label: "Pilih pasien / ruangan" }, ...(placements).map((p) => ({ value: p.id, label: (p.patientName) + " · " + (p.roomName) + " (" + (p.startsOn) + "–" + (p.endsOn) + ")" }))]} /></label>
@@ -412,7 +416,7 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
    <div><dt>Jadwal</dt><dd>{local(selected.startsAt)}<br />sampai {local(selected.endsAt)}</dd></div>
    <div><dt>Dibuat oleh</dt><dd>{selected.createdByName}</dd></div>
   </dl>
-  {#if canOperate(selected) && selected.status!=='done' && selected.status!=='cancelled' && statuses.some(([key])=>allowed(selected!,key as BoardStatus))}<Button variant="default" class="h-11 px-4" onclick={()=>selected&&startMove(selected)}><ArrowRightLeft aria-hidden="true" /> Pindahkan</Button>{/if}
+  {#if canOperate(selected) && selected.status!=='done' && selected.status!=='cancelled' && statuses.some(([key])=>allowed(selected!,key as BoardStatus))}<Button variant="default" class="h-11 px-4" disabled={pending.includes(selected.id)} onclick={()=>selected&&startMove(selected)}><ArrowRightLeft aria-hidden="true" /> Pindahkan</Button>{/if}
  </section>
  <section class="detail-section"><h3>Deskripsi</h3><p class="detail-copy">{selected.description||'Tidak ada deskripsi.'}</p></section>
  <section class="detail-section"><h3>Catatan tindakan</h3><p class="detail-copy">{selected.notes||'Belum ada catatan.'}</p></section>
@@ -460,7 +464,6 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 .drop-message { display:flex; flex-direction:column; align-items:center; gap:8px; max-width:100%; padding:16px; border:1px solid color-mix(in srgb, var(--drop-color) 35%, var(--border)); border-radius:10px; background:var(--card); color:var(--drop-color); text-align:center; overflow-wrap:anywhere; }
 .drop-message strong { font-size:16px; }
 .drop-message span { font-size:12px; color:var(--foreground); }
-.task-card-actions { margin-top:8px; }
 .card-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
 
 
