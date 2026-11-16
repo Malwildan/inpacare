@@ -2,6 +2,7 @@ import { toastMessage } from '../toast.mjs';
 import { test, expect, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { taskPlacement } from '../task-placement.mjs';
 import { selectOption } from '../select-option.mjs';
 import { selectDate } from '../select-date.mjs';
 
@@ -112,12 +113,14 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await coordinator.goto('/tasks');
 	await expect(coordinator.getByRole('heading', { name: 'Tugas Perawatan' })).toBeVisible();
 	await coordinator.getByRole('button', { name: /Buat tugas/ }).click();
-	await selectOption(coordinator.getByLabel('Penempatan pasien'), { index: 1 });
+	const starts = new Date(Date.now() + 5 * 60_000);
+	const ends = new Date(starts.getTime() + 45 * 60_000);
+	const reference = await (await coordinator.request.get('/api/v1/reference')).json();
+	const placement = taskPlacement(reference.placements, starts, ends);
+	await selectOption(coordinator.getByLabel('Penempatan pasien'), placement.id);
 	await selectOption(coordinator.getByLabel('Perawat penanggung jawab'), { label: 'Dina Putri' });
 	await coordinator.getByLabel('Judul', { exact: true }).fill(title);
 	await selectOption(coordinator.getByRole('dialog', {name:'Buat tugas perawatan',exact:true}).getByLabel('Prioritas'), 'normal');
-	const starts = new Date(Date.now() + 5 * 60_000);
-	const ends = new Date(starts.getTime() + 45 * 60_000);
 	const local = (value: Date) => {const date=new Date(value.getTime()-value.getTimezoneOffset()*60_000);return date.toISOString().slice(0,16);};
 	await selectDate(coordinator.getByLabel('Waktu mulai'), local(starts));
 	await selectDate(coordinator.getByLabel('Waktu selesai'), local(ends));
