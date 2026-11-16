@@ -21,6 +21,6 @@ describe('Swagger request interceptor', () => {
         expect(request.credentials).toBe('same-origin');
         expect(request.headers).toBeUndefined();
         expect(readToken).not.toHaveBeenCalled();
-        expect(() => intercept({ url: 'https://other.example/api/v1/tasks', method: 'POST' })).toThrow(/only sends requests to this site/);
+        expect(() => intercept({ url: 'https://other.example/api/v1/tasks', method: 'POST' })).toThrow(/hanya dapat mengirim permintaan ke situs ini/);
     });
 });

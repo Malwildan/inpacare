@@ -6,7 +6,7 @@ export function validateRoomText(name: string, roomClass: string) {
 }
 export function validateRoomItem(name: string, category: string) {
   if (!name.trim() || !category.trim())
-    throw DomainError.validation("Nama dan kategori item wajib diisi.");
+    throw DomainError.validation("Nama dan kategori perlengkapan wajib diisi.");
 }
 export function validateRoomCost(value: string) {
   if (!/^\d{1,13}(\.\d{1,2})?$/.test(value))

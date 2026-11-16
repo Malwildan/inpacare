@@ -105,7 +105,7 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 			<TableRow><TableHead scope="row" class="room-name"><strong>{room.name} · {room.id}</strong><span>{room.roomClass} · kapasitas {room.capacity}</span></TableHead>
 			{#each dates as day}
 				<TableCell>
-					{#if room.status!=='available'}<span class="room-unavailable">Maintenance</span>
+					{#if room.status!=='available'}<span class="room-unavailable">Dalam pemeliharaan</span>
 					{:else if dayPlacements(room.id,day).length===0}<span class="free">Tersedia</span>
 					{:else}<div class="day-bookings">{#each dayPlacements(room.id,day) as p (p.id)}
 						<div class="booking" class:start={p.startsOn===iso(day)} class:end={p.endsOn===iso(day)} title={p.patientName+' · '+p.startsOn+' – '+p.endsOn}>
@@ -117,7 +117,7 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 			{/each}</TableRow>
 		{:else}<TableRow><TableCell class="empty" colspan={8}>Belum ada data ruangan.</TableCell></TableRow>{/each}</TableBody>
 	</Table></div>
-	<div class="legend"><span><i class="dot available-dot"></i>Tersedia</span><span><i class="dot occupied-dot"></i>Occupied</span><span><i class="dot maintenance-dot"></i>Maintenance</span></div>
+	<div class="legend"><span><i class="dot available-dot"></i>Tersedia</span><span><i class="dot occupied-dot"></i>Terisi</span><span><i class="dot maintenance-dot"></i>Dalam pemeliharaan</span></div>
 	<p class="footnote">Rentang tanggal bersifat inklusif. Penempatan baru divalidasi kembali terhadap kapasitas dan jadwal pasien ketika disimpan.</p>
 </Card>
 {#if data.user?.role==='PERAWAT'}<Card class="gap-4 p-5 sm:p-6 placement-list"><div class="panel-header"><div><h2>Kelola penempatan</h2><p class="muted">Jadwal aktif dapat diubah atau dibatalkan. Pembatalan ditolak bila masih memiliki dependensi.</p></div></div><div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Pasien</TableHead><TableHead>Ruangan</TableHead><TableHead>Periode</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader><TableBody>{#each data.placements as placement (placement.id)}<TableRow><TableCell><strong>{placement.patientName}</strong><span class="cell-meta">{placement.medicalRecordNo}</span></TableCell><TableCell>{placement.roomName}</TableCell><TableCell>{placement.startsOn} – {placement.endsOn}</TableCell><TableCell><div class="action-buttons action-buttons--table"><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={()=>editingPlacement=placement}><Pencil aria-hidden="true" /> Ubah tanggal</Button><Button variant="destructive" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||placement.status!=='active'} onclick={()=>{ cancelling=placement; }}><Ban aria-hidden="true" /> Batalkan</Button></div></TableCell></TableRow>{:else}<TableRow><TableCell colspan={4} class="empty">Tidak ada penempatan di rentang minggu ini.</TableCell></TableRow>{/each}</TableBody></Table></div></Card>{/if}

@@ -221,7 +221,7 @@ export class TugasUseCases {
       throw DomainError.validation("Alasan pengalihan wajib diisi.");
     if (d.picId === actor.id)
       throw DomainError.validation(
-        "Koordinator tidak dapat ditetapkan sebagai PIC.",
+        "Koordinator tidak dapat ditetapkan sebagai penanggung jawab tugas.",
       );
     return this.uow.run(async (tx) => {
       await tx.tasks.lockBoard();

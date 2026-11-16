@@ -19,16 +19,16 @@
 </script>
 
 <svelte:head>
-    <title>InpaCare API Explorer</title>
+    <title>Dokumentasi API InpaCare</title>
 </svelte:head>
 
 <header class="explorer-header">
-    <h1>InpaCare API Explorer</h1>
-    <nav aria-label="Shared tools">
-        <a href="/">Back to InpaCare</a>
-        <a href="/db/" data-sveltekit-reload>Database (pgAdmin)</a>
+    <h1>Dokumentasi API InpaCare</h1>
+    <nav aria-label="Alat pendukung">
+        <a href="/">Kembali ke InpaCare</a>
+        <a href="/db/" data-sveltekit-reload>Basis data (pgAdmin)</a>
     </nav>
-    <p>Requests use your signed-in account. Changes made here affect the application data.</p>
+    <p>Permintaan menggunakan akun yang sedang Anda gunakan. Perubahan di halaman ini akan memengaruhi data aplikasi.</p>
 </header>
 <div id="swagger-ui"></div>
 

@@ -28,7 +28,7 @@ export class TypeOrmRoomStore implements RoomStore {
       [picId],
     );
     if (!r[0]?.ok)
-      throw DomainError.validation("PIC harus berupa perawat aktif.");
+      throw DomainError.validation("Penanggung jawab harus berupa perawat aktif.");
   }
   async nextId(): Promise<string> {
     // Hold the allocation lock through insertion; archived rooms keep their numbers.

@@ -128,7 +128,7 @@ export class TypeOrmTaskStore implements TaskStore {
       [picId],
     );
     if (!nurses.length)
-      throw DomainError.validation("PIC harus perawat aktif.");
+      throw DomainError.validation("Penanggung jawab harus perawat aktif.");
   }
   async patientExistsForUpdate(patientId: string) {
     const r = await this.manager.query(

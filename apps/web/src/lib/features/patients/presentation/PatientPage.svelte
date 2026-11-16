@@ -12,10 +12,10 @@ import { ArrowLeft, CalendarDays } from 'lucide-svelte';
 	} = $props();
 
 	const labels: Record<string, string> = {
-		pending: 'Pending',
-		assigned: 'Assigned',
-		in_care: 'In Care',
-		extend: 'Extend',
+		pending: 'Menunggu',
+		assigned: 'Sudah ditempatkan',
+		in_care: 'Dalam perawatan',
+		extend: 'Diperpanjang',
 		released: 'Pelepasan',
 		active: 'Aktif',
 		done: 'Selesai',

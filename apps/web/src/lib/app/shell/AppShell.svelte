@@ -31,7 +31,7 @@ let menuButton = $state<HTMLButtonElement | null>(null);
 let navigationBrand = $state<HTMLAnchorElement | null>(null);
 let loggingOut = $state(false);
 const navigation = [
-    { path: '/dashboard', label: 'Dashboard Siklus', icon: LayoutDashboard, roles: ['DOKTER', 'PERAWAT'] },
+    { path: '/dashboard', label: 'Ringkasan Siklus', icon: LayoutDashboard, roles: ['DOKTER', 'PERAWAT'] },
     { path: '/patients', label: 'Data Pasien', icon: Users, roles: ['ADMISI'] },
     { path: '/rooms', label: 'Manajemen Ruangan', icon: BedDouble, roles: ['PERAWAT', 'ADMISI'] },
     { path: '/calendar', label: 'Kalender Ruangan', icon: CalendarDays, roles: ['PERAWAT', 'DOKTER', 'ADMISI'] },

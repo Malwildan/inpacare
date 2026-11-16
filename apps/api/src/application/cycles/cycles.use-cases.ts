@@ -147,7 +147,7 @@ export class CyclesUseCases {
       let status = current.status;
       if (input.placementId && current.status !== "pending")
         throw DomainError.conflict(
-          "Penempatan hanya dapat dikaitkan pada rekap pending.",
+          "Penempatan hanya dapat dikaitkan pada rekap berstatus Menunggu.",
         );
       if (input.status) {
         if (!cycleTransitionAllowed(status, input.status))
@@ -183,7 +183,7 @@ export class CyclesUseCases {
       if (Number(cycle.version) !== input.expectedVersion)
         throw DomainError.conflict();
       if (cycle.status !== "pending")
-        throw DomainError.conflict("Hanya rekap pending yang dapat dihapus.");
+        throw DomainError.conflict("Hanya rekap berstatus Menunggu yang dapat dihapus.");
       if (await tx.cycles.hasPendingRequests(cycleId))
         throw DomainError.conflict(
           "Tutup permintaan yang masih menunggu sebelum menghapus rekap.",
@@ -361,7 +361,7 @@ export class CyclesUseCases {
         id: id(),
         nurseId: seed.nurse_id,
         cycleId,
-        message: `Permintaan ${seed.kind} ${input.decision === "approve" ? "disetujui" : "ditolak"}.`,
+        message: `Permintaan ${seed.kind === "extend" ? "perpanjangan" : "pelepasan"} ${input.decision === "approve" ? "disetujui" : "ditolak"}.`,
       });
       return {
         ok: true,

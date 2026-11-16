@@ -82,7 +82,7 @@ test('dashboard cycle filters are restored from and submitted to the server', as
 	await expect(page).toHaveURL(/\/dashboard$/);
 
 	await page.goto('/dashboard?search=filter-e2e&status=pending_approval');
-	await expect(page.getByRole('heading', { name: 'Dashboard Siklus Inpatient Care' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Ringkasan Siklus Rawat Inap' })).toBeVisible();
 	await expect(page.getByLabel('Cari nama atau nomor rekam medis')).toHaveValue('filter-e2e');
 	await page.getByRole('button', { name: /^Filter rekap/ }).click();
 	await expect(page.getByRole('dialog').getByRole('combobox', { name: /^Status/ })).toHaveAttribute('data-value', 'pending_approval');
@@ -101,7 +101,7 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	const form = page.locator('.create-form');
 	await selectOption(form.getByLabel('Pasien'), 'PT-012');
 	await form.getByLabel('Layanan').fill(`Rebuild E2E ${Date.now()}`);
-	await form.getByLabel('Qty').fill('1');
+	await form.getByLabel('Jumlah', { exact: true }).fill('1');
 	const price = form.getByLabel('Harga satuan (Rp)');
 	for (const invalid of ['-100', '1,234']) {
 		await price.fill(invalid);
@@ -193,13 +193,13 @@ test('a nurse can edit and remove a room item and archive the empty room', async
 
 	const itemName = `E2E item ${Date.now()}`;
 	await roomRow.getByRole('button', { name: 'Item', exact: true }).click();
-	const addItemDialog = page.getByRole('dialog', { name: 'Tambah item' });
+	const addItemDialog = page.getByRole('dialog', { name: 'Tambah perlengkapan' });
 	await expect(addItemDialog).toBeVisible();
-	await addItemDialog.getByLabel('Nama item').fill(itemName);
+	await addItemDialog.getByLabel('Nama perlengkapan').fill(itemName);
 	await addItemDialog.getByLabel('Kategori').fill('Perlengkapan');
 	await addItemDialog.getByLabel('Jumlah').fill('1');
 	await addItemDialog.getByLabel('Harga satuan').fill('100');
-	await addItemDialog.getByRole('button', { name: 'Tambah item' }).click();
+	await addItemDialog.getByRole('button', { name: 'Tambah perlengkapan' }).click();
 	await expect(addItemDialog).toHaveCount(0);
 	await expect(toastMessage(page, 'Perubahan berhasil disimpan.', 'success')).toBeVisible();
 
@@ -212,15 +212,15 @@ test('a nurse can edit and remove a room item and archive the empty room', async
 	await page.screenshot({ path: path.join(evidence, 'e2e-room-item.png'), fullPage: true, animations: 'disabled' });
 
 	await itemRow.getByRole('button', { name: 'Ubah' }).click();
-	const editItemDialog = page.getByRole('dialog', { name: 'Ubah item' });
+	const editItemDialog = page.getByRole('dialog', { name: 'Ubah perlengkapan' });
 	await expect(editItemDialog).toBeVisible();
 	await editItemDialog.getByLabel('Jumlah').fill('2');
-	await editItemDialog.getByRole('button', { name: 'Simpan item' }).click();
+	await editItemDialog.getByRole('button', { name: 'Simpan perlengkapan' }).click();
 	await expect(editItemDialog).toHaveCount(0);
 	await expect(detail.getByRole('listitem').filter({ hasText: itemName })).toContainText('2 ×');
 
 	await detail.getByRole('listitem').filter({ hasText: itemName }).getByRole('button', { name: 'Hapus' }).click();
-	const removeItemDialog = page.getByRole('dialog', { name: 'Hapus item?' });
+	const removeItemDialog = page.getByRole('dialog', { name: 'Hapus perlengkapan?' });
 	await expect(removeItemDialog).toBeVisible();
 	await removeItemDialog.getByRole('button', { name: 'Hapus' }).click();
 	await expect(removeItemDialog).toHaveCount(0);
