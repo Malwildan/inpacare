@@ -281,8 +281,8 @@ test('pointer drag saves status and same-list order across reload and a second s
 	await expect(pic.locator('.task-board')).toBeVisible();
 	expect(await titles(pic, 'Sedang Dikerjakan', prefix)).toEqual(titlesSeeded);
 
-	await card(pic, titlesSeeded[2]).dragTo(card(pic, titlesSeeded[0]));
-	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([titlesSeeded[2], titlesSeeded[0], titlesSeeded[1]]);
+	await card(pic, titlesSeeded[0]).dragTo(card(pic, titlesSeeded[2]));
+	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([titlesSeeded[1], titlesSeeded[2], titlesSeeded[0]]);
 	await expect(pic.getByRole('dialog')).toHaveCount(0);
 
 	await card(pic, titlesSeeded[1]).dragTo(column(pic, 'Selesai').locator('.column-heading'));
@@ -314,7 +314,7 @@ test('pointer drag saves status and same-list order across reload and a second s
 	await author.close();
 });
 
-test('native drag keeps insertion targets still and uses the final pointer in card margins', async ({ browser }) => {
+test('native drag highlights whole columns and appends drops from card margins and the source card', async ({ browser }) => {
 	const author = await browser.newPage();
 	await signIn(author, 'rina');
 	const ref = await reference(author);
@@ -349,24 +349,60 @@ test('native drag keeps insertion targets still and uses the final pointer in ca
 	await pic.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + sourceBox!.height / 2);
 	await pic.mouse.down();
 	await pic.mouse.move(firstBox!.x + firstBox!.width / 2, firstBox!.y + 5, { steps: 12 });
-	await pic.waitForTimeout(250);
+	const validOverlay = targetColumn.locator('.column-drop-overlay');
+	await expect(validOverlay).toHaveAttribute('data-drop-state', 'allowed');
+	await expect(validOverlay).toHaveClass(/active/);
+	await expect(validOverlay).toContainText('Move here');
+	await expect(validOverlay).not.toHaveCSS('box-shadow', 'none');
+	await expect(validOverlay).toHaveCSS('pointer-events', 'none');
+	const overlayBounds = await validOverlay.boundingBox();
+	const columnBounds = await targetColumn.boundingBox();
+	expect(overlayBounds).toEqual(columnBounds);
 	const stationaryTargetY = await firstCard.evaluate(element => element.getBoundingClientRect().y);
 	expect(Math.abs(stationaryTargetY - firstBox!.y)).toBeLessThan(2);
+	const lockedColumn = column(pic, 'Selesai');
+	const lockedOverlay = lockedColumn.locator('.column-drop-overlay');
+	await expect(lockedOverlay).toHaveAttribute('data-drop-state', 'locked');
+	await expect(lockedOverlay).toContainText('Pindahkan ke Sedang Dikerjakan terlebih dahulu.');
+	await expect(lockedOverlay.locator('svg')).toHaveCount(1);
+	await expect(lockedOverlay).toHaveCSS('border-top-style', 'dashed');
+	await expect(lockedOverlay).toHaveCSS('box-shadow', 'none');
+	expect(await lockedOverlay.evaluate(element => getComputedStyle(element).borderTopColor)).not.toBe(await validOverlay.evaluate(element => getComputedStyle(element).borderTopColor));
+	const lockedBox = await lockedColumn.boundingBox();
+	await pic.mouse.move(lockedBox!.x + lockedBox!.width / 2, lockedBox!.y + 60, { steps: 8 });
+	await expect(validOverlay).not.toHaveClass(/active/);
+	await expect(lockedOverlay).not.toHaveClass(/active/);
+	await expect(lockedOverlay).toBeVisible();
+	await mkdir(evidence, { recursive: true });
+	await pic.screenshot({ path: path.join(evidence, 'task-drop-locked.png'), animations: 'disabled' });
 
-	// The browser pointer finishes in the inter-card margin, near the next card.
+	// Dropping between cards still appends, regardless of the pointer's vertical position.
 	const finalPoint = await secondCard.boundingBox();
 	expect(finalPoint).not.toBeNull();
 	const finalX = finalPoint!.x + finalPoint!.width / 2;
 	const finalY = finalPoint!.y - 2;
 	await pic.mouse.move(finalX, finalY, { steps: 5 });
+	await expect(validOverlay).toHaveClass(/active/);
+	await pic.screenshot({ path: path.join(evidence, 'task-drop-active.png'), animations: 'disabled' });
+	const savedDrop = pic.waitForRequest(request => request.method() === 'POST' && request.url().includes(`/tasks/${source.id}/move`));
 	await pic.mouse.up();
+	expect((await savedDrop).postDataJSON()).toMatchObject({ status: 'in_progress', beforeTaskId: null });
 	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([
 		second.title,
-		source.title,
-		first.title
+		first.title,
+		source.title
 	]);
+	await expect(pic.locator('.column-drop-overlay')).toHaveCount(0);
+	const progress = await api<{ total: number }>(pic, 'GET', '/tasks?status=in_progress&order=board&limit=1');
+	const lastProgress = await api<{ items: Task[] }>(pic, 'GET', `/tasks?status=in_progress&order=board&limit=1&offset=${progress.total - 1}`);
+	expect(lastProgress.items.map(task => task.id)).toEqual([source.id]);
 	await expect(targetColumn.locator('.task-card').filter({ hasText: source.title })).toBeVisible();
 	await expect(toastMessage(pic, '', 'success')).toHaveText(`${source.title} dipindahkan ke Sedang Dikerjakan.`);
+	const transfer = await pic.evaluateHandle(() => new DataTransfer());
+	await sourceCard.dispatchEvent('dragstart', { dataTransfer: transfer });
+	await expect(column(pic, 'Belum Dikerjakan').locator('.column-drop-overlay')).toContainText('Tugas tidak dapat kembali ke Belum Dikerjakan.');
+	await sourceCard.dispatchEvent('dragend', { dataTransfer: transfer });
+	await expect(pic.locator('.column-drop-overlay')).toHaveCount(0);
 
 	const blankSource = await createTask(author, ref, `${prefix} blank`);
 	await moveApi(author, blankSource, 'in_progress', first.id);
@@ -388,15 +424,15 @@ test('native drag keeps insertion targets still and uses the final pointer in ca
 
 	await pic.goto('/tasks');
 	await expect(column(pic, 'Selesai').locator('.task-card').filter({ hasText: blankSource.title })).toBeVisible();
-	const ownCard = card(pic, source.title);
+	const ownCard = card(pic, second.title);
 	await expect(ownCard).toBeVisible();
 	await ownCard.scrollIntoViewIfNeeded();
 	const ownBox = await ownCard.boundingBox();
 	expect(ownBox).not.toBeNull();
-	const beforeNoOp = await api<Task>(pic, 'GET', `/tasks/${source.id}`);
+	const beforeMove = await api<Task>(pic, 'GET', `/tasks/${second.id}`);
 	let ownMoveRequests = 0;
 	pic.on('request', request => {
-		if (request.method() === 'POST' && request.url().includes(`/tasks/${source.id}/move`)) ownMoveRequests++;
+		if (request.method() === 'POST' && request.url().includes(`/tasks/${second.id}/move`)) ownMoveRequests++;
 	});
 	await pic.mouse.move(ownBox!.x + ownBox!.width / 2, ownBox!.y + ownBox!.height / 2);
 	await pic.mouse.down();
@@ -405,12 +441,12 @@ test('native drag keeps insertion targets still and uses the final pointer in ca
 	await pic.mouse.move(ownBox!.x + ownBox!.width / 2, ownBox!.y + ownBox!.height / 2, { steps: 4 });
 	await pic.mouse.up();
 	await expect(ownCard).not.toHaveClass(/opacity-50/);
-	expect(ownMoveRequests).toBe(0);
-	await expect.poll(async () => (await api<Task>(pic, 'GET', `/tasks/${source.id}`)).version).toBe(beforeNoOp.version);
-	expect(await titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([
-		second.title,
+	await expect.poll(() => ownMoveRequests).toBe(1);
+	await expect.poll(async () => (await api<Task>(pic, 'GET', `/tasks/${second.id}`)).version).toBeGreaterThan(beforeMove.version);
+	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([
+		first.title,
 		source.title,
-		first.title
+		second.title
 	]);
 
 	await pic.close();
@@ -879,6 +915,7 @@ test('board geometry, long content, mobile overflow, and evidence screenshots', 
 	const metrics = await page.evaluate(() => {
 		const board = document.querySelector<HTMLElement>('.task-board')!;
 		const firstColumn = document.querySelector<HTMLElement>('.task-column')!;
+		const scrollArea = firstColumn.querySelector<HTMLElement>('.column-scroll')!;
 		const heading = document.querySelector<HTMLElement>('.column-heading')!;
 		return {
 			documentWidth: document.documentElement.scrollWidth,
@@ -887,9 +924,9 @@ test('board geometry, long content, mobile overflow, and evidence screenshots', 
 			boardScroll: board.scrollWidth,
 			firstWidth: firstColumn.getBoundingClientRect().width,
 			boardOverflowX: getComputedStyle(board).overflowX,
-			columnOverflowY: getComputedStyle(firstColumn).overflowY,
+			columnOverflowY: getComputedStyle(scrollArea).overflowY,
 			headingPosition: getComputedStyle(heading).position,
-			columnScrolls: firstColumn.scrollHeight > firstColumn.clientHeight
+			columnScrolls: scrollArea.scrollHeight > scrollArea.clientHeight
 		};
 	});
 	expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.viewport + 1);
@@ -907,6 +944,16 @@ test('board geometry, long content, mobile overflow, and evidence screenshots', 
 	const cardFits = await longCard.evaluate(element => element.scrollWidth <= element.clientWidth + 1);
 	expect(cardFits).toBe(true);
 	await page.screenshot({ path: path.join(evidence, 'tugas-board-desktop.png'), fullPage: true, animations: 'disabled' });
+	const transfer = await page.evaluateHandle(() => new DataTransfer());
+	await longCard.dispatchEvent('dragstart', { dataTransfer: transfer });
+	const todoColumn = column(page, 'Belum Dikerjakan');
+	const overlay = todoColumn.locator('.column-drop-overlay');
+	const overlayBeforeScroll = await overlay.boundingBox();
+	await todoColumn.locator('.column-scroll').evaluate(element => { element.scrollTop = 200; });
+	expect(await todoColumn.locator('.column-scroll').evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+	expect(await overlay.boundingBox()).toEqual(overlayBeforeScroll);
+	await longCard.dispatchEvent('dragend', { dataTransfer: transfer });
+	await expect(page.locator('.column-drop-overlay')).toHaveCount(0);
 
 	await longCard.getByRole('button', { name: 'Pindahkan' }).click();
 	await expect(page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(token)}`) })).toBeVisible();

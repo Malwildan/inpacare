@@ -13,7 +13,7 @@ import { formText } from '$lib/shared/presentation/form';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
 import StatusBadge from '$lib/shared/ui/status-badge.svelte';
 import { Badge } from '$lib/shared/ui/badge/index.js';
-import { ArrowRightLeft, Ban, ChevronDown, Eye, Filter, ListPlus, Pencil, Plus, RefreshCw, Save, Search, SlidersHorizontal, Trash2, UserRoundPen, X } from 'lucide-svelte';
+import { ArrowDownToLine, ArrowRightLeft, Ban, ChevronDown, Eye, Filter, ListPlus, LockKeyhole, Pencil, Plus, RefreshCw, Save, Search, SlidersHorizontal, Trash2, UserRoundPen, X } from 'lucide-svelte';
 import { untrack } from 'svelte';
 let { data, tasks }: {
     data: TasksPageData;
@@ -50,7 +50,7 @@ let beforeId = $state('');
 let reason = $state('');
 let reasonTaskId = '';
 let dragTask = $state<Task | null>(null);
-let dragTarget = $state<{ status: BoardStatus; before: string | null } | null>(null);
+let dragTarget = $state<BoardStatus | null>(null);
 let origin: HTMLElement | null = null;
 let suppressClick = false;
 const filtered = $derived(Object.values(data.filters).some(Boolean));
@@ -77,6 +77,14 @@ function allowed(task: Task, status: BoardStatus) {
     if (!canOperate(task)) return false;
     if (status === task.status) return !filtered;
     return (task.status === 'todo' && status === 'in_progress') || (task.status === 'in_progress' && status === 'done') || (coordinator && status === 'cancelled' && (task.status === 'todo' || task.status === 'in_progress'));
+}
+function dropLockReason(task: Task, status: BoardStatus) {
+    if (task.status === 'done' || task.status === 'cancelled') return 'Tugas selesai atau dibatalkan tidak dapat dipindahkan.';
+    if (!canOperate(task)) return 'Hanya PIC atau koordinator yang dapat memindahkan tugas ini.';
+    if (status === task.status && filtered) return 'Hapus filter untuk mengubah urutan tugas.';
+    if (status === 'cancelled' && !coordinator) return 'Hanya koordinator yang dapat membatalkan tugas.';
+    if (task.status === 'todo' && status === 'done') return 'Pindahkan ke Sedang Dikerjakan terlebih dahulu.';
+    return 'Tugas tidak dapat kembali ke Belum Dikerjakan.';
 }
 function statusLabel(status: string) { return statuses.find(([key]) => key === status)?.[1] ?? status; }
 function priorityLabel(priority: string) { return ({ high: 'Tinggi', normal: 'Normal', low: 'Rendah' } as Record<string, string>)[priority] ?? priority; }
@@ -177,24 +185,38 @@ async function moveTask(task: Task, status: BoardStatus, before: string | null, 
     } finally { pending = pending.filter(id => id !== task.id); }
 }
 async function confirmMove(event: SubmitEvent) { event.preventDefault(); if (!moving) return; const task = moving; if (await moveTask(task, destination, beforeId || null, destination === 'cancelled' ? reason : undefined)) { moving = null; reason = ''; requestAnimationFrame(() => (document.getElementById(`task-${task.id}`) ?? document.getElementById(`heading-${task.status}`))?.focus()); } }
-function dragStart(event: DragEvent, task: Task) { if (!canOperate(task) || pending.includes(task.id)) { event.preventDefault(); return; } dragTask = task; suppressClick = true; event.dataTransfer?.setData('text/plain', task.id); if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'; }
-function dropTarget(event: DragEvent, status: BoardStatus) {
-    const column = (event.currentTarget as HTMLElement).closest<HTMLElement>('.task-column');
-    if ((event.target as HTMLElement).closest('.column-heading')) return { status, before: null };
-    const cards = [...(column?.querySelectorAll<HTMLElement>('.task-card') ?? [])].filter(card => card.dataset.taskId !== dragTask?.id);
-    const before = cards.find(card => event.clientY <= card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2)?.dataset.taskId ?? null;
-    return { status, before: filtered ? null : before };
+function dragStart(event: DragEvent, task: Task) {
+    if (task.status === 'done' || task.status === 'cancelled' || !canOperate(task) || pending.includes(task.id)) { event.preventDefault(); return; }
+    dragTask = task; suppressClick = true;
+    event.dataTransfer?.setData('text/plain', task.id);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
 }
-function dragOver(event: DragEvent, status: BoardStatus) { if (!dragTask || !allowed(dragTask, status) || (event.target as HTMLElement).closest<HTMLElement>('.task-card')?.dataset.taskId === dragTask.id) { dragTarget = null; return; } event.preventDefault(); dragTarget = dropTarget(event, status); const el = (event.currentTarget as HTMLElement).closest<HTMLElement>('.task-column'); if (el) { const rect = el.getBoundingClientRect(); if (event.clientY < rect.top + 35) el.scrollTop -= 16; else if (event.clientY > rect.bottom - 35) el.scrollTop += 16; } const boardEl = document.querySelector('.task-board'); if (boardEl) { const b = boardEl.getBoundingClientRect(); if (event.clientX < b.left + 45) boardEl.scrollLeft -= 16; else if (event.clientX > b.right - 45) boardEl.scrollLeft += 16; } }
+function dragOver(event: DragEvent, status: BoardStatus) {
+    if (!dragTask) return;
+    const valid = allowed(dragTask, status);
+    dragTarget = valid ? status : null;
+    if (event.dataTransfer) event.dataTransfer.dropEffect = valid ? 'move' : 'none';
+    if (valid) event.preventDefault();
+    const column = (event.currentTarget as HTMLElement).querySelector<HTMLElement>('.column-scroll');
+    if (valid && column) {
+        const rect = column.getBoundingClientRect();
+        if (event.clientY < rect.top + 35) column.scrollTop -= 16;
+        else if (event.clientY > rect.bottom - 35) column.scrollTop += 16;
+    }
+    const boardElement = (event.currentTarget as HTMLElement).closest<HTMLElement>('.task-board');
+    if (boardElement) {
+        const rect = boardElement.getBoundingClientRect();
+        if (event.clientX < rect.left + 45) boardElement.scrollLeft -= 16;
+        else if (event.clientX > rect.right - 45) boardElement.scrollLeft += 16;
+    }
+}
 function drop(event: DragEvent, status: BoardStatus) {
     event.preventDefault(); event.stopPropagation();
     const task = dragTask;
-    const target = task && allowed(task, status) ? dropTarget(event, status) : null;
-    const ownCard = (event.target as HTMLElement).closest<HTMLElement>('.task-card')?.dataset.taskId === task?.id;
-    dragTask = null; dragTarget = null;
-    if (!task || !target || ownCard) return;
-    if (target.status === 'cancelled' && task.status !== 'cancelled') startMove(task, target.status, target.before);
-    else void moveTask(task, target.status, target.before);
+    endDrag();
+    if (!task || !allowed(task, status)) return;
+    if (status === 'cancelled') startMove(task, status);
+    else void moveTask(task, status, null);
 }
 function endDrag() { dragTask = null; dragTarget = null; setTimeout(() => suppressClick = false, 0); }
 function closeDetail() { taskView = 'detail'; selectedAudit = null; selected = null; requestAnimationFrame(() => origin?.focus()); }
@@ -310,24 +332,33 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
  {#each statuses as [key,label]}
   {@const status = key as BoardStatus}
   {@const column = board[status]}
-  <section class="task-column" aria-label={label} data-status={status} ondragover={(e)=>dragOver(e,status)} ondrop={(e)=>drop(e,status)}>
+  <section class="task-column" aria-label={label} data-status={status} ondragenter={(e)=>dragOver(e,status)} ondragover={(e)=>dragOver(e,status)} ondrop={(e)=>drop(e,status)} ondragleave={(event)=>{if (dragTarget === status && !event.currentTarget.contains(event.relatedTarget as Node)) dragTarget = null;}}>
+   <div class="column-scroll">
    <div class="column-heading" tabindex="-1" id={`heading-${status}`}><strong>{label}</strong><span class="sr-only" aria-live="polite">{column.error ? 'Daftar gagal dimuat' : `${column.items.length} dari ${column.total} tugas dimuat`}</span><Badge variant="outline" class="shrink-0 tabular-nums">{column.error ? 'Gagal dimuat' : column.total}</Badge></div>
    {#if column.filtered}<p class="empty">Disembunyikan oleh filter status.</p>
    {:else}
     {#each column.items as task (task.id)}
-     {#if dragTarget?.status===status && dragTarget.before===task.id}<div class="drop-marker" aria-label="Posisi penyisipan"></div>{/if}
-     <Card role="article" data-task-id={task.id} class={`task-card mb-2 gap-2 overflow-visible p-3 [overflow-wrap:anywhere] ${dragTask?.id===task.id ? 'opacity-50' : ''}`} draggable={task.status!=='done' && task.status!=='cancelled' && canOperate(task) && !pending.includes(task.id)} ondragstart={(e)=>dragStart(e,task)} ondragend={endDrag} ondragover={(e)=>{e.stopPropagation();dragOver(e,status);}} ondrop={(e)=>drop(e,status)}>
-      <Button variant="ghost" id={`task-${task.id}`} aria-label={`Detail ${task.title}`} class="card-open h-auto min-h-11 w-full flex-col items-start gap-1.5 whitespace-normal p-1 text-left font-normal hover:bg-accent/50" onclick={(event)=>openCard(task,event)}><strong class="card-title inline-flex items-start gap-2"><Eye aria-hidden="true" class="mt-0.5 size-4 shrink-0" />{task.title}</strong><span>{task.patientName} - {task.roomName}</span><StatusBadge value={task.priority} label={`Prioritas ${priorityLabel(task.priority)}`} /><span>{local(task.startsAt)} - {local(task.endsAt)}</span><span>PIC: {task.picName}</span></Button>
+     <Card role="article" data-task-id={task.id} class={`task-card mb-2 gap-2 overflow-visible p-3 [overflow-wrap:anywhere] ${dragTask?.id===task.id ? 'opacity-50' : ''}`} draggable={task.status!=='done' && task.status!=='cancelled' && canOperate(task) && !pending.includes(task.id)} ondragstart={(e)=>dragStart(e,task)} ondragend={endDrag}>
+      <Button variant="ghost" id={`task-${task.id}`} aria-label={`Detail ${task.title}`} class="card-open h-auto min-h-11 w-full flex-col items-start gap-1.5 whitespace-normal p-1 text-left font-normal hover:bg-accent/50" onclick={(event)=>openCard(task,event)}><strong class="card-title">{task.title}</strong><span>{task.patientName} - {task.roomName}</span><StatusBadge value={task.priority} label={`Prioritas ${priorityLabel(task.priority)}`} /><span>{local(task.startsAt)} - {local(task.endsAt)}</span><span>PIC: {task.picName}</span></Button>
       <div class="task-card-actions action-buttons action-buttons--full"><Button variant="outline" class="h-11 px-3" onclick={(event)=>openCard(task,event)}><Eye aria-hidden="true" /> Detail</Button>{#if pending.includes(task.id)}<p role="status">Menyimpan...</p>{:else if task.status!=='done' && task.status!=='cancelled' && canOperate(task) && statuses.some(([key])=>allowed(task,key as BoardStatus))}<Button variant="default" class="h-11 px-3 move-button" onclick={()=>startMove(task)}><ArrowRightLeft aria-hidden="true" /> Pindahkan</Button>{/if}</div>
      </Card>
     {:else}{#if !column.error}<p class="empty">Tidak ada tugas.</p>{/if}{/each}
-    {#if dragTarget?.status===status && !dragTarget.before}<div class="drop-marker" aria-label="Posisi penyisipan di akhir"></div>{/if}
     {#if column.error}<Button variant="outline" class="h-11 px-4" disabled={loading.includes(status)} onclick={()=>loadMore(status)}><RefreshCw aria-hidden="true" /> {loading.includes(status) ? 'Memuat...' : 'Coba lagi'}</Button>{:else if column.items.length < column.total}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" disabled={loading.includes(status)} onclick={()=>loadMore(status)}><ListPlus aria-hidden="true" /> {loading.includes(status) ? 'Memuat...' : 'Muat lebih banyak'}</Button>{/if}
+   {/if}
+   </div>
+   {#if dragTask}
+    {@const valid = allowed(dragTask, status)}
+    <div class="column-drop-overlay" class:locked={!valid} class:active={valid && dragTarget === status} data-drop-state={valid ? 'allowed' : 'locked'}>
+     <div class="drop-message">
+      {#if valid}<ArrowDownToLine size={24} aria-hidden="true" /><strong>Move here</strong><span>{status === 'cancelled' ? 'Konfirmasi alasan untuk membatalkan tugas.' : 'Tugas masuk ke urutan paling bawah.'}</span>
+      {:else}<LockKeyhole size={24} aria-hidden="true" /><strong>Tidak dapat dipindahkan</strong><span>{dropLockReason(dragTask, status)}</span>{/if}
+     </div>
+    </div>
    {/if}
   </section>
  {/each}
 </div>
-<p class="muted">Tugas hanya dapat maju ke tahap berikutnya; tugas selesai atau dibatalkan tidak dapat dibuka kembali.{#if filtered} Urutan dinonaktifkan saat filter aktif. Perpindahan status ditambahkan di akhir daftar.{/if}</p>
+<p class="muted">Tugas hanya dapat maju ke tahap berikutnya; tugas selesai atau dibatalkan tidak dapat dibuka kembali. Seret ke kolom tujuan untuk menaruh tugas di urutan paling bawah.{#if filtered} Urutan dinonaktifkan saat filter aktif. Perpindahan status ditambahkan di akhir daftar.{/if}</p>
 
 </div>
 
@@ -411,13 +442,24 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 {/if}
 
 <style>
-.task-board { display:flex; gap:16px; overflow-x:auto; align-items:flex-start; background:var(--muted); padding:16px; border-radius:12px; max-width:100%; }
-.task-column { flex:0 0 292px; min-width:0; min-height:140px; max-height:70vh; overflow-y:auto; background:var(--muted); padding:0 4px 4px; }
+.task-board { display:flex; gap:16px; overflow-x:auto; align-items:stretch; background:var(--muted); padding:16px; border-radius:12px; max-width:100%; }
+.task-column { position:relative; display:flex; flex-direction:column; flex:0 0 292px; min-width:0; background:var(--muted); }
+.column-scroll { flex:1; min-height:140px; max-height:70vh; overflow-y:auto; padding:0 4px 4px; }
 .column-heading { position:sticky; top:0; z-index:1; background:var(--muted); display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 2px 16px; font-size:13px; }
 .card-title { font-size:14px; font-weight:600; }
 .tasks-page :global(.card-open > span) { font-size:12px; }
-.drop-marker { height:0; border:0; margin:0; position:relative; z-index:2; pointer-events:none; }
-.drop-marker::before { content:''; position:absolute; top:-2px; left:0; right:0; border-top:4px dashed var(--primary); }
+.column-drop-overlay {
+    --drop-color:var(--color-blue-600);
+    position:absolute; inset:0; z-index:2; display:grid; place-items:center; padding:16px;
+    border:2px dashed var(--drop-color); border-radius:10px; pointer-events:none;
+    background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--drop-color) 10%, transparent) 0 10px, color-mix(in srgb, var(--drop-color) 20%, transparent) 10px 12px), color-mix(in srgb, var(--card) 76%, transparent);
+    transition:box-shadow 120ms ease, border-color 120ms ease;
+}
+.column-drop-overlay.active { box-shadow:inset 0 0 0 1px var(--drop-color), inset 0 0 28px color-mix(in srgb, var(--drop-color) 25%, transparent), 0 0 12px color-mix(in srgb, var(--drop-color) 30%, transparent); }
+.column-drop-overlay.locked { --drop-color:var(--muted-foreground); }
+.drop-message { display:flex; flex-direction:column; align-items:center; gap:8px; max-width:100%; padding:16px; border:1px solid color-mix(in srgb, var(--drop-color) 35%, var(--border)); border-radius:10px; background:var(--card); color:var(--drop-color); text-align:center; overflow-wrap:anywhere; }
+.drop-message strong { font-size:16px; }
+.drop-message span { font-size:12px; color:var(--foreground); }
 .task-card-actions { margin-top:8px; }
 .card-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
 
