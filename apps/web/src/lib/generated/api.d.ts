@@ -1122,10 +1122,24 @@ export interface components {
             respiratoryRate?: number;
             spo2?: number;
         };
+        /** @description Create a pending cycle without placement, or an assigned cycle using placementId or newPlacement (mutually exclusive). Reuse requestId with the same input to safely retry a submission. */
         NewCycle: {
             patientId: string;
             doctorId: string;
             placementId?: string | null;
+            newPlacement?: components["schemas"]["CyclePlacement"] | null;
+            /**
+             * Format: uuid
+             * @description Client-generated submission ID. The same nurse and ID return the original result; changed input returns 409.
+             */
+            requestId?: string;
+        };
+        CyclePlacement: {
+            roomId: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
         };
         ChangeCycleStatus: {
             /** @enum {string} */
@@ -1211,7 +1225,8 @@ export interface components {
             placementId: string | null;
             doctorId: string;
             nurseId: string;
-            status: string;
+            /** @enum {string} */
+            status: "pending" | "assigned";
             version: number;
         };
         CycleRequestCreated: {

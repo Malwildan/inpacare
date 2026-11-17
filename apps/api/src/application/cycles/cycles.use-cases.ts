@@ -3,11 +3,14 @@ import { DomainError } from "../../domain/shared/domain-error";
 import { cycleTransitionAllowed } from "../../domain/cycles/cycle-transition";
 import { id, today } from "../shared/runtime";
 import { UnitOfWork } from "../shared/unit-of-work.port";
-import { CycleStore, CycleListFilters } from "./cycle-store.port";
+import { CycleStore, CycleListFilters, CreatedCycle } from "./cycle-store.port";
+import { createPlacement, CreatePlacementInput } from "../placements/assign-ruangan.use-cases";
 export interface CreateCycleInput {
   patientId: string;
   doctorId: string;
   placementId?: string | null;
+  newPlacement?: Omit<CreatePlacementInput, "patientId"> | null;
+  requestId?: string;
 }
 export interface ChangeCycleInput {
   status?: string;
@@ -74,17 +77,39 @@ export class CyclesUseCases {
   }
   async create(actor: Actor, input: CreateCycleInput) {
     if (actor.role !== "PERAWAT") throw DomainError.forbidden();
-    if (!(await this.store.canReadPatient(actor, input.patientId)))
-      throw DomainError.notFound();
-    if (!(await this.store.activeDoctor(input.doctorId)))
-      throw DomainError.validation("Pilih dokter aktif.");
-    const cycleId = await this.uow.run(async (tx) => {
+    if (input.placementId && input.newPlacement)
+      throw DomainError.validation("Pilih penempatan yang ada atau buat penempatan baru.");
+    const payload = JSON.stringify({
+      patientId: input.patientId,
+      doctorId: input.doctorId,
+      placementId: input.placementId || null,
+      newPlacement: input.newPlacement ? {
+        roomId: input.newPlacement.roomId,
+        startsOn: input.newPlacement.startsOn,
+        endsOn: input.newPlacement.endsOn,
+      } : null,
+    });
+    return this.uow.run(async (tx) => {
+      if (input.requestId) {
+        const previous = await tx.cycles.creationForRequest(actor.id, input.requestId);
+        if (previous) {
+          if (previous.payload !== payload)
+            throw DomainError.conflict("Permintaan ini sudah dipakai untuk data lain. Buka formulir baru.");
+          return previous.result;
+        }
+      }
+      if (!(await tx.cycles.canReadPatient(actor, input.patientId)))
+        throw DomainError.notFound();
+      if (!(await tx.cycles.activeDoctor(input.doctorId)))
+        throw DomainError.validation("Pilih dokter aktif.");
       if (!(await tx.cycles.lockPatient(input.patientId)))
         throw DomainError.notFound();
       if (await tx.cycles.hasActiveCycle(input.patientId))
         throw DomainError.conflict("Pasien sudah memiliki rekap aktif. Buka rekap yang ada atau pilih pasien lain.");
-      const placementId = input.placementId || null;
-      if (placementId) {
+      let placementId = input.placementId || null;
+      if (input.newPlacement)
+        placementId = await createPlacement(tx, actor, { ...input.newPlacement, patientId: input.patientId });
+      else if (placementId) {
         const roomId = await tx.cycles.placementRoom(
           placementId,
           input.patientId,
@@ -95,24 +120,20 @@ export class CyclesUseCases {
           throw DomainError.conflict("Penempatan tidak lagi aktif.");
       }
       const cycleId = await tx.cycles.nextId();
-      await tx.cycles.createCycle({
+      const result: CreatedCycle = {
         id: cycleId,
         patientId: input.patientId,
         placementId,
         doctorId: input.doctorId,
         nurseId: actor.id,
-      });
-      return cycleId;
+        status: placementId ? "assigned" : "pending",
+        version: 1,
+      };
+      await tx.cycles.createCycle(result);
+      if (input.requestId)
+        await tx.cycles.saveCreationRequest(actor.id, input.requestId, payload, result);
+      return result;
     });
-    return {
-      id: cycleId,
-      patientId: input.patientId,
-      placementId: input.placementId ?? null,
-      doctorId: input.doctorId,
-      nurseId: actor.id,
-      status: "pending",
-      version: 1,
-    };
   }
   async change(actor: Actor, cycleId: string, input: ChangeCycleInput) {
     if (actor.role !== "PERAWAT") throw DomainError.forbidden();

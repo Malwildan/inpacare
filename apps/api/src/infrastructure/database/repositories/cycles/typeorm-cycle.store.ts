@@ -3,9 +3,25 @@ import { Actor } from "../../../../domain/auth/actor";
 import {
   CycleListFilters,
   CycleStore,
+  CreatedCycle,
 } from "../../../../application/cycles/cycle-store.port";
 export class TypeOrmCycleStore implements CycleStore {
   constructor(private readonly manager: EntityManager) {}
+  async creationForRequest(nurseId: string, requestId: string) {
+    // Serialize retries before locking patients, including reuse with a different payload.
+    await this.manager.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 60))", [JSON.stringify([nurseId, requestId.toLowerCase()])]);
+    const [row] = await this.manager.query<{ payload: string; result: CreatedCycle }[]>(
+      "SELECT payload,result FROM cycle_creation_requests WHERE nurse_id=$1 AND request_id=$2",
+      [nurseId, requestId],
+    );
+    return row;
+  }
+  async saveCreationRequest(nurseId: string, requestId: string, payload: string, result: CreatedCycle) {
+    await this.manager.query(
+      "INSERT INTO cycle_creation_requests(nurse_id,request_id,payload,result) VALUES($1,$2,$3,$4::jsonb)",
+      [nurseId, requestId, payload, JSON.stringify(result)],
+    );
+  }
   async creationCandidates() {
     return this.manager.query(
       `SELECT p.id,p.name,p.medical_record_no AS "medicalRecordNo" FROM patients p WHERE NOT EXISTS(SELECT 1 FROM cycles c WHERE c.patient_id=p.id AND c.status<>'released' AND c.deleted_at IS NULL) ORDER BY p.name,p.id`,
@@ -108,10 +124,11 @@ export class TypeOrmCycleStore implements CycleStore {
     placementId: string | null;
     doctorId: string;
     nurseId: string;
+    status: "pending" | "assigned";
   }) {
     await this.manager.query(
-      `INSERT INTO cycles(id,patient_id,placement_id,doctor_id,nurse_id) VALUES($1,$2,$3,$4,$5)`,
-      [d.id, d.patientId, d.placementId, d.doctorId, d.nurseId],
+      `INSERT INTO cycles(id,patient_id,placement_id,doctor_id,nurse_id,status) VALUES($1,$2,$3,$4,$5,$6)`,
+      [d.id, d.patientId, d.placementId, d.doctorId, d.nurseId, d.status],
     );
   }
   async changeSeed(cycleId: string, nurseId: string) {

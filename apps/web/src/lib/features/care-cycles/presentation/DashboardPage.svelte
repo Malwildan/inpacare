@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$
 import { goto, invalidateAll } from '$app/navigation';
 import { tick } from 'svelte';
 import { ApiError } from '$lib/shared/errors';
-import type { CareCycles, DashboardData, Cycle as CycleDetail, ChangeCycle, NewRequest, Decision } from '$lib/features/care-cycles';
+import type { CareCycles, DashboardData, Cycle as CycleDetail, ChangeCycle, NewCycle, NewRequest, Decision } from '$lib/features/care-cycles';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
 import { NotificationDialog, type Notifications } from '$lib/features/notifications';
@@ -38,13 +38,25 @@ let deletingCycle = $state<CycleDetail | null>(null);
 let deletionReason = $state('');
 let createOpen = $state(false);
 let createPatientId = $state('');
+let createDoctorId = $state('');
 let createPlacementId = $state('');
+let createPlacementMode = $state('new');
+let createRoomId = $state('');
+let createStartsOn = $state('');
+let createEndsOn = $state('');
+let createError = $state('');
+let creationRequest: { payload: string; id: string } | null = null;
 let matchingPlacements = $derived(data.reference.placements.filter(p => p.patientId === createPatientId && p.status === 'active'));
 function choosePatient() {
     const placements = data.reference.placements.filter(p => p.patientId === createPatientId && p.status === 'active');
     createPlacementId = placements.length === 1 ? placements[0].id : '';
+    createPlacementMode = placements.length ? 'existing' : 'new';
 }
-function openCreate() { createPatientId = ''; createPlacementId = ''; createOpen = true; }
+function openCreate() {
+    createPatientId = ''; createDoctorId = ''; createPlacementId = ''; createRoomId = '';
+    createStartsOn = ''; createEndsOn = ''; createPlacementMode = 'new'; createError = '';
+    creationRequest = null; createOpen = true;
+}
 let selectedCycleId = $state<string | null>(null);
 let selectedCycle = $state<CycleDetail | null>(null);
 let detailNeedsRefresh = $state(false);
@@ -182,16 +194,27 @@ async function send(operation: () => Promise<unknown>): Promise<boolean> {
 async function create(event: SubmitEvent) {
     event.preventDefault();
     if (busy) return;
-    const form = new FormData(event.currentTarget as HTMLFormElement);
+    if (!createPatientId || !createDoctorId) { createError = 'Pilih pasien dan dokter penanggung jawab.'; return; }
+    const pending = (event.submitter as HTMLButtonElement)?.value === 'pending';
+    const input: NewCycle = {
+        patientId: createPatientId, doctorId: createDoctorId,
+        ...(pending ? { placementId: null } : createPlacementMode === 'existing'
+            ? { placementId: createPlacementId }
+            : { newPlacement: { roomId: createRoomId, startsOn: createStartsOn, endsOn: createEndsOn } })
+    };
+    const payload = JSON.stringify(input);
+    if (creationRequest?.payload !== payload) creationRequest = { payload, id: crypto.randomUUID() };
     busy = true;
-    const toastId = toast.loading('Membuat rekap pasien…');
+    createError = '';
+    const toastId = toast.loading('Menyimpan rawat inap…');
     try {
-        await careCycles.create({ patientId: createPatientId, doctorId: formText(form, 'doctorId'), placementId: createPlacementId || null });
+        const created = await careCycles.create({ ...input, requestId: creationRequest.id });
         createOpen = false;
-        await goto('/dashboard', { invalidateAll: true });
-        toast.success('Rekap berhasil dibuat dengan status Menunggu. Pilih Lihat detail untuk melanjutkan perawatan.', { id: toastId });
+        toast.success(created.status === 'assigned' ? 'Rekap dan penempatan berhasil disimpan.' : 'Rekap disimpan dengan status Menunggu.', { id: toastId });
+        await openDetail(created.id);
+        await invalidateAll();
     } catch (cause) {
-        if (createOpen) toast.error(sessionFailure(cause), { id: toastId });
+        if (createOpen) { createError = cause instanceof TypeError ? 'Koneksi terputus. Coba simpan lagi dengan data yang sama.' : sessionFailure(cause); toast.error(createError, { id: toastId }); }
         else toast.warning('Rekap tersimpan, tetapi daftar gagal dimuat. Muat ulang halaman.', { id: toastId });
     }
     finally { busy = false; }
@@ -241,12 +264,12 @@ async function deleteCycle(cycle: CycleDetail) {
 <div class="flex flex-wrap gap-3"><Button variant="outline" class="h-11" aria-haspopup="dialog" onclick={() => notificationsOpen = true}><Bell aria-hidden="true" /> Lihat notifikasi</Button></div>
 
 {#if data.user.role === 'PERAWAT'}
-    <div class="create-panel"><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" onclick={openCreate}><Plus aria-hidden="true" /> Tambah rekap pasien</Button></div>
+    <div class="create-panel"><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" onclick={openCreate}><Plus aria-hidden="true" /> Mulai rawat inap</Button></div>
 {/if}
 {#if createOpen}
-    <Modal busy={busy} protectChanges title="Tambah rekap pasien" description="Pilih pasien dan dokter penanggung jawab untuk rekap perawatan baru." onclose={() => { if (!busy) createOpen = false; }}>
+    <Modal busy={busy} protectChanges title="Mulai rawat inap" description="Pilih pasien, dokter, dan penempatan dalam satu formulir." onclose={() => { if (!busy) createOpen = false; }}>
         {#snippet children(close)}
-        <p class="create-help">Buat siklus rawat inap untuk pasien yang sudah terdaftar. Status awal rekap adalah Menunggu.</p>
+        <p class="create-help">Gunakan penempatan yang ada atau pilih ruang dan periode baru. Jika ruang belum tersedia, simpan sebagai Menunggu.</p>
         {#if data.creationCandidates.length === 0}
             <p class="empty">Belum ada pasien terdaftar tanpa rekap aktif. Periksa rekap yang ada atau minta data pasien didaftarkan terlebih dahulu.</p>
             <Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" onclick={close}><X aria-hidden="true" /> Tutup</Button>
@@ -254,11 +277,25 @@ async function deleteCycle(cycle: CycleDetail) {
             <form class="create-form" onsubmit={create}>
                 <label class="field">Pasien terdaftar<FormSelect name="patientId" required bind:value={createPatientId} onValueChange={choosePatient} disabled={busy} options={[{ value: "", label: "Pilih pasien" }, ...(data.creationCandidates).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} /></label>
                 <p class="muted">Hanya pasien yang belum memiliki rekap aktif yang dapat dipilih.</p>
-                <label class="field">Dokter penanggung jawab<FormSelect name="doctorId" required disabled={busy} options={[{ value: "", label: "Pilih dokter aktif" }, ...(data.reference.staff.filter(s => s.role === 'DOKTER' && s.active)).map((doctor) => ({ value: doctor.id, label: (doctor.name) }))]} /></label>
-                <label class="field">Penempatan pasien<FormSelect name="placementId" bind:value={createPlacementId} disabled={busy || !createPatientId || matchingPlacements.length === 0} options={[{ value: "", label: "Belum ditempatkan" }, ...(matchingPlacements).map((placement) => ({ value: placement.id, label: (placement.roomName) + " · " + (placement.startsOn) + "–" + (placement.endsOn) }))]} /></label>
-                {#if createPatientId && matchingPlacements.length === 0}<p class="muted">Pasien belum memiliki penempatan aktif. Rekap tetap dapat disimpan dengan status Menunggu.</p>{/if}
-                <p class="create-note"><strong>Status awal: Menunggu.</strong> Setelah disimpan, pilih Lihat detail. Hubungkan rekap ke penempatan aktif sebelum mengubah status menjadi Sudah ditempatkan, lalu Dalam perawatan.</p>
-                <div class="form-actions"><Button variant="outline" type="button" class="h-11 px-4 no-underline hover:no-underline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batalkan</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || !createPatientId}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan rekap'}</Button></div>
+                <label class="field">Dokter penanggung jawab<FormSelect name="doctorId" required bind:value={createDoctorId} disabled={busy} options={[{ value: "", label: "Pilih dokter aktif" }, ...(data.reference.staff.filter(s => s.role === 'DOKTER' && s.active)).map((doctor) => ({ value: doctor.id, label: (doctor.name) }))]} /></label>
+                <label class="field">Cara penempatan<FormSelect bind:value={createPlacementMode} disabled={busy || !createPatientId} options={[{ value: 'existing', label: 'Gunakan penempatan yang ada', disabled: matchingPlacements.length === 0 }, { value: 'new', label: 'Buat penempatan baru' }]} /></label>
+                {#if createPlacementMode === 'existing'}
+                    <label class="field">Penempatan pasien<FormSelect name="placementId" required bind:value={createPlacementId} disabled={busy} options={[{ value: '', label: 'Pilih penempatan aktif' }, ...matchingPlacements.map(placement => ({ value: placement.id, label: `${placement.roomName} · ${placement.startsOn}–${placement.endsOn}` }))]} /></label>
+                {:else}
+                    <label class="field">Ruangan<FormSelect name="roomId" required bind:value={createRoomId} disabled={busy || !createPatientId} options={[{ value: '', label: 'Pilih ruangan' }, ...rooms.filter(room => room.status === 'available').map(room => ({ value: room.id, label: `${room.name} · ${room.roomClass}` }))]} /></label>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <label class="field">Tanggal masuk<FormDatePicker name="startsOn" required bind:value={createStartsOn} disabled={busy || !createPatientId} /></label>
+                        <label class="field">Tanggal selesai<FormDatePicker name="endsOn" required bind:value={createEndsOn} disabled={busy || !createPatientId} /></label>
+                    </div>
+                    <p class="muted">Kapasitas dan bentrok jadwal diperiksa saat menyimpan. Jika ruang penuh, pilih ruang atau periode lain.</p>
+                {/if}
+                <p class="create-note">Simpan dan tempatkan menghasilkan status <strong>Sudah ditempatkan</strong>. Pilih <strong>Mulai perawatan</strong> pada detail saat pasien benar-benar mulai dirawat.</p>
+                {#if createError}<p role="alert" class="text-sm text-destructive">{createError}</p>{/if}
+                <div class="form-actions flex-col sm:flex-row">
+                    <Button variant="outline" type="button" class="h-11" disabled={busy} onclick={close}><X aria-hidden="true" /> Batalkan</Button>
+                    <Button variant="outline" type="submit" name="intent" value="pending" formnovalidate class="h-11" disabled={busy || !createPatientId || !createDoctorId}>Simpan sebagai Menunggu</Button>
+                    <Button type="submit" name="intent" value="assigned" class="h-11" disabled={busy || !createPatientId || !createDoctorId}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan dan tempatkan'}</Button>
+                </div>
             </form>
         {/if}
         {/snippet}

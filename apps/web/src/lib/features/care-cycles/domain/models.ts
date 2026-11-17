@@ -31,6 +31,17 @@ export type NewCycle = {
     patientId: string;
     doctorId: string;
     placementId?: string | null;
+    newPlacement?: { roomId: string; startsOn: string; endsOn: string } | null;
+    requestId?: string;
+};
+export type CreatedCycle = {
+    id: string;
+    patientId: string;
+    doctorId: string;
+    nurseId: string;
+    placementId: string | null;
+    status: 'pending' | 'assigned';
+    version: number;
 };
 export type ChangeCycle = {
     status?: "pending" | "assigned" | "in_care" | "extend" | "released";
