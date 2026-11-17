@@ -35,7 +35,7 @@ let itemId = $state<string | null>(null);
 let returnToDetail = $state(false);
 let removeKind = $state<'room' | 'item'>('room');
 
-const isNurse = $derived(data.user.role === 'PERAWAT');
+const canManage = $derived(data.user.role === 'PERAWAT' && data.user.coordinator);
 const nurses = $derived(data.reference.staff.filter((staff) => staff.role === 'PERAWAT'));
 const classes = $derived([...new Set(data.rooms.map((room: Room) => room.roomClass))]);
 const available = $derived(data.rooms.filter((room: Room) => room.status === 'available' && room.occupants === 0).length);
@@ -122,7 +122,7 @@ async function removeConfirmed() {
             <h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Manajemen Ruangan</h1>
             <p class="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed text-muted-foreground">Kelola data, inventaris, dan ketersediaan ruangan rawat inap.</p>
         </div>
-        {#if isNurse}
+        {#if canManage}
             <Button size="lg" class="h-11 shrink-0 px-4 text-sm" onclick={openCreate}>
                 <Plus aria-hidden="true" /> Tambah ruangan
             </Button>
@@ -202,7 +202,7 @@ async function removeConfirmed() {
                             <TableCell class="px-4 align-top sm:px-5">
                                 <div class="action-buttons action-buttons--table">
                                     <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openView(room.id)}><Eye aria-hidden="true" /> Lihat</Button>
-                                    {#if isNurse}
+                                    {#if canManage}
                                         <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openEdit(room.id)}><Pencil aria-hidden="true" /> Ubah</Button>
                                         <Button variant="outline" class="h-11 px-3 text-[13px]" onclick={() => openAddItem(room.id)}><Plus aria-hidden="true" /> Item</Button>
                                         <Button
@@ -226,7 +226,7 @@ async function removeConfirmed() {
     </Card>
 </div>
 
-{#if dialogView}
+{#if dialogView && (dialogView === 'detail' || canManage)}
 <Modal title={dialogView === 'remove' && removeKind === 'item' ? 'Hapus perlengkapan?' : dialogTitles[dialogView]}
  description={room ? `${room.name} · ${room.id}` : 'Lengkapi informasi ruangan baru.'}
  {busy} protectChanges={['create', 'edit', 'addItem', 'itemEdit'].includes(dialogView)}
@@ -284,7 +284,7 @@ async function removeConfirmed() {
                         {#each room.items as item (item.id)}
                             <li class="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5">
                                 <span class="min-w-0 text-sm text-foreground">{item.name} · {item.category} · {item.quantity} × {money(item.unitPrice)}</span>
-                                {#if isNurse}
+                                {#if canManage}
                                     <div class="action-buttons">
                                         <Button variant="link" class="h-11 px-2 text-[13px]" onclick={() => openItemEdit(room.id, item.id)}><Pencil aria-hidden="true" /> Ubah</Button>
                                         <Button variant="link" class="h-11 px-2 text-[13px] text-destructive" onclick={() => openRemoveItem(room, item)}><Trash2 aria-hidden="true" /> Hapus</Button>
@@ -298,7 +298,7 @@ async function removeConfirmed() {
                 {/if}
             </section>
             <div class="form-actions">
-                {#if isNurse}
+                {#if canManage}
                     <Button variant="outline" class="h-11 px-4" onclick={() => openAddItem(room.id)}><Plus aria-hidden="true" /> Tambah perlengkapan</Button>
                 {/if}
                 <Button class="h-11 px-4" disabled={busy} onclick={close}><X aria-hidden="true" /> Tutup detail ruangan</Button>

@@ -105,7 +105,10 @@ export interface paths {
         /** List rooms and items */
         get: operations["GET_rooms"];
         put?: never;
-        /** Create room */
+        /**
+         * Create room
+         * @description Coordinator nurse only.
+         */
         post: operations["POST_rooms"];
         delete?: never;
         options?: never;
@@ -124,11 +127,17 @@ export interface paths {
         get: operations["GET_rooms_id"];
         put?: never;
         post?: never;
-        /** Soft-delete an unused room */
+        /**
+         * Soft-delete an unused room
+         * @description Coordinator nurse only.
+         */
         delete: operations["DELETE_rooms_id"];
         options?: never;
         head?: never;
-        /** Update room */
+        /**
+         * Update room
+         * @description Coordinator nurse only.
+         */
         patch: operations["PATCH_rooms_id"];
         trace?: never;
     };
@@ -141,7 +150,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add room item */
+        /**
+         * Add room item
+         * @description Coordinator nurse only.
+         */
         post: operations["POST_rooms_id_items"];
         delete?: never;
         options?: never;
@@ -470,11 +482,17 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Soft-delete a room item */
+        /**
+         * Soft-delete a room item
+         * @description Coordinator nurse only.
+         */
         delete: operations["DELETE_rooms_id_items_itemId"];
         options?: never;
         head?: never;
-        /** Update a room item */
+        /**
+         * Update a room item
+         * @description Coordinator nurse only.
+         */
         patch: operations["PATCH_rooms_id_items_itemId"];
         trace?: never;
     };

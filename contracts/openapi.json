@@ -1006,7 +1006,8 @@
         },
         "x-controller-roles": [
           "PERAWAT"
-        ]
+        ],
+        "description": "Coordinator nurse only."
       }
     },
     "/api/v1/rooms/{id}": {
@@ -1228,7 +1229,8 @@
         },
         "x-controller-roles": [
           "PERAWAT"
-        ]
+        ],
+        "description": "Coordinator nurse only."
       },
       "delete": {
         "operationId": "DELETE_rooms_id",
@@ -1337,7 +1339,8 @@
         ],
         "x-controller-roles": [
           "PERAWAT"
-        ]
+        ],
+        "description": "Coordinator nurse only."
       }
     },
     "/api/v1/rooms/{id}/items": {
@@ -1454,7 +1457,8 @@
         },
         "x-controller-roles": [
           "PERAWAT"
-        ]
+        ],
+        "description": "Coordinator nurse only."
       }
     },
     "/api/v1/occupancy": {
@@ -4811,7 +4815,8 @@
         ],
         "x-controller-roles": [
           "PERAWAT"
-        ]
+        ],
+        "description": "Coordinator nurse only."
       },
       "delete": {
         "operationId": "DELETE_rooms_id_items_itemId",
@@ -4929,7 +4934,8 @@
         ],
         "x-controller-roles": [
           "PERAWAT"
-        ]
+        ],
+        "description": "Coordinator nurse only."
       }
     },
     "/api/v1/placements/{id}": {

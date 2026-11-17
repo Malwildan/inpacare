@@ -5356,7 +5356,7 @@
           "methodMapping": {
             "targetFile": "apps/api/src/presentation/http/rooms/ruang-inap.controller.ts",
             "targetSymbol": "RuangInapController.updateRuangInap",
-            "targetSignature": "RuangInapController.updateRuangInap(id: string, dto: UpdateRoomDto): inferred",
+            "targetSignature": "RuangInapController.updateRuangInap(actor: Actor, id: string, dto: UpdateRoomDto): inferred",
             "targetVisibility": "public",
             "sourceVisibility": "public (UML methods)",
             "routeOperations": [
@@ -5466,7 +5466,7 @@
           "methodMapping": {
             "targetFile": "apps/api/src/presentation/http/rooms/ruang-inap.controller.ts",
             "targetSymbol": "RuangInapController.hapusRuangInap",
-            "targetSignature": "RuangInapController.hapusRuangInap(id: string, dto: RoomVersionDto): inferred",
+            "targetSignature": "RuangInapController.hapusRuangInap(actor: Actor, id: string, dto: RoomVersionDto): inferred",
             "targetVisibility": "public",
             "sourceVisibility": "public (UML methods)",
             "routeOperations": [
@@ -5521,7 +5521,7 @@
           "methodMapping": {
             "targetFile": "apps/api/src/application/rooms/ruang-inap.use-cases.ts",
             "targetSymbol": "RuangInapUseCases.create",
-            "targetSignature": "RuangInapUseCases.create(_actor: Actor, dto: CreateRoomInput): inferred",
+            "targetSignature": "RuangInapUseCases.create(actor: Actor, dto: CreateRoomInput): inferred",
             "targetVisibility": "public",
             "sourceVisibility": "public (UML methods)",
             "routeOperations": [],

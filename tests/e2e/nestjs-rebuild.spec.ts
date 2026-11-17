@@ -170,7 +170,7 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	await expect(toastMessage(page, 'Tagihan berhasil dihapus.', 'success')).toBeVisible();
 });
 
-test('a nurse can edit and remove a room item and archive the empty room', async ({ page }) => {
+test('a coordinator can edit and remove a room item and archive the empty room', async ({ page }) => {
 	await page.goto('/login');
 	await page.getByLabel('ID petugas').fill('rina');
 	await page.getByLabel('Kata sandi', { exact: true }).fill(password);

@@ -20,7 +20,7 @@ class RebuildWorkflows(unittest.TestCase):
             cls.clients[username] = client
 
     def room(self, capacity=1):
-        status, room = self.clients["dina"].request("POST", "/rooms", {
+        status, room = self.clients["rina"].request("POST", "/rooms", {
             "name": f"Nest {uuid.uuid4().hex[:10]}", "roomClass": "Kelas uji", "capacity": capacity,
             "status": "available", "dailyRate": "125000.25",
         })
@@ -29,21 +29,22 @@ class RebuildWorkflows(unittest.TestCase):
 
     def test_room_item_version_archive_and_placement_reschedule_cancel(self):
         nurse = self.clients["dina"]
+        coordinator = self.clients["rina"]
         room = self.room()
-        status, room = nurse.request("POST", f"/rooms/{room['id']}/items", {
+        status, room = coordinator.request("POST", f"/rooms/{room['id']}/items", {
             "name": "Peralatan uji", "category": "Peralatan", "quantity": 3, "unitPrice": "0.10",
         })
         self.assertIn(status, (200, 201), room)
         item = room["items"][0]
-        status, updated = nurse.request("PATCH", f"/rooms/{room['id']}/items/{item['id']}", {
+        status, updated = coordinator.request("PATCH", f"/rooms/{room['id']}/items/{item['id']}", {
             "name": "Peralatan uji", "category": "Peralatan", "quantity": 7,
             "unitPrice": "0.10", "expectedVersion": room["version"],
         })
         self.assertEqual(status, 200, updated)
         self.assertEqual(updated["totalCost"], "0.70")
-        stale, _ = nurse.request("DELETE", f"/rooms/{room['id']}/items/{item['id']}", {"expectedVersion": room["version"]})
+        stale, _ = coordinator.request("DELETE", f"/rooms/{room['id']}/items/{item['id']}", {"expectedVersion": room["version"]})
         self.assertEqual(stale, 409)
-        status, updated = nurse.request("DELETE", f"/rooms/{room['id']}/items/{item['id']}", {"expectedVersion": updated["version"]})
+        status, updated = coordinator.request("DELETE", f"/rooms/{room['id']}/items/{item['id']}", {"expectedVersion": updated["version"]})
         self.assertEqual(status, 200, updated)
         self.assertEqual(updated["items"], [])
 
@@ -57,7 +58,7 @@ class RebuildWorkflows(unittest.TestCase):
         status, canceled = nurse.request("DELETE", f"/placements/{placement['id']}", {"expectedVersion": placement["version"]})
         self.assertEqual(status, 200, canceled)
         self.assertEqual(canceled["status"], "cancelled")
-        status, result = nurse.request("DELETE", f"/rooms/{room['id']}", {"expectedVersion": updated["version"]})
+        status, result = coordinator.request("DELETE", f"/rooms/{room['id']}", {"expectedVersion": updated["version"]})
         self.assertEqual(status, 200, result)
         status, result = nurse.request("POST", "/placements", payload)
         self.assertIn(status, (404, 409), result)

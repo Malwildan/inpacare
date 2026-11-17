@@ -1,5 +1,6 @@
 import { DomainError } from "../../domain/shared/domain-error";
 import { Actor } from "../../domain/auth/actor";
+import { requireCoordinator } from "../../domain/auth/permissions";
 import {
   calculateRoomCost,
   validateRoomCost,
@@ -48,7 +49,8 @@ export class RuangInapUseCases {
   private present(room: RoomRecord) {
     return { ...room, totalCost: calculateRoomCost(room.items) };
   }
-  async create(_actor: Actor, dto: CreateRoomInput) {
+  async create(actor: Actor, dto: CreateRoomInput) {
+    requireCoordinator(actor);
     const name = dto.name.trim(),
       roomClass = dto.roomClass.trim();
     validateRoomText(name, roomClass);
@@ -69,7 +71,8 @@ export class RuangInapUseCases {
     });
     return this.detail(roomId);
   }
-  async update(roomId: string, dto: UpdateRoomInput) {
+  async update(actor: Actor, roomId: string, dto: UpdateRoomInput) {
+    requireCoordinator(actor);
     validateRoomText(dto.name, dto.roomClass);
     validateRoomCost(dto.dailyRate);
     await this.store.validatePic(dto.picId);
@@ -95,7 +98,8 @@ export class RuangInapUseCases {
       return this.present(await tx.rooms.detail(roomId));
     });
   }
-  async addItem(roomId: string, dto: RoomItemInput) {
+  async addItem(actor: Actor, roomId: string, dto: RoomItemInput) {
+    requireCoordinator(actor);
     validateRoomItem(dto.name, dto.category);
     validateRoomCost(dto.unitPrice);
     const itemId = id();
@@ -110,12 +114,14 @@ export class RuangInapUseCases {
     return this.detail(roomId);
   }
   async updateItem(
+    actor: Actor,
     roomId: string,
     itemId: string,
     dto: RoomItemInput & {
       expectedVersion: number;
     },
   ) {
+    requireCoordinator(actor);
     validateRoomItem(dto.name, dto.category);
     validateRoomCost(dto.unitPrice);
     return this.uow.run(async (tx) => {
@@ -137,12 +143,14 @@ export class RuangInapUseCases {
     });
   }
   async deleteItem(
+    actor: Actor,
     roomId: string,
     itemId: string,
     dto: {
       expectedVersion: number;
     },
   ) {
+    requireCoordinator(actor);
     return this.uow.run(async (tx) => {
       const version = await tx.rooms.lockVersion(roomId);
       if (version === undefined) throw DomainError.notFound();
@@ -157,11 +165,13 @@ export class RuangInapUseCases {
     });
   }
   async deleteRoom(
+    actor: Actor,
     roomId: string,
     dto: {
       expectedVersion: number;
     },
   ) {
+    requireCoordinator(actor);
     return this.uow.run(async (tx) => {
       const version = await tx.rooms.lockVersion(roomId);
       if (version === undefined) throw DomainError.notFound();
