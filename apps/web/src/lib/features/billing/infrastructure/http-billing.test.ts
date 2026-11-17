@@ -5,8 +5,8 @@ import { createBillingUseCases } from '../application/billing';
 it('preserves decimal-string inputs, versions and reasons without recomputing server totals', async () => {
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => Response.json({ id: 'I1', totalAmount: '0.30', payableAmount: '0.20' }));
     const billing = createHttpBilling(createHttpClient(fetcher));
-    const result = await billing.create({ patientId: 'P1', coveredAmount: '0.10', lines: [{ description: 'Care', quantity: 3, unitPrice: '0.10' }] });
-    expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body))).toEqual({ patientId: 'P1', coveredAmount: '0.10', lines: [{ description: 'Care', quantity: 3, unitPrice: '0.10' }] });
+    const result = await billing.create({ patientId: 'P1', placementId: 'PL1', coveredAmount: '0.10', lines: [{ roomItemId: null, kind: 'room', description: 'Care', quantity: 3, unitPrice: '0.10' }] });
+    expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body))).toEqual({ patientId: 'P1', placementId: 'PL1', coveredAmount: '0.10', lines: [{ roomItemId: null, kind: 'room', description: 'Care', quantity: 3, unitPrice: '0.10' }] });
     expect(result.totalAmount).toBe('0.30');
     await billing.changePayment('I1', { status: 'paid', reason: 'Recorded', expectedVersion: 2 });
     expect(JSON.parse(String(fetcher.mock.calls[1][1]?.body))).toEqual({ status: 'paid', reason: 'Recorded', expectedVersion: 2 });

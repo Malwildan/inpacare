@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "scenarios": [
+    "inclusive room autofill",
+    "loading guards",
+    "same-patient request race",
+    "editable and extra lines",
+    "inventory excluded",
+    "patient change cancellation",
+    "placement change cancellation and acceptance",
+    "exact create payload",
+    "fresh form after save",
+    "multiple placements",
+    "cancelled placements excluded",
+    "room line removal",
+    "manual invoice without placement",
+    "context failure recovery",
+    "missing room fallback"
+  ],
+  "consoleErrors": [],
+  "fixture": "Synthetic patients; real BillingPage and UI controls; mocked billing service; no database persistence",
+  "sourceSha256": {
+    "apps/web/src/lib/features/billing/presentation/BillingPage.svelte": "3d1a8784ae68775fd6d604551cc13e62c2362e051df3f7c1984d8ace4d67ba43",
+    "apps/web/src/lib/features/billing/application/billing.ts": "cd61d19c7c02a9b746d9a525c297b2252ee3d8e4bc607094fe1103a2353f464b",
+    "apps/web/src/lib/features/billing/application/billing.test.ts": "9ae5a5283e5a7200b5fcbc2df13b4428e4978697e3eb01b98b1e3d87d8e7803e",
+    "apps/web/src/lib/features/billing/index.ts": "85751ff15d8707e5fa6bcb047c8175ba3425a910e8b1feeaf0cd2a761b80cf55",
+    "apps/web/src/lib/features/billing/infrastructure/http-billing.test.ts": "fb21f917ffcd6aebbceda17b57360eca3c24b7107052db9ea6932b2edaac0122"
+  },
+  "sourceHashNormalization": "UTF-8 text with LF newlines"
+}
