@@ -1,3 +1,5 @@
+import { PlacementHistory1793577600006 } from "./migrations/1793577600006-PlacementHistory";
+import { RiwayatPenempatan } from "./entities/placements/riwayat-penempatan.orm-entity";
 import { AuditMedis } from "./entities/medical-records/audit-medis.orm-entity";
 import { AuditSiklus } from "./entities/cycles/audit-siklus.orm-entity";
 import { AuditAlignment1793577600002 } from "./migrations/1793577600002-AuditAlignment";
@@ -38,6 +40,7 @@ export const ALL_ENTITIES = [
   RuangInap,
   ItemRuangan,
   PenempatanPasien,
+  RiwayatPenempatan,
   RekapPasien,
   PermintaanSiklus,
   Notifikasi,
@@ -57,6 +60,7 @@ export const ALL_MIGRATIONS = [
   TaskBoardPosition1793577600003,
   PatientRecordNumber1793577600004,
   CycleCreationRequests1793577600005,
+  PlacementHistory1793577600006,
 ];
 
 export function createDataSource(): DataSource {

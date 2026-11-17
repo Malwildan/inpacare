@@ -12,11 +12,12 @@ export class TypeOrmPlacementStore implements PlacementStore {
       from: string;
       to: string;
       roomId?: string;
+      includeCancelled?: "true" | "false";
     },
   ) {
     const rows = await this.manager.query(
-      `SELECT jsonb_build_object('id',p.id,'patientId',p.patient_id,'patientName',pt.name,'medicalRecordNo',pt.medical_record_no,'roomId',p.room_id,'roomName',r.name,'roomClass',r.room_class,'startsOn',p.starts_on,'endsOn',p.ends_on,'status',p.status,'version',p.version) value FROM placements p JOIN patients pt ON pt.id=p.patient_id JOIN rooms r ON r.id=p.room_id WHERE p.status='active' AND p.starts_on<=$2 AND p.ends_on >= $1 AND ($3::text IS NULL OR p.room_id=$3) AND ($4<>'DOKTER' OR EXISTS(SELECT 1 FROM cycles c WHERE c.patient_id=p.patient_id AND c.doctor_id=$5)) ORDER BY r.name,p.starts_on,pt.name LIMIT 500`,
-      [q.from, q.to, q.roomId ?? null, actor.role, actor.id],
+      `SELECT jsonb_build_object('id',p.id,'patientId',p.patient_id,'patientName',pt.name,'medicalRecordNo',pt.medical_record_no,'roomId',p.room_id,'roomName',r.name,'roomClass',r.room_class,'startsOn',p.starts_on,'endsOn',p.ends_on,'status',p.status,'version',p.version) value FROM placements p JOIN patients pt ON pt.id=p.patient_id JOIN rooms r ON r.id=p.room_id WHERE (p.status='active' OR $6) AND p.starts_on<=$2 AND p.ends_on >= $1 AND ($3::text IS NULL OR p.room_id=$3) AND ($4<>'DOKTER' OR EXISTS(SELECT 1 FROM cycles c WHERE c.patient_id=p.patient_id AND c.doctor_id=$5)) ORDER BY r.name,p.starts_on,pt.name LIMIT 500`,
+      [q.from, q.to, q.roomId ?? null, actor.role, actor.id, q.includeCancelled === "true"],
     );
     return rows.map((x: { value: unknown }) => x.value);
   }
@@ -35,6 +36,13 @@ export class TypeOrmPlacementStore implements PlacementStore {
     return r[0]
       ? { patientId: r[0].patient_id as string, roomId: r[0].room_id as string }
       : undefined;
+  }
+  async canPlacePatient(nurseId: string, patientId: string) {
+    const [row] = await this.manager.query(
+      `SELECT NOT EXISTS(SELECT 1 FROM cycles WHERE patient_id=$2 AND deleted_at IS NULL AND status<>'released' AND nurse_id<>$1) AS allowed`,
+      [nurseId, patientId],
+    );
+    return Boolean(row.allowed);
   }
   async roomForCreate(roomId: string) {
     const r = await this.manager.query(
@@ -59,7 +67,7 @@ export class TypeOrmPlacementStore implements PlacementStore {
     placementId: string,
   ): Promise<CurrentPlacement | undefined> {
     const r = await this.manager.query(
-      "SELECT * FROM placements WHERE id=$1 FOR UPDATE",
+      "SELECT id,patient_id,room_id,starts_on::text AS starts_on,ends_on::text AS ends_on,status,version FROM placements WHERE id=$1 FOR UPDATE",
       [placementId],
     );
     return r[0];
@@ -159,6 +167,19 @@ export class TypeOrmPlacementStore implements PlacementStore {
   async cancel(placementId: string) {
     await this.manager.query(
       `UPDATE placements SET status='cancelled',version=version+1 WHERE id=$1`,
+      [placementId],
+    );
+  }
+  async addHistory(d: Parameters<PlacementStore["addHistory"]>[0]) {
+    await this.manager.query(
+      `INSERT INTO placement_history(id,placement_id,actor_id,action,reason,before_data,after_data) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb)`,
+      [d.id, d.placementId, d.actorId, d.action, d.reason,
+        JSON.stringify(d.before), JSON.stringify(d.after)],
+    );
+  }
+  async history(placementId: string) {
+    return this.manager.query(
+      `SELECT h.id,h.actor_id AS "actorId",u.name AS "actorName",h.action,h.reason,h.before_data AS before,h.after_data AS after,h.created_at AS "createdAt" FROM placement_history h JOIN users u ON u.id=h.actor_id WHERE h.placement_id=$1 ORDER BY h.created_at,h.id LIMIT 500`,
       [placementId],
     );
   }

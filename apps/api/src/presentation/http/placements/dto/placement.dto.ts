@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -7,6 +8,9 @@ import {
   Min,
 } from "class-validator";
 export class DateRangeDto {
+  @IsOptional()
+  @IsIn(["true", "false"])
+  includeCancelled?: "true" | "false";
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
   from!: string;
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
@@ -29,11 +33,19 @@ export class CreatePlacementDto {
   endsOn!: string;
 }
 export class UpdatePlacementDto extends CreatePlacementDto {
+  @IsString()
+  @Matches(/\S/)
+  @MaxLength(2000)
+  reason!: string;
   @IsInt()
   @Min(1)
   expectedVersion!: number;
 }
 export class CancelPlacementDto {
+  @IsString()
+  @Matches(/\S/)
+  @MaxLength(2000)
+  reason!: string;
   @IsInt()
   @Min(1)
   expectedVersion!: number;

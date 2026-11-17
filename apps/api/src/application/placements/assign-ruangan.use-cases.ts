@@ -1,4 +1,5 @@
 import { Actor } from "../../domain/auth/actor";
+import { requireCoordinator } from "../../domain/auth/permissions";
 import { DomainError } from "../../domain/shared/domain-error";
 import {
   placementIncludesTask,
@@ -13,6 +14,7 @@ export interface PlacementDateRange {
   from: string;
   to: string;
   roomId?: string;
+  includeCancelled?: "true" | "false";
 }
 export interface CreatePlacementInput {
   patientId: string;
@@ -22,6 +24,7 @@ export interface CreatePlacementInput {
 }
 export interface UpdatePlacementInput extends CreatePlacementInput {
   expectedVersion: number;
+  reason: string;
 }
 export async function createPlacement(
   tx: TransactionContext,
@@ -33,6 +36,8 @@ export async function createPlacement(
   await canReadPatient(tx.patients, actor, d.patientId);
   if (!(await tx.placements.patientExistsForUpdate(d.patientId)))
     throw DomainError.notFound();
+  if (!actor.coordinator && !(await tx.placements.canPlacePatient(actor.id, d.patientId)))
+    throw new DomainError("FORBIDDEN", "Penempatan pasien ini harus dilakukan perawat penanggung jawab siklus atau koordinator.");
   const room = await tx.placements.roomForCreate(d.roomId);
   if (!room) throw DomainError.notFound();
   if (room.status !== "available")
@@ -58,6 +63,7 @@ export class AssignRuanganUseCases {
     private readonly uow: UnitOfWork,
   ) {}
   async occupancy(actor: Actor, q: PlacementDateRange) {
+    if (q.includeCancelled === "true") requireCoordinator(actor);
     const days = validatePlacementSpan(q.from, q.to);
     if (days > 30)
       throw DomainError.validation("Rentang kalender maksimal 31 hari.");
@@ -72,6 +78,9 @@ export class AssignRuanganUseCases {
     return this.store.byId(placementId);
   }
   async update(actor: Actor, placementId: string, d: UpdatePlacementInput) {
+    requireCoordinator(actor);
+    if (!d.reason?.trim() || d.reason.length > 2000)
+      throw DomainError.validation("Alasan perubahan wajib diisi (maksimal 2000 karakter).");
     validatePlacementSpan(d.startsOn, d.endsOn);
     return this.uow.run(async (tx) => {
       const linked = await tx.placements.linked(placementId);
@@ -96,7 +105,7 @@ export class AssignRuanganUseCases {
         throw DomainError.validation(
           "Pasien pada penempatan tidak dapat diganti; buat penempatan baru.",
         );
-      const cycles = await tx.placements.lockCyclesForUpdate(placementId);
+      const cycles = await tx.placements.lockCyclesForUpdate(placementId, true);
       const tasks = await tx.placements.lockTasksForUpdate(placementId, true);
       const room = rooms.find((r) => r.id === d.roomId)!;
       if (room.status !== "available")
@@ -123,8 +132,13 @@ export class AssignRuanganUseCases {
         throw DomainError.conflict(
           "Kapasitas ruangan tidak mencukupi pada sebagian rentang tanggal.",
         );
+      if (cycles.length > 0 &&
+        (d.startsOn !== current.starts_on || d.endsOn !== current.ends_on ||
+          cycles.some((c) => c.status === "released")))
+        throw DomainError.conflict(
+          "Periode penempatan yang terkait siklus tidak dapat diubah dari kalender. Gunakan pengajuan perpanjangan atau pelepasan kepada dokter.",
+        );
       if (
-        cycles.some((c) => c.status !== "released") ||
         (d.roomId !== current.room_id && tasks.length > 0) ||
         tasks.some(
           (t) =>
@@ -141,6 +155,12 @@ export class AssignRuanganUseCases {
           "Rentang baru tidak boleh memutus siklus atau jadwal tugas yang tersimpan.",
         );
       await tx.placements.update(placementId, d.roomId, d.startsOn, d.endsOn);
+      await tx.placements.addHistory({
+        id: id(), placementId, actorId: actor.id, action: "updated",
+        reason: d.reason.trim(), before: current,
+        after: { ...current, room_id: d.roomId, starts_on: d.startsOn,
+          ends_on: d.endsOn, version: current.version + 1 },
+      });
       return {
         id: placementId,
         patientId: current.patient_id,
@@ -157,8 +177,12 @@ export class AssignRuanganUseCases {
     placementId: string,
     d: {
       expectedVersion: number;
+      reason: string;
     },
   ) {
+    requireCoordinator(actor);
+    if (!d.reason?.trim() || d.reason.length > 2000)
+      throw DomainError.validation("Alasan pembatalan wajib diisi (maksimal 2000 karakter).");
     return this.uow.run(async (tx) => {
       const rel = await tx.placements.linked(placementId);
       if (!rel) throw DomainError.notFound();
@@ -181,11 +205,23 @@ export class AssignRuanganUseCases {
           "Penempatan dengan siklus atau tugas aktif tidak dapat dibatalkan.",
         );
       await tx.placements.cancel(placementId);
+      await tx.placements.addHistory({
+        id: id(), placementId, actorId: actor.id, action: "cancelled",
+        reason: d.reason.trim(), before: p,
+        after: { ...p, status: "cancelled", version: p.version + 1 },
+      });
       return {
         id: placementId,
         status: "cancelled",
         version: d.expectedVersion + 1,
       };
     });
+  }
+  async history(actor: Actor, placementId: string) {
+    requireCoordinator(actor);
+    const placement = await this.store.linked(placementId);
+    if (!placement) throw DomainError.notFound();
+    const items = await this.store.history(placementId);
+    return { items, total: items.length };
   }
 }
