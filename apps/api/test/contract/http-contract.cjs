@@ -44,6 +44,6 @@ test('live JSON responses conform to OpenAPI, including restricted admissions pr
     ['admisi','/invoices'], ['admisi','/invoices/INV-001'], ['admisi','/invoices/patients/PT-001/context'], ['dina','/notifications'],
   ]) { try { await validate('GET', route, clients[username]); } catch (error) { failures.push(error.message); } }
   assert.deepEqual(failures, []);
-  const { value: room } = await validate('POST', '/rooms', clients.dina, { name: `Contract ${Date.now()}`, roomClass: 'Uji', capacity: 1, dailyRate: '0' });
-  await validate('DELETE', `/rooms/${room.id}`, clients.dina, { expectedVersion: room.version });
+  const { value: room } = await validate('POST', '/rooms', clients.rina, { name: `Contract ${Date.now()}`, roomClass: 'Uji', capacity: 1, dailyRate: '0' });
+  await validate('DELETE', `/rooms/${room.id}`, clients.rina, { expectedVersion: room.version });
 });
