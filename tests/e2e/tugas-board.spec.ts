@@ -3,6 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { selectOption, optionLabels } from '../select-option.mjs';
+import { taskPlacement } from '../task-placement.mjs';
 
 const password = 'InpaCareDemo!2026';
 const evidence = path.resolve('.local/evidence');
@@ -14,7 +15,7 @@ test.describe.configure({ timeout: 90_000 });
 
 type Reference = {
 	staff: { id: string; name: string; role: string; active: boolean }[];
-	placements: { id: string; patientId: string; patientName: string; roomName: string; status: string }[];
+	placements: { id: string; patientId: string; patientName: string; roomName: string; status: string; startsOn: string; endsOn: string }[];
 };
 type Task = { id: string; title: string; status: string; version: number; picId: string };
 
@@ -51,9 +52,9 @@ async function reference(page: Page) {
 }
 
 async function createTask(page: Page, ref: Reference, title: string, picId = dina, priority = 'normal') {
-	const placement = ref.placements.find(item => item.status === 'active')!;
 	const startsAt = new Date(Date.now() + 60 * 60_000).toISOString();
 	const endsAt = new Date(Date.now() + 90 * 60_000).toISOString();
+	const placement = taskPlacement(ref.placements, new Date(startsAt), new Date(endsAt));
 	return api<Task>(page, 'POST', '/tasks', {
 		patientId: placement.patientId,
 		placementId: placement.id,

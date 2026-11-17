@@ -2,6 +2,7 @@ import { toastMessage } from '../toast.mjs';
 import { test, expect } from '@playwright/test';
 import { selectOption } from '../select-option.mjs';
 import { selectDate } from '../select-date.mjs';
+import { taskPlacement } from '../task-placement.mjs';
 
 test('task filters survive direct navigation, reload and history', async ({ page }) => {
  await page.goto('/login');
@@ -110,12 +111,12 @@ test('dashboard notifications remain available through the navbar', async ({ pag
 test('coordinator reassignment, cancellation and logical deletion preserve reasons and access', async ({ page, browser }) => {
  await signIn(page);
  const reference=await (await page.request.get('/api/v1/reference')).json();
- const placement=reference.placements.find((item: {status:string})=>item.status==='active');
  const dina=reference.staff.find((item: {name:string})=>item.name==='Dina Putri');
  const bima=reference.staff.find((item: {name:string})=>item.name.startsWith('Bima'));
  const csrf=(await page.context().cookies()).find(cookie=>cookie.name==='csrf_token')!.value;
  async function createTask(title:string) {
   const starts=new Date(Date.now()+10*60_000), ends=new Date(starts.getTime()+30*60_000);
+  const placement=taskPlacement(reference.placements, starts, ends);
   const response=await page.request.post('/api/v1/tasks',{headers:{'x-csrf-token':csrf,origin:new URL(page.url()).origin},data:{patientId:placement.patientId,placementId:placement.id,picId:dina.id,title,priority:'normal',startsAt:starts.toISOString(),endsAt:ends.toISOString()}});
   expect(response.ok()).toBe(true);
   return (await response.json()) as {id:string;title:string};
