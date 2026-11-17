@@ -53,9 +53,11 @@ class RebuildWorkflows(unittest.TestCase):
         payload = {"patientId": "PT-011", "roomId": room["id"], "startsOn": start, "endsOn": end}
         status, placement = nurse.request("POST", "/placements", payload)
         self.assertEqual(status, 201, placement)
-        status, placement = nurse.request("PATCH", f"/placements/{placement['id']}", {**payload, "expectedVersion": 1})
+        status, denied = nurse.request("PATCH", f"/placements/{placement['id']}", {**payload, "expectedVersion": 1, "reason": "Schedule correction"})
+        self.assertEqual(status, 403, denied)
+        status, placement = coordinator.request("PATCH", f"/placements/{placement['id']}", {**payload, "expectedVersion": 1, "reason": "Schedule correction"})
         self.assertEqual(status, 200, placement)
-        status, canceled = nurse.request("DELETE", f"/placements/{placement['id']}", {"expectedVersion": placement["version"]})
+        status, canceled = coordinator.request("DELETE", f"/placements/{placement['id']}", {"expectedVersion": placement["version"], "reason": "Admission cancelled"})
         self.assertEqual(status, 200, canceled)
         self.assertEqual(canceled["status"], "cancelled")
         status, result = coordinator.request("DELETE", f"/rooms/{room['id']}", {"expectedVersion": updated["version"]})

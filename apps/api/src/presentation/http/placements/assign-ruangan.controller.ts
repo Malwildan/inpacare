@@ -53,6 +53,11 @@ export class AssignRuanganController {
   ) {
     return this.service.update(actor, id, d);
   }
+  @Get("placements/:id/history")
+  @Roles("PERAWAT")
+  riwayatPenempatan(@CurrentActor() actor: Actor, @Param("id") id: string) {
+    return this.service.history(actor, id);
+  }
   @Delete("placements/:id")
   @Roles("PERAWAT")
   batalkanPenautan(

@@ -15,9 +15,11 @@ export interface PlacementStore {
       from: string;
       to: string;
       roomId?: string;
+      includeCancelled?: "true" | "false";
     },
   ): Promise<unknown[]>;
   patientExistsForUpdate(patientId: string): Promise<boolean>;
+  canPlacePatient(nurseId: string, patientId: string): Promise<boolean>;
   linked(placementId: string): Promise<
     | {
         patientId: string;
@@ -89,4 +91,14 @@ export interface PlacementStore {
   ): Promise<void>;
   cancellationBlocked(placementId: string): Promise<boolean>;
   cancel(placementId: string): Promise<void>;
+  addHistory(input: {
+    id: string;
+    placementId: string;
+    actorId: string;
+    action: "updated" | "cancelled";
+    reason: string;
+    before: CurrentPlacement;
+    after: CurrentPlacement;
+  }): Promise<void>;
+  history(placementId: string): Promise<unknown[]>;
 }

@@ -189,7 +189,7 @@ export interface paths {
         put?: never;
         /**
          * Create placement
-         * @description Patient then room lock; checks maintenance, duplicate patient overlaps and daily peak capacity. No cancel or move endpoint.
+         * @description Nurses, including coordinators, create an initial placement for an accessible patient. Patient then room lock; checks maintenance, duplicate patient overlaps and daily peak capacity.
          */
         post: operations["POST_placements"];
         delete?: never;
@@ -506,11 +506,17 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Cancel a placement without active tasks or cycles */
+        /**
+         * Cancel a placement without active tasks or cycles
+         * @description Coordinator only. Requires a reason and expectedVersion; active cycles or tasks block cancellation. History is committed atomically with the change.
+         */
         delete: operations["DELETE_placements_id"];
         options?: never;
         head?: never;
-        /** Reschedule or move a placement */
+        /**
+         * Reschedule or move a placement
+         * @description Coordinator only. Requires a reason and expectedVersion. Cycle-linked periods must follow doctor approval; room moves must preserve task dependencies. History is committed atomically with the change.
+         */
         patch: operations["PATCH_placements_id"];
         trace?: never;
     };
@@ -688,6 +694,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/placements/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read placement changes and cancellations
+         * @description Coordinator only. Includes actor, time, reason and before/after values, including cancelled placements.
+         */
+        get: operations["GET_placements_id_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -768,7 +794,8 @@ export interface components {
             startsOn: string;
             /** Format: date */
             endsOn: string;
-            status: string;
+            /** @enum {string} */
+            status: "active" | "cancelled";
             version: number;
         };
         PlacementResult: {
@@ -1345,6 +1372,7 @@ export interface components {
             /** Format: date */
             endsOn: string;
             expectedVersion: number;
+            reason: string;
         };
         PlacementMutationResult: {
             id: string;
@@ -1582,6 +1610,35 @@ export interface components {
             /** @description Required when bpjs is true; omit or use null otherwise. */
             bpjsNumber?: string | null;
             address?: string | null;
+        };
+        CancelPlacement: {
+            expectedVersion: number;
+            reason: string;
+        };
+        PlacementSnapshot: {
+            id: string;
+            patient_id: string;
+            room_id: string;
+            starts_on: string;
+            ends_on: string;
+            status: string;
+            version: number;
+        };
+        PlacementHistory: {
+            id: string;
+            actorId: string;
+            actorName: string;
+            /** @enum {string} */
+            action: "updated" | "cancelled";
+            reason: string;
+            before: components["schemas"]["PlacementSnapshot"];
+            after: components["schemas"]["PlacementSnapshot"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PlacementHistoryPage: {
+            items: components["schemas"]["PlacementHistory"][];
+            total: number;
         };
     };
     responses: never;
@@ -2687,6 +2744,8 @@ export interface operations {
                 from: string;
                 to: string;
                 roomId?: string;
+                /** @description Coordinator only. Include cancelled placements for audit history; they do not occupy beds. */
+                includeCancelled?: "true" | "false";
             };
             header?: never;
             path?: never;
@@ -5117,7 +5176,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ExpectedVersion"];
+                "application/json": components["schemas"]["CancelPlacement"];
             };
         };
         responses: {
@@ -6056,6 +6115,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    GET_placements_id_history: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlacementHistoryPage"];
                 };
             };
             /** @description Unauthenticated. */

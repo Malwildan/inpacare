@@ -10,11 +10,11 @@ import FormSelect from '$lib/shared/ui/form-select.svelte';
 import { Textarea } from '$lib/shared/ui/textarea/index.js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
 import { invalidateAll, goto } from '$app/navigation';
-import type { Placements, CalendarPageData, Placement } from '$lib/features/placements';
+import type { Placements, CalendarPageData, Placement, PlacementHistory } from '$lib/features/placements';
 import { todayJakarta } from '$lib/features/placements';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
-import { ArrowLeft, Ban, CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Save, X } from 'lucide-svelte';
+import { ArrowLeft, Ban, CalendarDays, ChevronLeft, ChevronRight, History, Pencil, Plus, Save, X } from 'lucide-svelte';
 let { data, placementService }: {
     data: CalendarPageData;
     placementService: Placements;
@@ -23,6 +23,10 @@ let roomFilter = $state('');
 let placing = $state(false);
 let editingPlacement = $state<Placement | null>(null);
 let cancelling = $state<Placement | null>(null);
+let cancelReason = $state('');
+let historyPlacement = $state<Placement | null>(null);
+let history = $state<PlacementHistory[]>([]);
+let canManage = $derived(data.user.role === 'PERAWAT' && data.user.coordinator);
 let busy = $state(false);
 let rooms = $derived(data.rooms.filter((room) => !roomFilter || room.id === roomFilter));
 let dates = $derived(Array.from({ length: 7 }, (_, i) => {
@@ -33,7 +37,7 @@ let dates = $derived(Array.from({ length: 7 }, (_, i) => {
 const iso = (date: Date) => date.toISOString().slice(0, 10);
 const dayLabel = (date: Date) => new Intl.DateTimeFormat('id-ID', { weekday: 'short', timeZone: 'UTC' }).format(date);
 const titleDate = (date: Date) => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(date);
-const dayPlacements = (roomId: string, day: Date) => data.placements.filter((p) => p.roomId === roomId && p.startsOn <= iso(day) && p.endsOn >= iso(day));
+const dayPlacements = (roomId: string, day: Date) => data.placements.filter((p) => p.status === 'active' && p.roomId === roomId && p.startsOn <= iso(day) && p.endsOn >= iso(day));
 async function moveWeek(delta: number) {
     const next = new Date(data.from + 'T00:00:00Z');
     next.setUTCDate(next.getUTCDate() + delta * 7);
@@ -77,9 +81,25 @@ async function mutatePlacement(operation: () => Promise<unknown>) {
 }
 async function cancelPlacement(p: Placement) {
     if (busy) return;
-    if (await mutatePlacement(() => placementService.cancel(p.id, { expectedVersion: p.version }))) cancelling = null;
+    if (await mutatePlacement(() => placementService.cancel(p.id, { expectedVersion: p.version, reason: cancelReason }))) {
+        cancelling = null;
+        await showHistory(p);
+    }
 }
-async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefault(); const f = new FormData(event.currentTarget as HTMLFormElement); await mutatePlacement(() => placementService.update(p.id, { patientId: p.patientId, roomId: p.roomId, startsOn: formText(f, 'startsOn'), endsOn: formText(f, 'endsOn'), expectedVersion: p.version })); }
+async function reschedule(event: SubmitEvent, p: Placement) {
+    event.preventDefault();
+    const f = new FormData(event.currentTarget as HTMLFormElement);
+    await mutatePlacement(() => placementService.update(p.id, { patientId: p.patientId, roomId: formText(f, 'roomId'), startsOn: formText(f, 'startsOn'), endsOn: formText(f, 'endsOn'), expectedVersion: p.version, reason: formText(f, 'reason') }));
+}
+async function showHistory(p: Placement) {
+    if (busy) return;
+    busy = true;
+    try { history = await placementService.history(p.id); historyPlacement = p; }
+    catch (e) { toast.error(sessionFailure(e)); }
+    finally { busy = false; }
+}
+const roomLabel = (id: string) => data.rooms.find(room => room.id === id)?.name ?? id;
+const historyDate = (value: string) => new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' }).format(new Date(value));
 </script>
 
 <svelte:head><title>Kalender Ruangan | InpaCare</title></svelte:head>
@@ -88,6 +108,7 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 	<div><h1 class="page-title">Kalender Ruangan</h1><p class="page-subtitle">Pantau ketersediaan dan durasi rawat inap setiap pasien.</p></div>
 	{#if data.user.role === 'PERAWAT'}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={() => { placing=!placing; }}><Plus size={16} aria-hidden="true"/> Tempatkan pasien</Button>{/if}
 </section>
+{#if data.user.role === 'PERAWAT' && !canManage}<p class="text-sm text-muted-foreground">Anda dapat membuat penempatan awal. Hubungi koordinator untuk mengubah jadwal, memindahkan ruang, atau membatalkan penempatan.</p>{/if}
 
 <Card class="gap-4 p-5 sm:p-6 ">
 	<div class="filters">
@@ -120,7 +141,25 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 	<div class="legend"><span><i class="dot available-dot"></i>Tersedia</span><span><i class="dot occupied-dot"></i>Terisi</span><span><i class="dot maintenance-dot"></i>Dalam pemeliharaan</span></div>
 	<p class="footnote">Rentang tanggal bersifat inklusif. Penempatan baru divalidasi kembali terhadap kapasitas dan jadwal pasien ketika disimpan.</p>
 </Card>
-{#if data.user?.role==='PERAWAT'}<Card class="gap-4 p-5 sm:p-6 placement-list"><div class="panel-header"><div><h2>Kelola penempatan</h2><p class="muted">Jadwal aktif dapat diubah atau dibatalkan. Pembatalan ditolak bila masih memiliki dependensi.</p></div></div><div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Pasien</TableHead><TableHead>Ruangan</TableHead><TableHead>Periode</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader><TableBody>{#each data.placements as placement (placement.id)}<TableRow><TableCell><strong>{placement.patientName}</strong><span class="cell-meta">{placement.medicalRecordNo}</span></TableCell><TableCell>{placement.roomName}</TableCell><TableCell>{placement.startsOn} – {placement.endsOn}</TableCell><TableCell><div class="action-buttons action-buttons--table"><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={()=>editingPlacement=placement}><Pencil aria-hidden="true" /> Ubah tanggal</Button><Button variant="destructive" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||placement.status!=='active'} onclick={()=>{ cancelling=placement; }}><Ban aria-hidden="true" /> Batalkan</Button></div></TableCell></TableRow>{:else}<TableRow><TableCell colspan={4} class="empty">Tidak ada penempatan di rentang minggu ini.</TableCell></TableRow>{/each}</TableBody></Table></div></Card>{/if}
+{#if canManage}
+<Card class="gap-4 p-5 sm:p-6 placement-list">
+    <div class="panel-header"><div><h2>Kelola penempatan</h2><p class="muted">Perubahan dan pembatalan memerlukan alasan. Periode yang terkait siklus mengikuti keputusan dokter; perpindahan ruang tidak boleh memutus tugas yang tersimpan.</p></div></div>
+    <div class="table-wrap"><Table class="data-table">
+        <TableHeader><TableRow><TableHead>Pasien</TableHead><TableHead>Ruangan</TableHead><TableHead>Periode</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader>
+        <TableBody>{#each data.placements as placement (placement.id)}
+            <TableRow>
+                <TableCell><strong>{placement.patientName}</strong><span class="cell-meta">{placement.medicalRecordNo} · {placement.status === 'active' ? 'Aktif' : 'Dibatalkan'}</span></TableCell>
+                <TableCell>{placement.roomName}</TableCell><TableCell>{placement.startsOn} – {placement.endsOn}</TableCell>
+                <TableCell><div class="action-buttons action-buttons--table">
+                    <Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || placement.status !== 'active'} aria-haspopup="dialog" onclick={() => editingPlacement = placement}><Pencil aria-hidden="true" /> Ubah penempatan</Button>
+                    <Button variant="destructive" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || placement.status !== 'active'} aria-haspopup="dialog" onclick={() => { cancelling = placement; cancelReason = ''; }}><Ban aria-hidden="true" /> Batalkan</Button>
+                    <Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" disabled={busy} aria-haspopup="dialog" onclick={() => void showHistory(placement)}><History aria-hidden="true" /> Riwayat</Button>
+                </div></TableCell>
+            </TableRow>
+        {:else}<TableRow><TableCell colspan={4} class="empty">Tidak ada penempatan di rentang minggu ini.</TableCell></TableRow>{/each}</TableBody>
+    </Table></div>
+</Card>
+{/if}
 </div>
 {#if placing && data.user.role === 'PERAWAT'}<Modal title="Penempatan pasien" description="Pilih pasien, ruangan, dan periode rawat inap. Ketersediaan diperiksa saat disimpan." {busy} protectChanges onclose={() => placing = false}>
 {#snippet children(close)}
@@ -133,17 +172,43 @@ async function reschedule(event: SubmitEvent, p: Placement) { event.preventDefau
 	</form>
 {/snippet}</Modal>{/if}
 
-{#if editingPlacement}<Modal title="Ubah tanggal penempatan" description="Perbarui periode rawat inap pasien. Ketersediaan diperiksa saat disimpan." {busy} protectChanges onclose={() => editingPlacement = null}>
-{#snippet children(close)}<form class="form-grid" onsubmit={(event)=>editingPlacement && reschedule(event,editingPlacement)}><label class="field">Pasien<Input class="h-11 text-base md:text-sm" value={editingPlacement!.patientName} disabled/></label><label class="field">Ruangan<Input class="h-11 text-base md:text-sm" value={editingPlacement!.roomName} disabled/></label><label class="field">Tanggal masuk<FormDatePicker class="h-11 text-base md:text-sm" name="startsOn" type="date" value={editingPlacement!.startsOn} required/></label><label class="field">Tanggal keluar<FormDatePicker class="h-11 text-base md:text-sm" name="endsOn" type="date" value={editingPlacement!.endsOn} required/></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan jadwal</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={close}><X aria-hidden="true" /> Batal</Button></div></form>{/snippet}</Modal>{/if}
-<AlertDialog.Root open={cancelling !== null} onOpenChange={(open) => { if (!open && !busy) cancelling = null; }}>
+{#if editingPlacement && canManage}{@const placement = editingPlacement}<Modal title="Ubah penempatan" description="Pilih ruangan dan periode. Perubahan tanggal yang terkait siklus harus mengikuti keputusan dokter." {busy} protectChanges onclose={() => editingPlacement = null}>
+{#snippet children(close)}
+    <form class="form-grid" onsubmit={(event) => reschedule(event, placement)}>
+        <label class="field">Pasien<Input class="h-11 text-base md:text-sm" value={placement.patientName} disabled /></label>
+        <label class="field">Ruangan<FormSelect name="roomId" value={placement.roomId} required options={data.rooms.filter(room => room.status === 'available' || room.id === placement.roomId).map(room => ({ value: room.id, label: room.name + ' \u00b7 ' + room.roomClass }))} /></label>
+        <label class="field">Tanggal masuk<FormDatePicker name="startsOn" value={placement.startsOn} required /></label>
+        <label class="field">Tanggal keluar<FormDatePicker name="endsOn" value={placement.endsOn} required /></label>
+        <label class="field sm:col-span-2">Alasan perubahan<Textarea name="reason" required maxlength={2000} /></label>
+        <div class="form-actions"><Button type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> Simpan penempatan</Button><Button variant="outline" class="h-11 px-4" type="button" onclick={close}><X aria-hidden="true" /> Batal</Button></div>
+    </form>
+{/snippet}</Modal>{/if}
+{#if historyPlacement && canManage}<Modal title="Riwayat penempatan" description={historyPlacement.patientName + ' \u00b7 ' + historyPlacement.roomName} onclose={() => historyPlacement = null}>
+{#snippet children(close)}
+    <div class="grid gap-5">
+        {#each history as item (item.id)}
+            <article class="grid min-w-0 gap-3 border-b pb-5 last:border-0 last:pb-0">
+                <div><h3 class="text-base font-semibold">{item.action === 'cancelled' ? 'Pembatalan' : 'Perubahan'} oleh {item.actorName}</h3><p class="text-sm text-muted-foreground">{historyDate(item.createdAt)} WIB</p></div>
+                <p class="wrap-anywhere whitespace-pre-wrap">{item.reason}</p>
+                <dl class="grid min-w-0 gap-2 text-sm">
+                    <dt class="font-semibold">Sebelum</dt><dd class="wrap-anywhere">{roomLabel(item.before.room_id)} · {item.before.starts_on} – {item.before.ends_on} · {item.before.status === 'active' ? 'Aktif' : 'Dibatalkan'} · versi {item.before.version}</dd>
+                    <dt class="font-semibold">Sesudah</dt><dd class="wrap-anywhere">{roomLabel(item.after.room_id)} · {item.after.starts_on} – {item.after.ends_on} · {item.after.status === 'active' ? 'Aktif' : 'Dibatalkan'} · versi {item.after.version}</dd>
+                </dl>
+            </article>
+        {:else}<p class="text-muted-foreground">Belum ada perubahan penempatan yang tercatat.</p>{/each}
+        <div class="form-actions"><Button variant="outline" class="h-11 px-4" onclick={close}><X aria-hidden="true" /> Tutup riwayat</Button></div>
+    </div>
+{/snippet}</Modal>{/if}
+<AlertDialog.Root open={canManage && cancelling !== null} onOpenChange={(open) => { if (!open && !busy) cancelling = null; }}>
     <AlertDialog.Content onEscapeKeydown={(event) => { if (busy) event.preventDefault(); }}>
         <AlertDialog.Header>
             <AlertDialog.Title>Batalkan penempatan?</AlertDialog.Title>
             <AlertDialog.Description>Batalkan penempatan {cancelling?.patientName} di {cancelling?.roomName}? Ketergantungan dan versi data akan diperiksa saat disimpan.</AlertDialog.Description>
         </AlertDialog.Header>
+        <label class="field">Alasan pembatalan<Textarea bind:value={cancelReason} required maxlength={2000} disabled={busy} /></label>
         <AlertDialog.Footer>
             <AlertDialog.Cancel disabled={busy}><ArrowLeft aria-hidden="true" /> Kembali</AlertDialog.Cancel>
-            <AlertDialog.Action disabled={busy} variant="destructive" onclick={(event) => { event.preventDefault(); if (cancelling) void cancelPlacement(cancelling); }}>
+            <AlertDialog.Action disabled={busy || !cancelReason.trim()} variant="destructive" onclick={(event) => { event.preventDefault(); if (cancelling) void cancelPlacement(cancelling); }}>
                 <Ban aria-hidden="true" /> {busy ? 'Membatalkan…' : 'Konfirmasi pembatalan'}
             </AlertDialog.Action>
         </AlertDialog.Footer>

@@ -66,6 +66,7 @@ test('creation rejects invalid roles, doctor, and ambiguous placement input befo
 test('new placement uses the shared capacity and date rules before creating a cycle', async () => {
   const { useCases, calls } = service({}, {
     patientExistsForUpdate: async () => true,
+    canPlacePatient: async () => true,
     roomForCreate: async () => ({ id: 'room', capacity: 1, status: 'available' }),
     patientOverlap: async () => false,
     peakOccupancy: async () => 1,

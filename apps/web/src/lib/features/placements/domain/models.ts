@@ -8,7 +8,7 @@ export type Placement = {
     roomClass: string;
     startsOn: string;
     endsOn: string;
-    status: "active";
+    status: "active" | "cancelled";
     version: number;
 };
 export type NewPlacement = {
@@ -23,7 +23,28 @@ export type UpdatePlacement = {
     startsOn: string;
     endsOn: string;
     expectedVersion: number;
+    reason: string;
 };
-export type ExpectedVersion = {
+export type CancelPlacement = {
     expectedVersion: number;
+    reason: string;
+};
+export type PlacementSnapshot = {
+    id: string;
+    patient_id: string;
+    room_id: string;
+    starts_on: string;
+    ends_on: string;
+    status: string;
+    version: number;
+};
+export type PlacementHistory = {
+    id: string;
+    actorId: string;
+    actorName: string;
+    action: 'updated' | 'cancelled';
+    reason: string;
+    before: PlacementSnapshot;
+    after: PlacementSnapshot;
+    createdAt: string;
 };

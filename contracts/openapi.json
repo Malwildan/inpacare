@@ -1500,6 +1500,19 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "includeCancelled",
+            "in": "query",
+            "required": false,
+            "description": "Coordinator only. Include cancelled placements for audit history; they do not occupy beds.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
           }
         ],
         "responses": {
@@ -1678,7 +1691,7 @@
         "x-required-roles": [
           "PERAWAT"
         ],
-        "description": "Patient then room lock; checks maintenance, duplicate patient overlaps and daily peak capacity. No cancel or move endpoint.",
+        "description": "Nurses, including coordinators, create an initial placement for an accessible patient. Patient then room lock; checks maintenance, duplicate patient overlaps and daily peak capacity.",
         "security": [
           {
             "SessionCookie": [],
@@ -5046,7 +5059,9 @@
         ],
         "x-controller-roles": [
           "PERAWAT"
-        ]
+        ],
+        "description": "Coordinator only. Requires a reason and expectedVersion. Cycle-linked periods must follow doctor approval; room moves must preserve task dependencies. History is committed atomically with the change.",
+        "x-coordinator-only": true
       },
       "delete": {
         "operationId": "DELETE_placements_id",
@@ -5142,7 +5157,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ExpectedVersion"
+                "$ref": "#/components/schemas/CancelPlacement"
               }
             }
           }
@@ -5155,7 +5170,9 @@
         ],
         "x-controller-roles": [
           "PERAWAT"
-        ]
+        ],
+        "description": "Coordinator only. Requires a reason and expectedVersion; active cycles or tasks block cancellation. History is committed atomically with the change.",
+        "x-coordinator-only": true
       }
     },
     "/api/v1/medical-records/{id}/observations/{observationId}": {
@@ -6357,6 +6374,111 @@
           "PERAWAT"
         ]
       }
+    },
+    "/api/v1/placements/{id}/history": {
+      "get": {
+        "operationId": "GET_placements_id_history",
+        "summary": "Read placement changes and cancellations",
+        "tags": [
+          "Placements"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlacementHistoryPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "PERAWAT"
+        ],
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-controller-roles": [
+          "PERAWAT"
+        ],
+        "description": "Coordinator only. Includes actor, time, reason and before/after values, including cancelled placements.",
+        "x-coordinator-only": true
+      }
     }
   },
   "components": {
@@ -6699,7 +6821,11 @@
             "format": "date"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "active",
+              "cancelled"
+            ]
           },
           "version": {
             "type": "integer",
@@ -8260,8 +8386,12 @@
           },
           "newPlacement": {
             "oneOf": [
-              { "$ref": "#/components/schemas/CyclePlacement" },
-              { "type": "null" }
+              {
+                "$ref": "#/components/schemas/CyclePlacement"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "requestId": {
@@ -8279,11 +8409,27 @@
       "CyclePlacement": {
         "type": "object",
         "properties": {
-          "roomId": { "type": "string", "minLength": 1, "maxLength": 36 },
-          "startsOn": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
-          "endsOn": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+          "roomId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "endsOn": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          }
         },
-        "required": ["roomId", "startsOn", "endsOn"],
+        "required": [
+          "roomId",
+          "startsOn",
+          "endsOn"
+        ],
         "additionalProperties": false
       },
       "ChangeCycleStatus": {
@@ -8662,7 +8808,10 @@
           },
           "status": {
             "type": "string",
-            "enum": ["pending", "assigned"]
+            "enum": [
+              "pending",
+              "assigned"
+            ]
           },
           "version": {
             "type": "integer"
@@ -9078,6 +9227,12 @@
           "expectedVersion": {
             "type": "integer",
             "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "\\S"
           }
         },
         "required": [
@@ -9085,7 +9240,8 @@
           "roomId",
           "startsOn",
           "endsOn",
-          "expectedVersion"
+          "expectedVersion",
+          "reason"
         ],
         "additionalProperties": false
       },
@@ -10054,6 +10210,132 @@
         ],
         "additionalProperties": false,
         "description": "New patient identity. The server assigns a unique medicalRecordNo when registration succeeds; clients must not supply it."
+      },
+      "CancelPlacement": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "\\S"
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "PlacementSnapshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "patient_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "starts_on": {
+            "type": "string"
+          },
+          "ends_on": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "room_id",
+          "starts_on",
+          "ends_on",
+          "status",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "PlacementHistory": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "actorId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "actorName": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "updated",
+              "cancelled"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "\\S"
+          },
+          "before": {
+            "$ref": "#/components/schemas/PlacementSnapshot"
+          },
+          "after": {
+            "$ref": "#/components/schemas/PlacementSnapshot"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "actorId",
+          "actorName",
+          "action",
+          "reason",
+          "before",
+          "after",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "PlacementHistoryPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlacementHistory"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "additionalProperties": false
       }
     }
   }
