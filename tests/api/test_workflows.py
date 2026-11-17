@@ -315,13 +315,13 @@ class Workflows(unittest.TestCase):
 
     def test_room_item_cost_is_computed_from_server_prices(self) -> None:
         name = f"QA-{self.tag}"
-        status, room = self.dina.request("POST", "/rooms", {
+        status, room = self.rina.request("POST", "/rooms", {
             "name": name, "roomClass": "Kelas uji", "capacity": 2, "status": "available",
             "picId": "USR-NURSE-1", "dailyRate": "125000.50",
         })
         self.assertIn(status, (200, 201), room)
         room_id = room["id"]
-        status, updated = self.dina.request("POST", f"/rooms/{room_id}/items", {
+        status, updated = self.rina.request("POST", f"/rooms/{room_id}/items", {
             "name": "Perangkat uji", "category": "Peralatan", "quantity": 3, "unitPrice": "125000.25",
         })
         self.assertIn(status, (200, 201), updated)
@@ -333,7 +333,7 @@ class Workflows(unittest.TestCase):
         }), 403, "FORBIDDEN")
 
     def test_placement_range_capacity_and_concurrent_admissions(self) -> None:
-        status, room = self.dina.request("POST", "/rooms", {
+        status, room = self.rina.request("POST", "/rooms", {
             "name": f"QA capacity {self.tag}", "roomClass": "Kapasitas uji", "capacity": 1,
             "status": "available", "dailyRate": "0",
         })

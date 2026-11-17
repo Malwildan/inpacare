@@ -49,37 +49,45 @@ export class RuangInapController {
   @Patch(":id")
   @Roles("PERAWAT")
   updateRuangInap(
+    @CurrentActor()
+    actor: Actor,
     @Param("id")
     id: string,
     @Body()
     dto: UpdateRoomDto,
   ) {
-    return this.rooms.update(id, dto);
+    return this.rooms.update(actor, id, dto);
   }
   @Delete(":id")
   @Roles("PERAWAT")
   hapusRuangInap(
+    @CurrentActor()
+    actor: Actor,
     @Param("id")
     id: string,
     @Body()
     dto: RoomVersionDto,
   ) {
-    return this.rooms.deleteRoom(id, dto);
+    return this.rooms.deleteRoom(actor, id, dto);
   }
   @Post(":id/items")
   @HttpCode(200)
   @Roles("PERAWAT")
   tambahItem(
+    @CurrentActor()
+    actor: Actor,
     @Param("id")
     id: string,
     @Body()
     dto: CreateRoomItemDto,
   ) {
-    return this.rooms.addItem(id, dto);
+    return this.rooms.addItem(actor, id, dto);
   }
   @Patch(":id/items/:itemId")
   @Roles("PERAWAT")
   updateItem(
+    @CurrentActor()
+    actor: Actor,
     @Param("id")
     id: string,
     @Param("itemId")
@@ -87,11 +95,13 @@ export class RuangInapController {
     @Body()
     dto: UpdateRoomItemDto,
   ) {
-    return this.rooms.updateItem(id, itemId, dto);
+    return this.rooms.updateItem(actor, id, itemId, dto);
   }
   @Delete(":id/items/:itemId")
   @Roles("PERAWAT")
   hapusItem(
+    @CurrentActor()
+    actor: Actor,
     @Param("id")
     id: string,
     @Param("itemId")
@@ -99,6 +109,6 @@ export class RuangInapController {
     @Body()
     dto: DeleteRoomItemDto,
   ) {
-    return this.rooms.deleteItem(id, itemId, dto);
+    return this.rooms.deleteItem(actor, id, itemId, dto);
   }
 }

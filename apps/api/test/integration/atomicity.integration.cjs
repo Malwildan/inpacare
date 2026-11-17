@@ -155,7 +155,7 @@ test("new room IDs continue RG numbering and preserve legacy identifiers", { ski
   assert.equal(next.id, "RG-010");
   assert.equal((await useCases.rooms.detail(legacyId)).id, legacyId);
 
-  await useCases.rooms.deleteRoom(next.id, { expectedVersion: next.version });
+  await useCases.rooms.deleteRoom(nurse, next.id, { expectedVersion: next.version });
   const afterArchive = await useCases.rooms.create(nurse, { ...input, name: "Numbered room after archive" });
   assert.equal(afterArchive.id, "RG-011", "archiving a room must not recycle its identifier");
 });
@@ -249,7 +249,7 @@ test("room edits save while preserving peak capacity and version checks", { skip
     dailyRate: "125.50",
     expectedVersion: room.version,
   };
-  const saved = await useCases.rooms.update(room.id, input);
+  const saved = await useCases.rooms.update(nurse, room.id, input);
   assert.equal(saved.name, input.name);
   assert.equal(saved.roomClass, input.roomClass);
   assert.equal(saved.picId, null);
@@ -273,14 +273,14 @@ test("room edits save while preserving peak capacity and version checks", { skip
     );
   }
   await assert.rejects(
-    useCases.rooms.update(room.id, { ...input, capacity: 1, expectedVersion: saved.version }),
+    useCases.rooms.update(nurse, room.id, { ...input, capacity: 1, expectedVersion: saved.version }),
     error => error.code === "CONFLICT" && /Kapasitas/.test(error.message),
   );
-  const resized = await useCases.rooms.update(room.id, { ...input, capacity: 2, expectedVersion: saved.version });
+  const resized = await useCases.rooms.update(nurse, room.id, { ...input, capacity: 2, expectedVersion: saved.version });
   assert.equal(resized.capacity, 2);
   assert.equal(resized.version, saved.version + 1);
   await assert.rejects(
-    useCases.rooms.update(room.id, { ...input, expectedVersion: saved.version }),
+    useCases.rooms.update(nurse, room.id, { ...input, expectedVersion: saved.version }),
     error => error.code === "CONFLICT" && /berubah/.test(error.message),
   );
   assert.equal((await useCases.rooms.detail(room.id)).version, resized.version);
