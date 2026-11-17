@@ -22,6 +22,22 @@ export type BillingPageData = {
     user: User;
     reference: Reference;
 };
+export function draftRoomLines(
+    placement: PatientInvoiceContext['placements'][number] | undefined,
+    rooms: ReadonlyArray<Pick<Room, 'id' | 'name' | 'dailyRate'>>
+): NewInvoice['lines'] {
+    if (!placement || placement.status === 'cancelled') return [];
+    const room = rooms.find((item) => item.id === placement.roomId);
+    if (!room) return [];
+    // Placement calendars include both the arrival and departure dates.
+    const days = (Date.parse(`${placement.endsOn}T00:00:00Z`) - Date.parse(`${placement.startsOn}T00:00:00Z`)) / 86_400_000 + 1;
+    if (!Number.isInteger(days) || days < 1) return [];
+    return [{
+        kind: 'room', roomItemId: null,
+        description: `Kamar ${room.name} (hari)`.slice(0, 160),
+        quantity: days, unitPrice: room.dailyRate
+    }];
+}
 export function createBillingUseCases(repository: BillingRepository) {
     return { ...repository, async openInvoice(id: string): Promise<SelectedInvoice> {
             const invoice = await repository.detail(id);
