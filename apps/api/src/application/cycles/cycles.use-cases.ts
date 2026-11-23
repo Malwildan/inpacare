@@ -4,7 +4,7 @@ import { DomainError } from "../../domain/shared/domain-error";
 import { cycleTransitionAllowed } from "../../domain/cycles/cycle-transition";
 import { id, today } from "../shared/runtime";
 import { UnitOfWork } from "../shared/unit-of-work.port";
-import { CycleStore, CycleListFilters, CreatedCycle } from "./cycle-store.port";
+import { CycleStore, CycleListFilters, CreatedCycle, ReleaseBlockingTask } from "./cycle-store.port";
 import { createPlacement, CreatePlacementInput } from "../placements/assign-ruangan.use-cases";
 export interface CreateCycleInput {
   patientId: string;
@@ -46,6 +46,8 @@ const releasePrerequisites = {
   placement_not_started: () => DomainError.conflict("Penempatan belum dimulai. Periksa tanggal masuk sebelum melanjutkan pelepasan."),
   room_unavailable: () => DomainError.conflict("Ruang tidak menerima perubahan penempatan."),
 };
+const releaseTasksBlockApproval = () =>
+  DomainError.conflict("Masih ada tugas yang menghalangi pelepasan. Periksa kesiapan pelepasan untuk melihat tugasnya.");
 
 async function checkRelease(store: CycleStore, status: string, placementId: string | null, date: string) {
   type Prerequisite = keyof typeof releasePrerequisites;
@@ -72,8 +74,36 @@ async function checkRelease(store: CycleStore, status: string, placementId: stri
 async function requireReleaseReady(store: CycleStore, status: string, placementId: string, date: string) {
   const { prerequisite, tasks } = await checkRelease(store, status, placementId, date);
   if (prerequisite) throw releasePrerequisites[prerequisite]();
-  if (tasks.length)
-    throw DomainError.conflict("Masih ada tugas yang menghalangi pelepasan. Periksa kesiapan pelepasan untuk melihat tugasnya.");
+  if (tasks.length) throw releaseTasksBlockApproval();
+}
+
+async function checkExtension(
+  store: CycleStore,
+  patientId: string,
+  status: string,
+  placementId: string | null,
+  roomId: string | null,
+  requestedEnd: string | null,
+) {
+  if (!placementId) return releasePrerequisites.placement_missing();
+  if (!requestsAllowed(status))
+    return DomainError.conflict("Perpanjangan hanya dapat disetujui untuk rekap yang sedang dalam perawatan.");
+  if (!roomId) return DomainError.conflict("Penempatan tidak lagi tersedia.");
+  const room = await store.roomStatusCapacity(roomId);
+  if (!room) return DomainError.conflict("Ruang tidak lagi tersedia.");
+  if (room.status !== "available") return releasePrerequisites.room_unavailable();
+  const placement = await store.placementDates(placementId);
+  if (!placement || placement.status !== "active") return releasePrerequisites.placement_inactive();
+  if (!requestedEnd) return DomainError.validation("Isi tanggal baru hanya untuk permintaan perpanjangan.");
+  const dates = await store.extensionDateCheck(requestedEnd, placement.ends_on, placement.starts_on);
+  if (dates.invalid)
+    return DomainError.validation("Tanggal selesai baru harus setelah tanggal selesai saat ini. Pilih tanggal yang lebih akhir.");
+  if (dates.too_long)
+    return DomainError.validation("Rentang penempatan melebihi 366 hari. Pilih tanggal selesai yang lebih dekat.");
+  if (await store.extensionOverlap(patientId, placementId, requestedEnd, placement.ends_on))
+    return DomainError.conflict("Pasien memiliki penempatan lain pada tanggal perpanjangan.");
+  if ((await store.extensionOccupancy(roomId, placement.ends_on, requestedEnd, placementId)) >= Number(room.capacity))
+    return DomainError.conflict("Ruang penuh pada tanggal perpanjangan. Periksa kapasitas sebelum memutuskan permintaan.");
 }
 
 export class CyclesUseCases {
@@ -127,6 +157,56 @@ export class CyclesUseCases {
     const item = await this.store.requestDetail(cycleId, requestId);
     if (!item) throw DomainError.notFound();
     return item;
+  }
+  async reviewRequest(actor: Actor, cycleId: string, requestId: string) {
+    if (actor.role !== "DOKTER") throw DomainError.forbidden();
+    return this.uow.run(async ({ cycles, medicalRecords }) => {
+      const cycle = await cycles.detail(actor, cycleId);
+      if (!cycle) throw DomainError.notFound();
+      const request = await cycles.requestDetail(cycleId, requestId);
+      if (!request) throw DomainError.notFound();
+      const { patientId, patientName, medicalRecordNo, status, version, placementId, room } = cycle;
+      const placementRow = placementId ? await cycles.placementDates(placementId) : undefined;
+      const placement = placementRow && placementId ? {
+        id: placementId,
+        room,
+        startsOn: placementRow.starts_on,
+        endsOn: placementRow.ends_on,
+        status: placementRow.status,
+      } : null;
+      const reviewDate = today();
+      let approvalBlocker: string | null = null;
+      let blockingTasks: Omit<ReleaseBlockingTask, "picId">[] = [];
+      if (request.status === "pending") {
+        if (request.kind === "release") {
+          const readiness = await checkRelease(cycles, status, placementId, reviewDate);
+          blockingTasks = readiness.tasks.map(({ picId: _picId, ...task }) => task);
+          if (readiness.prerequisite)
+            approvalBlocker = releasePrerequisites[readiness.prerequisite]().message;
+          else if (blockingTasks.length)
+            approvalBlocker = releaseTasksBlockApproval().message;
+        } else {
+          const roomId = placementId ? await cycles.roomForPlacement(placementId) : undefined;
+          approvalBlocker = (await checkExtension(cycles, patientId, status, placementId, roomId ?? null, request.requestedEnd))?.message ?? null;
+        }
+      }
+      const recentLimit = 5;
+      const { items: records } = await medicalRecords.list(actor, { patientId, limit: recentLimit });
+      const observations = await medicalRecords.listObservations(actor, { cycleId, patientId }, recentLimit);
+      // Verify disclosure scope after assembling the clinical and operational context.
+      const current = await cycles.decisionSeed(cycleId, requestId);
+      if (current?.doctor_id !== actor.id) throw DomainError.notFound();
+      return {
+        cycle: { id: cycleId, patientId, patientName, medicalRecordNo, status, version },
+        request,
+        placement,
+        records,
+        observations,
+        approvalBlocker,
+        blockingTasks,
+        reviewDate,
+      };
+    });
   }
   async creationCandidates(actor: Actor) {
     if (actor.role !== "PERAWAT") throw DomainError.forbidden();
@@ -396,71 +476,24 @@ export class CyclesUseCases {
       }
       if (seed.placement_id) await tx.cycles.lockPlacement(seed.placement_id);
       const cycle = await tx.cycles.lockCycle(cycleId);
-      if (!cycle) throw DomainError.notFound();
+      if (!cycle || cycle.doctor_id !== actor.id) throw DomainError.notFound();
       const req = await tx.cycles.lockRequest(cycleId, requestId);
       if (!req || req.status !== "pending") throw DomainError.notFound();
       if (Number(cycle.version) !== input.expectedVersion)
         throw DomainError.conflict();
+      if (cycle.placement_id !== seed.placement_id) throw DomainError.conflict();
       const beforeStatus = cycle.status;
       if (input.decision === "approve") {
-        if (!seed.placement_id)
-          throw DomainError.conflict("Rekap belum memiliki penempatan. Periksa detail rekap sebelum melanjutkan permintaan.");
-        if (seed.kind === "release") {
+        if (!cycle.placement_id) throw releasePrerequisites.placement_missing();
+        if (req.kind === "release") {
           const releaseDate = today();
-          await requireReleaseReady(tx.cycles, cycle.status, seed.placement_id, releaseDate);
-          await tx.cycles.releasePlacement(seed.placement_id, releaseDate);
+          await requireReleaseReady(tx.cycles, cycle.status, cycle.placement_id, releaseDate);
+          await tx.cycles.releasePlacement(cycle.placement_id, releaseDate);
           await tx.cycles.setCycleStatus(cycleId, "released");
         } else {
-          if (!roomId)
-            throw DomainError.conflict("Penempatan tidak lagi tersedia.");
-          const room = await tx.cycles.roomStatusCapacity(roomId);
-          if (!room) throw DomainError.conflict("Ruang tidak lagi tersedia.");
-          if (room.status !== "available")
-            throw DomainError.conflict(
-              "Ruang tidak menerima perubahan penempatan.",
-            );
-          const placement = await tx.cycles.placementDates(seed.placement_id);
-          if (!placement || placement.status !== "active")
-            throw DomainError.conflict("Penempatan sudah tidak aktif. Periksa kembali penempatan pasien.");
-          const dates = await tx.cycles.extensionDateCheck(
-            seed.requested_end!,
-            placement.ends_on,
-            placement.starts_on,
-          );
-          if (dates.invalid)
-            throw DomainError.validation(
-              "Tanggal selesai baru harus setelah tanggal selesai saat ini. Pilih tanggal yang lebih akhir.",
-            );
-          if (dates.too_long)
-            throw DomainError.validation(
-              "Rentang penempatan melebihi 366 hari. Pilih tanggal selesai yang lebih dekat.",
-            );
-          if (
-            await tx.cycles.extensionOverlap(
-              seed.patient_id,
-              seed.placement_id,
-              seed.requested_end!,
-              placement.ends_on,
-            )
-          )
-            throw DomainError.conflict(
-              "Pasien memiliki penempatan lain pada tanggal perpanjangan.",
-            );
-          if (
-            (await tx.cycles.extensionOccupancy(
-              roomId,
-              placement.ends_on,
-              seed.requested_end!,
-              seed.placement_id,
-            )) >= Number(room.capacity)
-          )
-            throw DomainError.conflict(
-              "Ruang penuh pada tanggal perpanjangan. Periksa kapasitas sebelum memutuskan permintaan.",
-            );
-          await tx.cycles.extendPlacement(
-            seed.placement_id,
-            seed.requested_end!,
-          );
+          const blocker = await checkExtension(tx.cycles, seed.patient_id, cycle.status, cycle.placement_id, roomId, req.requested_end);
+          if (blocker) throw blocker;
+          await tx.cycles.extendPlacement(cycle.placement_id, req.requested_end!);
           await tx.cycles.setCycleStatus(cycleId, "extend");
         }
       } else await tx.cycles.incrementCycleVersion(cycleId);
@@ -476,14 +509,14 @@ export class CyclesUseCases {
         nurseId: cycle.nurse_id,
         cycleId,
         requestId,
-        message: `Permintaan ${seed.kind === "extend" ? "perpanjangan" : "pelepasan"} ${input.decision === "approve" ? "disetujui" : "ditolak"}.`,
+        message: `Permintaan ${req.kind === "extend" ? "perpanjangan" : "pelepasan"} ${input.decision === "approve" ? "disetujui" : "ditolak"}.`,
       });
       return {
         ok: true,
         status,
         cycleStatus:
           input.decision === "approve"
-            ? seed.kind === "release"
+            ? req.kind === "release"
               ? "released"
               : "extend"
             : beforeStatus,

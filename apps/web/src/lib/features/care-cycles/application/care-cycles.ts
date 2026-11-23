@@ -1,4 +1,4 @@
-import type { Cycle, CycleSummary, NewCycle, CreatedCycle, ChangeCycle, NewRequest, Decision, DeleteCycle, CycleAssignee, ReassignCycle } from '../domain/models';
+import type { Cycle, CycleSummary, NewCycle, CreatedCycle, ChangeCycle, NewRequest, Decision, DeleteCycle, CycleAssignee, ReassignCycle, CycleRequestReview } from '../domain/models';
 import type { NewObservation, Observation } from '$lib/features/medical-records';
 import type { User } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
@@ -16,6 +16,7 @@ export type CareCycles = {
     reassign(id: string, input: ReassignCycle): Promise<unknown>;
     remove(id: string, input: DeleteCycle): Promise<unknown>;
     request(id: string, input: NewRequest): Promise<unknown>;
+    review(id: string, requestId: string): Promise<CycleRequestReview>;
     decide(id: string, requestId: string, input: Decision): Promise<unknown>;
 };
 export type DashboardData = {

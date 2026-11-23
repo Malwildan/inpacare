@@ -4,6 +4,7 @@ import { isCoordinator } from "../../../../domain/auth/permissions";
 import {
   CycleAssignee,
   CycleDetail,
+  CycleRequestDetail,
   CycleCandidate,
   ReleaseBlockingTask,
   CycleListFilters,
@@ -106,7 +107,7 @@ export class TypeOrmCycleStore implements CycleStore {
     return rows[0]?.item;
   }
   async requestDetail(cycleId: string, requestId: string) {
-    const rows = await this.manager.query(
+    const rows = await this.manager.query<{ item: CycleRequestDetail }[]>(
       `SELECT jsonb_build_object('id',q.id,'cycleId',q.cycle_id,'kind',q.kind,'requestedEnd',q.requested_end,'reason',q.reason,'requestedBy',u.name,'status',q.status,'decidedBy',du.name,'note',q.decision_note,'createdAt',q.created_at,'decidedAt',q.decided_at) AS item FROM cycle_requests q JOIN users u ON u.id=q.requested_by LEFT JOIN users du ON du.id=q.decided_by WHERE q.id=$1 AND q.cycle_id=$2`,
       [requestId, cycleId],
     );
@@ -305,7 +306,7 @@ export class TypeOrmCycleStore implements CycleStore {
   }
   async lockCycle(id: string) {
     const r = await this.manager.query(
-      `SELECT version,status,nurse_id FROM cycles WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`,
+      `SELECT version,status,nurse_id,doctor_id,placement_id FROM cycles WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`,
       [id],
     );
     return r[0];

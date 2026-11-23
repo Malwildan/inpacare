@@ -577,6 +577,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cycles/{id}/requests/{requestId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Baca konteks pengajuan untuk dokter penanggung jawab */
+        get: operations["GET_cycles_id_requests_requestId_review"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invoices/patients/{patientId}/context": {
         parameters: {
             query?: never;
@@ -1072,6 +1089,43 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             decidedAt: string | null;
+        };
+        CycleRequestReview: {
+            cycle: {
+                id: string;
+                patientId: string;
+                patientName: string;
+                medicalRecordNo: string;
+                status: string;
+                version: number;
+            };
+            request: components["schemas"]["CycleRequest"];
+            placement: {
+                id: string;
+                room: string | null;
+                /** Format: date */
+                startsOn: string;
+                /** Format: date */
+                endsOn: string;
+                /** @enum {string} */
+                status: "active" | "cancelled";
+            } | null;
+            records: components["schemas"]["MedicalSummary"][];
+            observations: components["schemas"]["Observation"][];
+            approvalBlocker: string | null;
+            blockingTasks: {
+                id: string;
+                title: string;
+                /** @enum {string} */
+                status: "todo" | "in_progress";
+                picName: string;
+                /** Format: date-time */
+                startsAt: string;
+                /** Format: date-time */
+                endsAt: string;
+            }[];
+            /** Format: date */
+            reviewDate: string;
         };
         Cycle: {
             id: string;
@@ -5795,6 +5849,65 @@ export interface operations {
             };
             /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Layanan mengalami gangguan. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    GET_cycles_id_requests_requestId_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Permintaan berhasil. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleRequestReview"];
+                };
+            };
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

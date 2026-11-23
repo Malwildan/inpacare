@@ -83,7 +83,7 @@ export interface MedicalRecordStore {
   deleteRecord(recordId: string): Promise<void>;
   hasEpisodeClinicalData(cycleId: string): Promise<boolean>;
   episodeForRecordDate(patientId: string, recordDate: string): Promise<string | undefined>;
-  listObservations(actor: Actor, scope: ObservationScope): Promise<Record<string, unknown>[]>;
+  listObservations(actor: Actor, scope: ObservationScope, limit?: number): Promise<Record<string, unknown>[]>;
   completedTaskObservation(taskId: string, completionHash: string): Promise<string | undefined>;
   createObservation(input: {
     taskId?: string;

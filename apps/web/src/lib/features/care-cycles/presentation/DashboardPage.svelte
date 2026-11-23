@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$
 import { goto, invalidateAll } from '$app/navigation';
 import { tick, untrack } from 'svelte';
 import { ApiError, isVersionConflict } from '$lib/shared/errors';
-import type { CareCycles, CycleAssignee, DashboardData, Cycle as CycleDetail, ChangeCycle, NewCycle, NewRequest, Decision } from '$lib/features/care-cycles';
+import type { CareCycles, CycleAssignee, DashboardData, Cycle as CycleDetail, ChangeCycle, NewCycle, NewRequest, Decision, CycleRequestReview as Review } from '$lib/features/care-cycles';
 import type { Tasks } from '$lib/features/tasks';
 import { isUnconfirmedSave, sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
@@ -20,6 +20,7 @@ import { NotificationDialog, type Notifications } from '$lib/features/notificati
 import CycleObservations from './CycleObservations.svelte';
 import CycleTaskForm from './CycleTaskForm.svelte';
 import CycleTasks from './CycleTasks.svelte';
+import CycleRequestReview from './CycleRequestReview.svelte';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
 const statusLabels: Record<string, string> = { pending: 'Menunggu', assigned: 'Sudah ditempatkan', in_care: 'Dalam perawatan', extend: 'Diperpanjang', released: 'Pelepasan' };
 const requestLabels: Record<string, string> = { pending: 'Menunggu keputusan', approved: 'Disetujui', rejected: 'Ditolak' };
@@ -106,11 +107,13 @@ let cycleView = $state<'detail' | 'placement' | 'request' | 'decision' | 'delete
 let taskCandidates = $state<CycleAssignee[]>([]);
 let observationEditing = $state(false);
 let decisionRequestId = $state('');
+let activeReview = $state<Review | null>(null);
+let reviewBody = $state<HTMLDivElement | null>(null);
 let requestKind = $state('release');
 let cycles = $derived(data.cycles);
 let rooms = $derived(data.reference.rooms);
 let counts = $derived(['pending', 'assigned', 'in_care', 'extend', 'released'].map((status) => ({ status, count: data.cycles.filter((c) => c.status === status).length })));
-async function openDetail(id: string) {
+async function openDetail(id: string, requestId?: string) {
     returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     listPosition = { x: window.scrollX, y: window.scrollY, left: cycleTable?.querySelector<HTMLElement>('[data-slot="table-container"]')?.scrollLeft ?? 0 };
     cycleView = 'detail';
@@ -136,6 +139,32 @@ async function openDetail(id: string) {
         if (selectedCycleId === id)
             detailLoading = false;
     }
+    if (requestId && selectedCycle?.id === id) await openReview(id, requestId);
+}
+async function loadReview(cycleId: string, requestId: string) {
+    busy = true;
+    detailError = '';
+    detailSuccess = '';
+    try {
+        activeReview = await careCycles.review(cycleId, requestId);
+        detailNeedsRefresh = false;
+        return true;
+    } catch (cause) {
+        activeReview = null;
+        detailNeedsRefresh = true;
+        detailError = sessionFailure(cause, 'load', 'Pengajuan');
+        return false;
+    } finally {
+        busy = false;
+    }
+}
+async function openReview(cycleId: string, requestId: string) {
+    decisionRequestId = requestId;
+    activeReview = null;
+    await loadReview(cycleId, requestId);
+    cycleView = 'decision';
+    await tick();
+    reviewBody?.querySelector('h3')?.focus();
 }
 async function refreshTaskContext(cycleId: string) {
     const [cycle, candidates] = await Promise.all([
@@ -213,6 +242,12 @@ async function refreshDetail() {
     } catch (cause) { detailError = sessionFailure(cause, 'load', 'Detail rekap'); }
     finally { busy = false; }
 }
+async function refreshReview() {
+    if (busy || !selectedCycleId) return;
+    if (await loadReview(selectedCycleId, decisionRequestId)) {
+        detailSuccess = 'Pengajuan terbaru dimuat. Periksa kembali sebelum memutuskan.';
+    }
+}
 async function saveDetail(cycle: CycleDetail, operation: () => Promise<unknown>, release = false) {
     if (busy || detailNeedsRefresh) return;
     busy = true;
@@ -221,7 +256,8 @@ async function saveDetail(cycle: CycleDetail, operation: () => Promise<unknown>,
     try { await operation(); }
     catch (cause) {
         detailError = sessionFailure(cause, 'save', 'rekap rawat inap');
-        detailNeedsRefresh = isVersionConflict(cause) || isUnconfirmedSave(cause) || (release && cause instanceof ApiError && cause.status === 409);
+        const reviewChanged = cycleView === 'decision' && cause instanceof ApiError && [403, 404, 409, 422].includes(cause.status);
+        detailNeedsRefresh = reviewChanged || isVersionConflict(cause) || isUnconfirmedSave(cause) || (release && cause instanceof ApiError && cause.status === 409);
         busy = false;
         return;
     }
@@ -306,10 +342,8 @@ async function request(event: SubmitEvent, cycle: CycleDetail) {
     const kind = String(formText(form, 'kind'));
     await saveDetail(cycle, () => careCycles.request(cycle.id, { kind: kind as NewRequest['kind'], requestedEnd: kind === 'extend' ? formText(form, 'requestedEnd') : null, reason: formText(form, 'reason') }), kind === 'release');
 }
-async function decide(event: SubmitEvent, cycle: CycleDetail, requestId: string, decision: string) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget as HTMLFormElement);
-    await saveDetail(cycle, () => careCycles.decide(cycle.id, requestId, { decision: decision as Decision['decision'], note: formText(form, 'note'), expectedVersion: cycle.version }), decision === 'approve' && pendingRequest?.kind === 'release');
+async function decide(cycle: CycleDetail, review: Review, decision: Decision['decision'], note: string) {
+    await saveDetail(cycle, () => careCycles.decide(cycle.id, review.request.id, { decision, note, expectedVersion: review.cycle.version }));
 }
 async function assignPlacement(event: SubmitEvent, cycle: CycleDetail) {
     event.preventDefault();
@@ -427,7 +461,10 @@ async function deleteCycle(cycle: CycleDetail) {
 			<TableCell><strong>{cycle.patientName}</strong><span class="cell-meta">{#if /^CY-\d+$/.test(cycle.id)}{cycle.id}{' · '}{/if}{cycle.medicalRecordNo}</span></TableCell>
 			<TableCell>{cycle.room ?? 'Belum ditempatkan'}</TableCell><TableCell>{cycle.doctorName}</TableCell><TableCell>{cycle.nurseName}</TableCell>
 			<TableCell><Badge value={cycle.status}/>{#if cycle.requests.some(item => item.status === 'pending')}<span class="cell-meta">Menunggu keputusan dokter</span>{/if}</TableCell>
-			<TableCell><Button variant="outline" class="h-11 w-full px-4 no-underline hover:no-underline" onclick={() => void openDetail(cycle.id)}><Eye aria-hidden="true" /> {data.user.role === 'DOKTER' && cycle.requests.some((item) => item.status === 'pending') ? 'Tinjau permintaan' : 'Lihat detail'}</Button></TableCell>
+			<TableCell>
+                {@const requestId = data.user.role === 'DOKTER' ? cycle.requests.find(item => item.status === 'pending')?.id : undefined}
+                <Button variant="outline" class="h-11 w-full px-4 no-underline hover:no-underline" onclick={() => void openDetail(cycle.id, requestId)}><Eye aria-hidden="true" /> {requestId ? 'Tinjau permintaan' : 'Lihat detail'}</Button>
+            </TableCell>
 		</TableRow>
 		{:else}<TableRow><TableCell colspan={6} class="empty">Tidak ada rekap yang cocok.</TableCell></TableRow>{/each}
 	</TableBody></Table></div>
@@ -446,7 +483,9 @@ async function deleteCycle(cycle: CycleDetail) {
  {#if detailSuccess}<p class="mb-4 text-sm" role="status">{detailSuccess}</p>{/if}
  {#if detailNeedsRefresh}
     <p class="mb-3 text-sm text-muted-foreground">Baca keadaan terbaru sebelum melanjutkan. Memuat detail tidak mengirim ulang perubahan Anda.</p>
-    <Button variant="outline" class="mb-4" disabled={busy} onclick={() => void refreshDetail()}><RefreshCw aria-hidden="true" /> Muat detail terbaru</Button>
+    <Button variant="outline" class="mb-4" disabled={busy} onclick={() => void (cycleView === 'decision' ? refreshReview() : refreshDetail())}>
+        <RefreshCw aria-hidden="true" /> {cycleView === 'decision' ? 'Muat pengajuan terbaru' : 'Muat detail terbaru'}
+    </Button>
  {/if}
  {#if cycleView === 'detail'}{#if detailLoading}<p class="muted" role="status">Memuat detail pasien...</p>
 		{:else if selectedCycle}
@@ -552,11 +591,18 @@ async function deleteCycle(cycle: CycleDetail) {
                     {@const targeted = item.id === destination?.requestId}
                     <div class="request-item" class:request-target={targeted} data-notification-request={targeted ? '' : undefined}
                         role={targeted ? 'group' : undefined} aria-label={targeted ? 'Permintaan dari notifikasi' : undefined} tabindex="-1">
-                    <div class="request-heading"><strong>{item.kind === 'extend' ? `Perpanjangan sampai ${item.requestedEnd ? date(item.requestedEnd) : "—"}` : 'Pelepasan'}</strong><Badge value={item.status} label={requestLabels[item.status] ?? item.status}/></div><p>Alasan: {item.reason}</p><small>Diajukan oleh {item.requestedBy}{item.decidedBy ? ` · Diputuskan oleh ${item.decidedBy}` : ''}</small>{#if item.note}<p>Catatan dokter: {item.note}</p>{/if}
-					{#if data.user.role === 'DOKTER' && selectedCycle.doctorId === data.user.id && item.status === 'pending'}<Button variant="outline" disabled={busy || detailNeedsRefresh} onclick={() => { decisionRequestId = item.id; cycleView = 'decision'; }}><Eye aria-hidden="true" /> Tinjau keputusan</Button>{/if}
+                    <div class="request-heading"><strong>{item.kind === 'extend' ? `Perpanjangan sampai ${item.requestedEnd ? date(item.requestedEnd) : "—"}` : 'Pelepasan'}</strong><Badge value={item.status} label={requestLabels[item.status] ?? item.status}/></div><p>Alasan: {item.reason}</p><small>Diajukan oleh {item.requestedBy}{item.decidedBy ? ` · Diputuskan oleh ${item.decidedBy}` : ''}{#if item.decidedAt} · <time datetime={item.decidedAt}>{assignmentTime.format(new Date(item.decidedAt))} WIB</time>{/if}</small>{#if item.note}<p>Catatan dokter: {item.note}</p>{/if}
+					{#if data.user.role === 'DOKTER' && selectedCycle.doctorId === data.user.id && item.status === 'pending'}<Button variant="outline" disabled={busy || detailNeedsRefresh} onclick={() => void openReview(selectedCycle!.id, item.id)}><Eye aria-hidden="true" /> Tinjau keputusan</Button>{/if}
 				</div>{/each}{/if}
 			</section>
 		{:else}<Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" disabled={busy} onclick={() => void refreshDetail()}><RefreshCw aria-hidden="true" /> Coba lagi</Button>{/if}
+ {:else if cycleView === 'decision'}
+    {#if selectedCycle && activeReview}
+        <div bind:this={reviewBody}>
+            <CycleRequestReview review={activeReview} disabled={busy || detailNeedsRefresh}
+                onDecision={(decision, note) => void decide(selectedCycle!, activeReview!, decision, note)} />
+        </div>
+    {/if}
  {:else if selectedCycle}
  <p class="mb-5 font-medium">{selectedCycle.patientName} · {selectedCycle.medicalRecordNo}</p>
  {#if cycleView === 'observations'}
@@ -569,7 +615,6 @@ async function deleteCycle(cycle: CycleDetail) {
             onCreated={() => { cycleView = 'detail'; detailSuccess = 'Tugas berhasil dibuat.'; }} />
  {:else if cycleView === 'placement'}<form onsubmit={(event)=>assignPlacement(event,selectedCycle!)}><label class="field">Penempatan<FormSelect name="placementId" bind:value={detailPlacementId} disabled={busy || detailNeedsRefresh} options={[{ value: "", label: "Belum ditempatkan" }, ...(data.reference.placements.filter((p)=>p.status==='active'&&p.patientId===selectedCycle!.patientId)).map((placement) => ({ value: placement.id, label: (placement.roomName) + " · " + date(placement.startsOn) + "–" + date(placement.endsOn) }))]} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || detailNeedsRefresh}><Save aria-hidden="true" /> Simpan penempatan</Button></div></form>
  {:else if cycleView === 'request'}{#if requestKind === 'release' && releaseBlocked}<p class="approval-note">Pelepasan belum dapat diajukan. Kembali ke detail untuk memeriksa kesiapan.</p>{/if}{#if pendingRequest}<p class="approval-note" id="cycle-request-blocked">Pengajuan sebelumnya masih menunggu keputusan dokter. Pengajuan baru belum dapat dikirim.</p>{/if}<form onsubmit={(event) => request(event, selectedCycle!)}><fieldset class="request-fields" disabled={busy || detailNeedsRefresh || !!pendingRequest} aria-describedby={pendingRequest ? 'cycle-request-blocked' : undefined}><legend class="request-legend">Pengajuan perubahan perawatan</legend><div class="form-grid"><label class="field">Jenis permintaan<FormSelect name="kind" bind:value={requestKind} options={[{ value: "release", label: "Pelepasan" }, { value: "extend", label: "Perpanjangan" }]} /></label>{#if requestKind === 'extend'}<label class="field">Perpanjang sampai tanggal<FormDatePicker class="h-11 text-base md:text-sm" name="requestedEnd" type="date" required /></label>{/if}<label class="field full">Alasan<Textarea name="reason" maxlength={500} required></Textarea></label></div><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" disabled={requestKind === 'release' && releaseBlocked} class="h-11 px-4 no-underline hover:no-underline"><Send aria-hidden="true" /> Ajukan ke dokter</Button></div></fieldset></form>
- {:else if cycleView === 'decision'}<form onsubmit={(event) => decide(event, selectedCycle!, decisionRequestId, String((event.submitter as HTMLButtonElement)?.value))}><label class="field">Catatan keputusan<Input class="h-11 text-base md:text-sm" name="note" maxlength={500} required disabled={busy || detailNeedsRefresh} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="outline" type="submit" class="h-11 px-4 no-underline hover:no-underline" name="decision" value="reject" disabled={busy || detailNeedsRefresh}><X aria-hidden="true" /> Tolak</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" name="decision" value="approve" disabled={busy || detailNeedsRefresh}><Check aria-hidden="true" /> Setujui</Button></div></form>
  {:else if cycleView === 'assignee'}
     <p class="mb-4 text-sm">Penanggung jawab saat ini <strong>{selectedCycle.nurseName}</strong>.</p>
     <form class="flex flex-col gap-4" method="post" aria-label="Pengalihan penanggung jawab" onsubmit={(event) => reassign(event, selectedCycle!)}>

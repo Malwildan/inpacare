@@ -5548,6 +5548,93 @@
         ]
       }
     },
+    "/api/v1/cycles/{id}/requests/{requestId}/review": {
+      "get": {
+        "operationId": "GET_cycles_id_requests_requestId_review",
+        "summary": "Baca konteks pengajuan untuk dokter penanggung jawab",
+        "responses": {
+          "200": {
+            "description": "Permintaan berhasil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleRequestReview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesi tidak tersedia atau sudah berakhir.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau tidak tersedia untuk akun ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Layanan mengalami gangguan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "DOKTER"
+        ]
+      }
+    },
     "/api/v1/invoices/patients/{patientId}/context": {
       "get": {
         "operationId": "GET_invoices_patients_patientId_context",
@@ -8144,6 +8231,169 @@
           "note",
           "createdAt",
           "decidedAt"
+        ],
+        "additionalProperties": false
+      },
+      "CycleRequestReview": {
+        "type": "object",
+        "properties": {
+          "cycle": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 36
+              },
+              "patientId": {
+                "type": "string",
+                "maxLength": 36
+              },
+              "patientName": {
+                "type": "string"
+              },
+              "medicalRecordNo": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "patientId",
+              "patientName",
+              "medicalRecordNo",
+              "status",
+              "version"
+            ],
+            "additionalProperties": false
+          },
+          "request": {
+            "$ref": "#/components/schemas/CycleRequest"
+          },
+          "placement": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "maxLength": 36
+                  },
+                  "room": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "startsOn": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "endsOn": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "cancelled"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "room",
+                  "startsOn",
+                  "endsOn",
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MedicalSummary"
+            },
+            "maxItems": 5
+          },
+          "observations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Observation"
+            },
+            "maxItems": 5
+          },
+          "approvalBlocker": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "blockingTasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "in_progress"
+                  ]
+                },
+                "picName": {
+                  "type": "string"
+                },
+                "startsAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endsAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "status",
+                "picName",
+                "startsAt",
+                "endsAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "reviewDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "cycle",
+          "request",
+          "placement",
+          "records",
+          "observations",
+          "approvalBlocker",
+          "blockingTasks",
+          "reviewDate"
         ],
         "additionalProperties": false
       },

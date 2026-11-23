@@ -187,7 +187,7 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
     );
     return rows.length === 1 && !rows[0].deleted_at ? rows[0].id : undefined;
   }
-  async listObservations(actor: Actor, scope: ObservationScope) {
+  async listObservations(actor: Actor, scope: ObservationScope, limit?: number) {
     const episode = "cycleId" in scope;
     const rows = await this.manager.query(
       `SELECT jsonb_build_object(
@@ -199,9 +199,9 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
         LEFT JOIN vital_signs v ON v.observation_id=o.id AND v.deleted_at IS NULL
         WHERE o.patient_id=$1 AND o.deleted_at IS NULL AND ${
           episode ? "o.cycle_id=$2" : "o.record_id=$2 AND o.cycle_id IS NULL AND ($3 OR o.nurse_id=$4)"
-        } ORDER BY o.observed_at DESC,o.id`,
-      episode ? [scope.patientId, scope.cycleId] : [
-        scope.patientId, scope.recordId, actor.role === "DOKTER" && actor.id === scope.doctorId, actor.id,
+        } ORDER BY o.observed_at DESC,o.id LIMIT $${episode ? 3 : 5}`,
+      episode ? [scope.patientId, scope.cycleId, limit ?? null] : [
+        scope.patientId, scope.recordId, actor.role === "DOKTER" && actor.id === scope.doctorId, actor.id, limit ?? null,
       ],
     );
     return rows.map((row: { item: Record<string, unknown> }) => row.item);

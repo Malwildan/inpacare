@@ -1,3 +1,5 @@
+import type { MedicalSummary, Observation } from '$lib/features/medical-records';
+
 export type CycleAssignee = { id: string; name: string };
 export type CycleAssignmentEvent = {
     id: string;
@@ -62,6 +64,16 @@ export type NewCycle = {
     newPlacement?: { roomId: string; startsOn: string; endsOn: string } | null;
     requestId?: string;
 };
+export type CycleRequestReview = {
+    cycle: Pick<Cycle, 'id' | 'patientId' | 'patientName' | 'medicalRecordNo' | 'status' | 'version'>;
+    request: Cycle['requests'][number] & { cycleId: string };
+    placement: { id: string; room: string | null; startsOn: string; endsOn: string; status: 'active' | 'cancelled' } | null;
+    records: MedicalSummary[];
+    observations: Observation[];
+    approvalBlocker: string | null;
+    blockingTasks: Omit<NonNullable<Cycle['releaseReadiness']>['tasks'][number], 'canOpen'>[];
+    reviewDate: string;
+};
 export type ReassignCycle = {
     nurseId: string;
     expectedVersion: number;
@@ -87,7 +99,7 @@ export type NewRequest = {
     reason: string;
 };
 export type Decision = {
-    decision: string;
+    decision: 'approve' | 'reject';
     note: string;
     expectedVersion: number;
 };
