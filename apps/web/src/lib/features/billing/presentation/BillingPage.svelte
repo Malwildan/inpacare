@@ -7,7 +7,7 @@ import FormSelect from '$lib/shared/ui/form-select.svelte';
 import { Textarea } from '$lib/shared/ui/textarea/index.js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
 import { invalidateAll } from '$app/navigation';
-import { draftRoomLines, type Billing, type BillingPageData, type PatientInvoiceContext, type SelectedInvoice, type Invoice, type InvoiceLine, type ChangePayment, type NewInvoice } from '$lib/features/billing';
+import { draftRoomLines, type Billing, type BillingPageData, type PatientInvoiceContext, type SelectedInvoice, type Invoice, type InvoiceLine, type ChangePayment, type NewInvoice, type ReleaseHandoff } from '$lib/features/billing';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
 import { date, money as rupiah } from '$lib/shared/format';
@@ -24,6 +24,7 @@ let creating = $state(false);
 let patientId = $state('');
 let creationContext = $state<PatientInvoiceContext | null>(null);
 let placementId = $state('');
+let handoff = $state<ReleaseHandoff | null>(null);
 let contextLoading = $state(false);
 let contextRequest = 0;
 let draftEdited = $state(false);
@@ -49,8 +50,16 @@ let paymentStatus = $state('paid');
 let paymentReason = $state('');
 let locked = $derived(selected?.status === 'paid');
 let editTotal = $derived(editLines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0), 0));
-let patient = $derived(data.reference.patients.find((item) => item.id === patientId));
-let availablePlacements = $derived(creationContext?.placements.filter((item) => item.status !== 'cancelled') ?? []);
+let patient = $derived(creationContext?.patient ?? data.reference.patients.find((item) => item.id === patientId));
+let patientOptions = $derived(data.reference.patients.some(item => item.id === patientId)
+    ? data.reference.patients
+    : [...data.reference.patients, ...(patient ? [patient] : [])]);
+let availablePlacements = $derived.by(() => {
+    const placements = creationContext?.placements ?? [];
+    const episode = handoff?.placement;
+    const options = placements.filter(item => item.status !== 'cancelled' || item.id === episode?.id);
+    return episode && !options.some(item => item.id === episode.id) ? [episode, ...options] : options;
+});
 let creationPlacement = $derived(availablePlacements.find((item) => item.id === placementId));
 let creationRoom = $derived(data.rooms.find((item) => item.id === creationPlacement?.roomId));
 let total = $derived(lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0), 0));
@@ -209,11 +218,12 @@ async function deleteInvoice(event: SubmitEvent) {
         invoiceView = 'detail';
     }
 }
-async function choosePatient(value: string) {
+async function choosePatient(value: string, episode: ReleaseHandoff | null = null) {
     if (value === patientId) return;
     if (draftEdited && !confirm('Ganti pasien? Rincian dan jaminan yang sudah diubah akan dikosongkan.')) return;
     const request = ++contextRequest;
     patientId = value;
+    handoff = episode;
     creationContext = null;
     placementId = '';
     lines = [{ description: '', quantity: 1, unitPrice: '' }];
@@ -226,7 +236,8 @@ async function choosePatient(value: string) {
             if (request === contextRequest) {
                 creationContext = context;
                 const placements = context.placements.filter((item) => item.status !== 'cancelled');
-                if (placements.length === 1) choosePlacement(placements[0].id);
+                if (episode) choosePlacement(episode.placement.id);
+                else if (placements.length === 1) choosePlacement(placements[0].id);
             }
         }
         catch (cause) {
@@ -242,12 +253,13 @@ function choosePlacement(value: string) {
     if (value === placementId) return;
     if (draftEdited && !confirm('Ganti penempatan? Rincian dan jaminan yang sudah diubah akan dikosongkan.')) return;
     placementId = value;
-    const suggested = draftRoomLines(creationContext?.placements.find((item) => item.id === value), data.rooms);
+    const suggested = draftRoomLines(availablePlacements.find((item) => item.id === value), data.rooms);
     lines = suggested.length ? suggested : [{ description: '', quantity: 1, unitPrice: '' }];
     coveredAmount = '0';
     draftEdited = false;
 }
-function startInvoiceCreation() {
+function startInvoiceCreation(episode: ReleaseHandoff | null = null) {
+    handoff = null;
     ++contextRequest;
     patientId = '';
     placementId = '';
@@ -257,12 +269,57 @@ function startInvoiceCreation() {
     coveredAmount = '0';
     draftEdited = false;
     creating = true;
+    if (episode) void choosePatient(episode.patientId, episode);
 }
 </script>
 
 <svelte:head><title>Tagihan | InpaCare</title></svelte:head>
 <div class="billing-page flex min-w-0 flex-col gap-6">
-<section class="flex flex-wrap items-start justify-between gap-4"><h1 class="page-title">Tagihan</h1><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={startInvoiceCreation}><Plus size={16} aria-hidden="true"/> Buat tagihan</Button></section>
+<section class="flex flex-wrap items-start justify-between gap-4"><h1 class="page-title">Tagihan</h1><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={() => startInvoiceCreation()}><Plus size={16} aria-hidden="true"/> Buat tagihan</Button></section>
+
+<section id="release-handoffs" aria-labelledby="release-handoffs-title">
+    <Card class="gap-4 p-5">
+        <h2 id="release-handoffs-title" class="text-lg font-semibold">Antrean administrasi akhir</h2>
+        {#if !data.handoffs}
+            <div><p class="text-sm" role="status">Antrean gagal dimuat.</p><Button variant="link" onclick={() => void invalidateAll()}>Muat ulang antrean</Button></div>
+        {:else}
+            <ul class="divide-y">
+                {#each data.handoffs.items as episode (episode.cycleId)}
+                    <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+                        <div>
+                            <p><strong>{episode.patientName}</strong> · {episode.medicalRecordNo}</p>
+                            <p class="text-sm text-muted-foreground">
+                                {episode.cycleId} · {episode.placement.room} · Dilepas {date(episode.releasedAt)}
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            {#each episode.invoices as invoice (invoice.id)}
+                                <Button variant="outline" class="min-h-11" onclick={() => void showInvoice(invoice.id)}>
+                                    Buka tagihan {invoice.id} <StatusBadge value={invoice.status} />
+                                </Button>
+                            {:else}
+                                <span class="text-sm text-muted-foreground">Belum ada tagihan</span>
+                                <Button variant="outline" class="min-h-11" onclick={() => startInvoiceCreation(episode)} aria-label={`Buat tagihan untuk ${episode.patientName} (${episode.cycleId})`}>Buat tagihan</Button>
+                            {/each}
+                        </div>
+                    </li>
+                {:else}
+                    <li class="text-sm text-muted-foreground">Belum ada pelepasan di halaman ini.</li>
+                {/each}
+            </ul>
+            {#if data.releaseOffset || data.handoffs.nextOffset !== null}
+                <nav aria-label="Halaman antrean administrasi akhir" class="flex gap-2">
+                    {#if data.releaseOffset}
+                        <Button variant="outline" href={`/invoices?releaseOffset=${data.releaseOffset - 20}#release-handoffs`}>Sebelumnya</Button>
+                    {/if}
+                    {#if data.handoffs.nextOffset !== null}
+                        <Button variant="outline" href={`/invoices?releaseOffset=${data.handoffs.nextOffset}#release-handoffs`}>Berikutnya</Button>
+                    {/if}
+                </nav>
+            {/if}
+        {/if}
+    </Card>
+</section>
 
 {#if selected || (invoiceView === 'payment' && paymentInvoice)}
 <Modal title={invoiceView === 'detail' ? 'Rincian tagihan' : invoiceView === 'edit' ? 'Ubah tagihan' : invoiceView === 'line' ? 'Ubah rincian layanan' : invoiceView === 'claim' ? 'Verifikasi klaim' : invoiceView === 'delete' ? 'Hapus tagihan?' : invoiceView === 'deleteLine' ? 'Hapus rincian tagihan?' : 'Ubah status pembayaran'}
@@ -368,11 +425,11 @@ function startInvoiceCreation() {
 <div class="billing-page"><form class="create-form" aria-label="Buat tagihan baru" onsubmit={create} oninvalidcapture={reportInvalid} oninput={(event) => { if (event.target instanceof HTMLInputElement) draftEdited = true; }}>	<section class="create-layout">
 		<Card class="min-w-0 gap-4 p-5 sm:p-6">
 
-			<label class="field">Pasien<FormSelect name="patientId" bind:value={() => patientId, (value) => { void choosePatient(value ?? ''); }} disabled={busy} required options={[{ value: "", label: "Pilih pasien" }, ...(data.reference.patients).map((item) => ({ value: item.id, label: (item.medicalRecordNo) + " · " + (item.name) }))]} /></label>
+			<label class="field">Pasien<FormSelect name="patientId" bind:value={() => patientId, (value) => { void choosePatient(value ?? ''); }} disabled={busy} required options={[{ value: "", label: "Pilih pasien" }, ...patientOptions.map((item) => ({ value: item.id, label: (item.medicalRecordNo) + " · " + (item.name) }))]} /></label>
 			{#if patient}<div class="patient-card"><strong>{patient.name}</strong><span>{patient.medicalRecordNo}</span><span>Status BPJS: {patient.bpjs ? 'Terdaftar' : 'Tidak terdaftar'}</span></div>{/if}
 			{#if contextLoading}<p class="text-sm text-muted-foreground" role="status">Memuat penempatan dan biaya kamar…</p>{/if}
 			{#if creationContext}<label class="field">Penempatan<FormSelect name="placementId" bind:value={() => placementId, (value) => choosePlacement(value ?? '')} disabled={busy} options={[{ value: "", label: "Tanpa penempatan / isi manual" }, ...availablePlacements.map((placement) => ({ value: placement.id, label: (placement.room) + " · " + date(placement.startsOn) + "–" + date(placement.endsOn) }))]} /></label>
-                <p class="text-sm text-muted-foreground" role="status">{#if creationPlacement && creationRoom}Rincian kamar memakai tarif per hari saat ini untuk {date(creationPlacement.startsOn)}–{date(creationPlacement.endsOn)}, termasuk tanggal masuk dan tanggal selesai. Periksa jumlah hari dan harga. Anda dapat mengubah atau menambah rincian.{:else if creationPlacement}Tarif kamar penempatan ini tidak tersedia. Isi rincian layanan secara manual.{:else if availablePlacements.length}Pilih penempatan untuk mengisi biaya kamar otomatis, atau isi rincian secara manual.{:else}Belum ada penempatan pasien. Rincian layanan dapat diisi secara manual.{/if}</p>
+                <p class="text-sm text-muted-foreground" role="status">{#if creationPlacement && creationRoom && creationPlacement.status !== 'cancelled'}Rincian kamar memakai tarif per hari saat ini untuk {date(creationPlacement.startsOn)}–{date(creationPlacement.endsOn)}, termasuk tanggal masuk dan tanggal selesai. Periksa jumlah hari dan harga. Anda dapat mengubah atau menambah rincian.{:else if creationPlacement}Tarif kamar penempatan ini tidak tersedia. Isi rincian layanan secara manual.{:else if availablePlacements.length}Pilih penempatan untuk mengisi biaya kamar otomatis, atau isi rincian secara manual.{:else}Belum ada penempatan pasien. Rincian layanan dapat diisi secara manual.{/if}</p>
             {/if}
 			<div class="line-heading"><h3>Rincian layanan</h3><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="button" disabled={contextLoading || busy || lines.length >= 30} onclick={() => { lines = [...lines,{description:'',quantity:1,unitPrice:''}]; draftEdited = true; }}><Plus size={14} aria-hidden="true"/> Tambah baris</Button></div>
 			{#each lines as line, index (line)}<div class="line-row"><label class="field">Nama layanan<Input class="h-11 text-base md:text-sm" bind:value={line.description} disabled={contextLoading || busy} maxlength={160} required placeholder="Contoh kamar kelas 2 (hari)" /></label><label class="field quantity-field">Jumlah<Input class="h-11 text-base md:text-sm" bind:value={line.quantity} disabled={contextLoading || busy} type="number" min="1" max="10000" required /></label><MoneyInput label="Harga satuan (Rp)" bind:value={line.unitPrice} disabled={contextLoading || busy} required /><Button variant="outline" size="icon" class="remove-line size-11 text-destructive hover:text-destructive" type="button" aria-label="Hapus baris rincian" title="Hapus baris" disabled={contextLoading || busy || lines.length <= 1} onclick={() => { lines = lines.filter((_, i) => i !== index); draftEdited = true; }}><Trash2 size={18} aria-hidden="true" /></Button></div>{/each}
@@ -380,7 +437,7 @@ function startInvoiceCreation() {
 
 		</Card>
 		<Card class="summary h-max gap-0 p-5 sm:p-6" role="complementary" aria-label="Ringkasan biaya"><h2 class="mb-4">Ringkasan biaya</h2><div class="summary-row"><span>Total layanan</span><strong>{rupiah(total)}</strong></div><div class="summary-row"><span>Jaminan BPJS</span><strong>−{rupiah(covered)}</strong></div><div class="summary-row grand-total"><span>Total tagihan</span><strong>{rupiah(payable)}</strong></div></Card>
-	</section><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || contextLoading || !patientId}><Save aria-hidden="true" /> Simpan tagihan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button></div></form>
+	</section><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || contextLoading || !patientId || (!!handoff && !creationContext)}><Save aria-hidden="true" /> Simpan tagihan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button></div></form>
 </div>{/snippet}</Modal>
 {/if}
 

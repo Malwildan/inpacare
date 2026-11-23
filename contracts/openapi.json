@@ -6479,6 +6479,92 @@
         "description": "Hanya koordinator. Riwayat mencakup petugas, waktu, alasan, serta data sebelum dan sesudah perubahan, termasuk pembatalan.",
         "x-coordinator-only": true
       }
+    },
+    "/api/v1/invoices/release-handoffs": {
+      "get": {
+        "operationId": "GET_invoices_release_handoffs",
+        "summary": "Antrean administrasi akhir",
+        "tags": [
+          "Invoices"
+        ],
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permintaan berhasil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseHandoffPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesi tidak tersedia atau sudah berakhir.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tidak memiliki izin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian atau pilihan perlu diperbaiki.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Layanan mengalami gangguan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "ADMISI"
+        ],
+        "description": "Episode dengan pelepasan yang telah disetujui dokter, serta status tagihan untuk penempatan episode tersebut.",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-controller-roles": [
+          "ADMISI"
+        ]
+      }
     }
   },
   "components": {
@@ -7570,6 +7656,10 @@
           },
           "pendingApproval": {
             "type": "boolean"
+          },
+          "releaseReadiness": {
+            "$ref": "#/components/schemas/ReleaseReadiness",
+            "description": "Hanya tersedia pada detail rekap yang belum dilepas untuk perawat yang ditugaskan."
           }
         },
         "required": [
@@ -10110,7 +10200,8 @@
               "required": [
                 "id",
                 "name",
-                "medicalRecordNo"
+                "medicalRecordNo",
+                "firstAdmission"
               ],
               "properties": {
                 "id": {
@@ -10121,6 +10212,10 @@
                 },
                 "medicalRecordNo": {
                   "type": "string"
+                },
+                "firstAdmission": {
+                  "type": "boolean",
+                  "description": "Pasien belum memiliki riwayat rekap yang tersimpan."
                 }
               }
             }
@@ -10334,6 +10429,198 @@
         "required": [
           "items",
           "total"
+        ],
+        "additionalProperties": false
+      },
+      "ReleaseReadiness": {
+        "type": "object",
+        "properties": {
+          "prerequisite": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "care_not_started",
+              "placement_missing",
+              "placement_inactive",
+              "placement_not_started",
+              "room_unavailable",
+              null
+            ]
+          },
+          "placementStartsOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "in_progress"
+                  ]
+                },
+                "picName": {
+                  "type": "string"
+                },
+                "startsAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endsAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "canOpen": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "status",
+                "picName",
+                "startsAt",
+                "endsAt",
+                "canOpen"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "prerequisite",
+          "placementStartsOn",
+          "tasks"
+        ],
+        "additionalProperties": false
+      },
+      "ReleaseHandoffPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReleaseHandoff"
+            }
+          },
+          "nextOffset": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "nextOffset"
+        ],
+        "additionalProperties": false
+      },
+      "ReleaseHandoff": {
+        "type": "object",
+        "properties": {
+          "cycleId": {
+            "type": "string"
+          },
+          "patientId": {
+            "type": "string"
+          },
+          "patientName": {
+            "type": "string"
+          },
+          "medicalRecordNo": {
+            "type": "string"
+          },
+          "releasedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "placement": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "roomId": {
+                "type": "string"
+              },
+              "room": {
+                "type": "string"
+              },
+              "startsOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "endsOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "cancelled"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "roomId",
+              "room",
+              "startsOn",
+              "endsOn",
+              "status"
+            ],
+            "additionalProperties": false
+          },
+          "invoices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "paid",
+                    "unpaid"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "status"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "cycleId",
+          "patientId",
+          "patientName",
+          "medicalRecordNo",
+          "releasedAt",
+          "placement",
+          "invoices"
         ],
         "additionalProperties": false
       }

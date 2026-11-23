@@ -1,6 +1,9 @@
 import { EntityManager } from "typeorm";
 import { Actor } from "../../../../domain/auth/actor";
 import {
+  CycleDetail,
+  CycleCandidate,
+  ReleaseBlockingTask,
   CycleListFilters,
   CycleStore,
   CreatedCycle,
@@ -23,8 +26,14 @@ export class TypeOrmCycleStore implements CycleStore {
     );
   }
   async creationCandidates() {
-    return this.manager.query(
-      `SELECT p.id,p.name,p.medical_record_no AS "medicalRecordNo" FROM patients p WHERE NOT EXISTS(SELECT 1 FROM cycles c WHERE c.patient_id=p.id AND c.status<>'released' AND c.deleted_at IS NULL) ORDER BY p.name,p.id`,
+    return this.manager.query<CycleCandidate[]>(
+      `SELECT p.id, p.name, p.medical_record_no AS "medicalRecordNo",
+        NOT EXISTS (SELECT 1 FROM cycles c WHERE c.patient_id=p.id AND c.deleted_at IS NULL) AS "firstAdmission"
+       FROM patients p
+       WHERE NOT EXISTS (
+         SELECT 1 FROM cycles c WHERE c.patient_id=p.id AND c.status<>'released' AND c.deleted_at IS NULL
+       )
+       ORDER BY p.name,p.id`,
     );
   }
   async hasActiveCycle(patientId: string) {
@@ -50,7 +59,7 @@ export class TypeOrmCycleStore implements CycleStore {
     return { items, total: items.length };
   }
   async detail(actor: Actor, cycleId: string) {
-    const rows = await this.manager.query(
+    const rows = await this.manager.query<{ item: CycleDetail }[]>(
       `SELECT jsonb_build_object('id',c.id,'patientId',c.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',c.placement_id,'room',r.name,'doctorId',c.doctor_id,'doctorName',d.name,'nurseId',c.nurse_id,'nurseName',n.name,'status',c.status,'version',c.version,'createdAt',c.created_at,'requests',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',q.id,'kind',q.kind,'requestedEnd',q.requested_end,'reason',q.reason,'requestedBy',ru.name,'status',q.status,'decidedBy',du.name,'note',q.decision_note,'createdAt',q.created_at,'decidedAt',q.decided_at) ORDER BY q.created_at DESC) FROM cycle_requests q JOIN users ru ON ru.id=q.requested_by LEFT JOIN users du ON du.id=q.decided_by WHERE q.cycle_id=c.id),'[]'::jsonb)) AS item FROM cycles c JOIN patients p ON p.id=c.patient_id JOIN users d ON d.id=c.doctor_id JOIN users n ON n.id=c.nurse_id LEFT JOIN placements pl ON pl.id=c.placement_id LEFT JOIN rooms r ON r.id=pl.room_id WHERE c.id=$1 AND c.deleted_at IS NULL AND (($2='DOKTER' AND c.doctor_id=$3) OR ($2='PERAWAT' AND c.nurse_id=$3))`,
       [cycleId, actor.role, actor.id],
     );
@@ -328,12 +337,16 @@ export class TypeOrmCycleStore implements CycleStore {
     ]);
     return !!r[0].value;
   }
-  async hasFutureTasks(id: string) {
-    const r = await this.manager.query(
-      `SELECT count(*)::int AS n FROM tasks WHERE placement_id=$1 AND deleted_at IS NULL AND status NOT IN ('done','cancelled') AND ends_at>now()`,
+  async releaseBlockingTasks(id: string) {
+    return this.manager.query<ReleaseBlockingTask[]>(
+      `SELECT t.id, t.title, t.status, t.pic_id AS "picId", u.name AS "picName",
+         t.starts_at AS "startsAt", t.ends_at AS "endsAt"
+       FROM tasks t JOIN users u ON u.id=t.pic_id
+       WHERE t.placement_id=$1 AND t.deleted_at IS NULL
+         AND t.status NOT IN ('done','cancelled') AND t.ends_at>statement_timestamp()
+       ORDER BY t.starts_at,t.id`,
       [id],
     );
-    return Number(r[0].n) > 0;
   }
   async releasePlacement(id: string, date: string) {
     await this.manager.query(

@@ -16,9 +16,10 @@ import { todayJakarta } from '$lib/features/placements';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
 import { ArrowLeft, Ban, ChevronLeft, ChevronRight, History, Pencil, Plus, Save, X } from 'lucide-svelte';
-let { data, placementService }: {
+let { data, placementService, cycleId = '' }: {
     data: CalendarPageData;
     placementService: Placements;
+    cycleId?: string;
 } = $props();
 let roomFilter = $state('');
 let placing = $state(false);
@@ -35,6 +36,10 @@ let dates = $derived(Array.from({ length: 7 }, (_, i) => {
     day.setUTCDate(day.getUTCDate() + i);
     return day;
 }));
+const calendarHref = (from?: string) => {
+    const query = new URLSearchParams({ ...(from ? { from } : {}), ...(cycleId ? { cycle: cycleId } : {}) });
+    return `/calendar${query.size ? '?' + query : ''}`;
+};
 const iso = (date: Date) => date.toISOString().slice(0, 10);
 const dayLabel = (date: Date) => new Intl.DateTimeFormat('id-ID', { weekday: 'short', timeZone: 'UTC' }).format(date);
 const titleDate = (date: Date) => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(date);
@@ -42,7 +47,7 @@ const dayPlacements = (roomId: string, day: Date) => data.placements.filter((p) 
 async function moveWeek(delta: number) {
     const next = new Date(data.from + 'T00:00:00Z');
     next.setUTCDate(next.getUTCDate() + delta * 7);
-    await goto('/calendar?from=' + iso(next));
+    await goto(calendarHref(iso(next)));
 }
 async function place(event: SubmitEvent) {
     event.preventDefault();
@@ -111,6 +116,7 @@ const historyDate = (value: string) => new Intl.DateTimeFormat('id-ID', { dateSt
 <div class="placement-page flex min-w-0 flex-col gap-6">
 <section class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 	<h1 class="page-title">Kalender penempatan</h1>
+    {#if cycleId}<Button href={`/dashboard?${new URLSearchParams({ cycle: cycleId })}`} variant="outline">Kembali ke rekap pasien</Button>{/if}
 	{#if data.user.role === 'PERAWAT'}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={() => { placing=!placing; }}><Plus size={16} aria-hidden="true"/> Tempatkan pasien</Button>{/if}
 </section>
 {#if data.user.role === 'PERAWAT' && !canManage}<p class="text-sm text-muted-foreground">Anda dapat membuat penempatan awal. Hubungi koordinator untuk mengubah jadwal, memindahkan ruang, atau membatalkan penempatan.</p>{/if}
@@ -121,7 +127,7 @@ const historyDate = (value: string) => new Intl.DateTimeFormat('id-ID', { dateSt
 		<div class="week-navigation" aria-label="Navigasi kalender">
 			<Button variant="ghost" class="size-11 p-2 no-underline hover:no-underline" aria-label="Minggu sebelumnya" onclick={() => void moveWeek(-1)}><ChevronLeft size={18} aria-hidden="true"/></Button>
 			<strong>{titleDate(dates[0])} – {titleDate(dates[6])} {dates[6].getUTCFullYear()}</strong>
-			<Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" onclick={() => void goto('/calendar')}>Hari ini</Button>
+			<Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" onclick={() => void goto(calendarHref())}>Hari ini</Button>
 			<Button variant="ghost" class="size-11 p-2 no-underline hover:no-underline" aria-label="Minggu berikutnya" onclick={() => void moveWeek(1)}><ChevronRight size={18} aria-hidden="true"/></Button>
 		</div>
 	</div>

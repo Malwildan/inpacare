@@ -24,7 +24,24 @@ export interface InvoiceLineRow extends Record<string, unknown> {
   unit_price: string;
   line_total: string;
 }
+export interface ReleaseHandoff {
+  cycleId: string;
+  patientId: string;
+  patientName: string;
+  medicalRecordNo: string;
+  releasedAt: Date;
+  placement: {
+    id: string;
+    roomId: string;
+    room: string;
+    startsOn: string;
+    endsOn: string;
+    status: "active" | "cancelled";
+  };
+  invoices: { id: string; status: "paid" | "unpaid" }[];
+}
 export interface InvoiceStore {
+  releaseHandoffs(offset: number, limit: number): Promise<ReleaseHandoff[]>;
   list(filters: InvoiceListFilters): Promise<{
     items: Record<string, unknown>[];
     total: number;

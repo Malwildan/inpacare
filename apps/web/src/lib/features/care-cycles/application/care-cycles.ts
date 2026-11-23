@@ -2,7 +2,7 @@ import type { Cycle, CycleSummary, NewCycle, CreatedCycle, ChangeCycle, NewReque
 import type { User } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
 export type CycleFilters = Record<'search' | 'status' | 'roomId' | 'patientId', string>;
-export type CycleCandidate = { id: string; name: string; medicalRecordNo: string };
+export type CycleCandidate = { id: string; name: string; medicalRecordNo: string; firstAdmission: boolean };
 export type CareCycles = {
     creationCandidates(): Promise<CycleCandidate[]>;
     dashboard(filters: CycleFilters): Promise<CycleSummary[]>;

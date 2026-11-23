@@ -38,10 +38,10 @@ test('live JSON responses conform to OpenAPI, including restricted admissions pr
   for (const [username, route] of [
     ['rina','/session'], ['rina','/reference'], ['rina','/patients'], ['rina','/patients/PT-001/context'], ['rina','/staff'],
     ['rina','/rooms'], ['rina','/rooms/RG-001'], ['rina','/tasks?limit=5'], ['rina','/tasks/TK-001'], ['rina','/tasks/TK-001/history'],
-    ['dina','/cycles'], ['dina','/cycles/dashboard'], ['dina','/cycles/CY-003'],
+    ['dina','/cycles'], ['dina','/cycles/dashboard'], ['dina','/cycles/CY-003'], ['dina','/cycles/creation-candidates'],
     ['hendra','/medical-records'], ['hendra','/medical-records/MR-001'],
     ['admisi','/medical-records'], ['admisi','/medical-records/MR-001'],
-    ['admisi','/invoices'], ['admisi','/invoices/INV-001'], ['admisi','/invoices/patients/PT-001/context'], ['dina','/notifications'],
+    ['admisi','/invoices'], ['admisi','/invoices/release-handoffs'], ['admisi','/invoices/INV-001'], ['admisi','/invoices/patients/PT-001/context'], ['dina','/notifications'],
   ]) { try { await validate('GET', route, clients[username]); } catch (error) { failures.push(error.message); } }
   assert.deepEqual(failures, []);
   const { value: room } = await validate('POST', '/rooms', clients.rina, { name: `Contract ${Date.now()}`, roomClass: 'Uji', capacity: 1, dailyRate: '0' });

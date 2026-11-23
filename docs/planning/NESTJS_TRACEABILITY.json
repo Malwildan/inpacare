@@ -7038,6 +7038,11 @@
               "file": "apps/api/test/contract/contract.test.cjs",
               "test": "OpenAPI paths, methods, success codes, DTO properties, and guards match compiled Nest metadata",
               "coverage": "group-level contract route/security/DTO evidence only"
+            },
+            {
+              "file": "tests/api/test_workflows.py",
+              "test": "test_inpatient_handoffs_preserve_release_rules_and_administration",
+              "coverage": "Checks task filtering, readiness access and release revalidation against live PostgreSQL."
             }
           ],
           "evidence": {
@@ -7331,6 +7336,11 @@
               "file": "apps/api/test/contract/contract.test.cjs",
               "test": "OpenAPI paths, methods, success codes, DTO properties, and guards match compiled Nest metadata",
               "coverage": "group-level contract route/security/DTO evidence only"
+            },
+            {
+              "file": "tests/api/test_workflows.py",
+              "test": "test_inpatient_handoffs_preserve_release_rules_and_administration",
+              "coverage": "Checks task filtering, readiness access and release revalidation against live PostgreSQL."
             }
           ],
           "evidence": {
@@ -10196,6 +10206,32 @@
           "coverage": "Live cookie/session/logout coverage; health separately probed by startup and restore rehearsal."
         }
       ]
+    },
+    {
+      "operation": "creationCandidates",
+      "route": "GET /api/v1/cycles/creation-candidates",
+      "actualTargetSymbol": "apps/api/src/presentation/http/cycles/rekap-pasien.controller.ts#RekapPasienController.getCalonRekap",
+      "status": "mapped_unverified",
+      "testReferences": [
+        {
+          "file": "tests/api/test_workflows.py",
+          "test": "test_registration_handoff_and_parallel_cycle_starts",
+          "coverage": "HTTP checks cover the minimal nurse-only projection, exclusion after admission, and the parallel-start guard."
+        }
+      ]
+    },
+    {
+      "operation": "releaseHandoffs",
+      "route": "GET /api/v1/invoices/release-handoffs",
+      "actualTargetSymbol": "apps/api/src/presentation/http/billing/tagihan.controller.ts#TagihanController.releaseHandoffs",
+      "status": "mapped_unverified",
+      "testReferences": [
+        {
+          "file": "tests/api/test_workflows.py",
+          "test": "test_inpatient_handoffs_preserve_release_rules_and_administration",
+          "coverage": "HTTP checks cover the admissions-only projection, committed release, replay, failed billing, and separate payment status."
+        }
+      ]
     }
   ],
   "coverageGates": {
@@ -10217,8 +10253,8 @@
   "baselineOperationsCount": 38,
   "actualRouteInventory": {
     "baselineOperations": 38,
-    "contractOperations": 54,
-    "contractPaths": 34,
+    "contractOperations": 59,
+    "contractPaths": 38,
     "source": "compiled Nest route contract test"
   },
   "baselineReconciledCommit": "ccb463823f03952e86b3099f9213ad0e09ed0cd5",

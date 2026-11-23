@@ -97,7 +97,7 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/invoices$/);
 
-	await page.getByRole('button', { name: /Buat tagihan/ }).click();
+	await page.getByRole('button', { name: 'Buat tagihan', exact: true }).click();
 	const form = page.locator('.create-form');
 	await selectOption(form.getByLabel('Pasien'), 'PT-012');
 	await form.getByLabel('Layanan').fill(`Rebuild E2E ${Date.now()}`);

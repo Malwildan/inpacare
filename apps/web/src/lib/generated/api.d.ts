@@ -714,6 +714,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/invoices/release-handoffs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Antrean administrasi akhir
+         * @description Episode dengan pelepasan yang telah disetujui dokter, serta status tagihan untuk penempatan episode tersebut.
+         */
+        get: operations["GET_invoices_release_handoffs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -974,6 +994,8 @@ export interface components {
             requests: components["schemas"]["NestedCycleRequest"][];
             roomId?: string | null;
             pendingApproval?: boolean;
+            /** @description Hanya tersedia pada detail rekap yang belum dilepas untuk perawat yang ditugaskan. */
+            releaseReadiness?: components["schemas"]["ReleaseReadiness"];
         };
         InvoiceLine: {
             id: string;
@@ -1587,6 +1609,8 @@ export interface components {
                 id: string;
                 name: string;
                 medicalRecordNo: string;
+                /** @description Pasien belum memiliki riwayat rekap yang tersimpan. */
+                firstAdmission: boolean;
             }[];
         };
         MoveTask: {
@@ -1639,6 +1663,52 @@ export interface components {
         PlacementHistoryPage: {
             items: components["schemas"]["PlacementHistory"][];
             total: number;
+        };
+        ReleaseReadiness: {
+            /** @enum {string|null} */
+            prerequisite: "care_not_started" | "placement_missing" | "placement_inactive" | "placement_not_started" | "room_unavailable" | null;
+            /** Format: date */
+            placementStartsOn: string | null;
+            tasks: {
+                id: string;
+                title: string;
+                /** @enum {string} */
+                status: "todo" | "in_progress";
+                picName: string;
+                /** Format: date-time */
+                startsAt: string;
+                /** Format: date-time */
+                endsAt: string;
+                canOpen: boolean;
+            }[];
+        };
+        ReleaseHandoffPage: {
+            items: components["schemas"]["ReleaseHandoff"][];
+            nextOffset: number | null;
+        };
+        ReleaseHandoff: {
+            cycleId: string;
+            patientId: string;
+            patientName: string;
+            medicalRecordNo: string;
+            /** Format: date-time */
+            releasedAt: string;
+            placement: {
+                id: string;
+                roomId: string;
+                room: string;
+                /** Format: date */
+                startsOn: string;
+                /** Format: date */
+                endsOn: string;
+                /** @enum {string} */
+                status: "active" | "cancelled";
+            };
+            invoices: {
+                id: string;
+                /** @enum {string} */
+                status: "paid" | "unpaid";
+            }[];
         };
     };
     responses: never;
@@ -6222,6 +6292,64 @@ export interface operations {
             };
             /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Isian atau pilihan perlu diperbaiki. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Layanan mengalami gangguan. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    GET_invoices_release_handoffs: {
+        parameters: {
+            query?: {
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Permintaan berhasil. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseHandoffPage"];
+                };
+            };
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Akun tidak memiliki izin. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

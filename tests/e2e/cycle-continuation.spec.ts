@@ -26,21 +26,32 @@ async function write(api: APIRequestContext, method: 'POST' | 'PATCH', path: str
     return response.json();
 }
 
-async function setup(page: Page) {
+async function setup(page: Page, placementStarted = false) {
     await signIn(page.request, 'admisi');
     const patient = await write(page.request, 'POST', '/patients', {
         name: `Pasien Kelanjutan Sintetis ${Date.now()}`, birthDate: '2000-01-01', gender: 'P', bpjs: false,
     });
     const marker = patient.medicalRecordNo;
+    let roomId = 'RG-001';
+    if (placementStarted) {
+        await signIn(page.request, 'rina');
+        const room = await write(page.request, 'POST', '/rooms', {
+            name: `Ruang Kelanjutan ${marker}`, roomClass: 'Uji', capacity: 1, dailyRate: '0',
+        });
+        roomId = room.id;
+    }
     await signIn(page.request, 'dina');
     const cycle = await write(page.request, 'POST', '/cycles', { patientId: patient.id, doctorId: 'USR-DOCTOR-1' });
     // Separate future periods keep synthetic placements from consuming the seeded capacity.
-    const starts = new Date('2035-01-01T00:00:00Z');
-    starts.setUTCDate(starts.getUTCDate() + test.info().line * 4 + (Math.floor(Date.now() / 1000) % 10_000) * 2);
+    const today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+    const starts = new Date(placementStarted ? `${today}T00:00:00Z` : '2035-01-01T00:00:00Z');
+    if (!placementStarted) starts.setUTCDate(starts.getUTCDate() + test.info().line * 4 + (Math.floor(Date.now() / 1000) % 10_000) * 2);
     const ends = new Date(starts);
     ends.setUTCDate(ends.getUTCDate() + 1);
     const placement = await write(page.request, 'POST', '/placements', {
-        patientId: patient.id, roomId: 'RG-001', startsOn: starts.toISOString().slice(0, 10), endsOn: ends.toISOString().slice(0, 10),
+        patientId: patient.id, roomId, startsOn: starts.toISOString().slice(0, 10), endsOn: ends.toISOString().slice(0, 10),
     });
     const url = `/dashboard?search=${marker}&patientId=${patient.id}&status=pending`;
     await page.goto(url, { waitUntil: 'networkidle' });
@@ -51,7 +62,7 @@ async function setup(page: Page) {
 }
 
 test('placement, status and request continue in one detail using each new server version', async ({ page }) => {
-    const { cycle, placement, patient, marker, url, detail } = await setup(page);
+    const { cycle, placement, patient, marker, url, detail } = await setup(page, true);
     await expect(detail.getByRole('button', { name: 'Konfirmasi sudah ditempatkan' })).toHaveCount(0);
     const versions: number[] = [];
     page.on('request', request => {
@@ -178,7 +189,7 @@ test('closing detail restores list order, scroll position and keyboard focus', a
 });
 
 test('doctor decision keeps detail open with the server result and no nursing actions', async ({ page }) => {
-    const { cycle, placement, marker } = await setup(page);
+    const { cycle, placement, marker } = await setup(page, true);
     for (const input of [{ placementId: placement.id }, { status: 'assigned' }, { status: 'in_care' }]) {
         const current = await (await page.request.get(`/api/v1/cycles/${cycle.id}`)).json();
         await write(page.request, 'PATCH', `/cycles/${cycle.id}`, { ...input, expectedVersion: current.version });

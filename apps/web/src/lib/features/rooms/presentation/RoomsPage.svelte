@@ -16,13 +16,16 @@ import { Input } from '$lib/shared/ui/input/index.js';
 import FormSelect from '$lib/shared/ui/form-select.svelte';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
 
-let { data, roomService }: {
+let { data, roomService, cycleId = '', roomSearch = '' }: {
     data: RoomsPageData;
     roomService: Rooms;
+    cycleId?: string;
+    roomSearch?: string;
 } = $props();
 
 /* Filters stay local state so the listing behaves exactly as before: no URL round trip. */
 let query = $state('');
+$effect(() => { query = roomSearch; });
 let classFilter = $state('');
 let statusFilter = $state('');
 
@@ -116,6 +119,7 @@ async function removeConfirmed() {
 </script>
 
 <svelte:head><title>Ruang rawat inap | InpaCare</title></svelte:head>
+{#if cycleId}<Button href={`/dashboard?${new URLSearchParams({ cycle: cycleId })}`} variant="outline" class="mb-4">Kembali ke rekap pasien</Button>{/if}
 
 <div class="flex flex-col gap-6">
     <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">

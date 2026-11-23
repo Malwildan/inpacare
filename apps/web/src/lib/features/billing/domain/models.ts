@@ -82,6 +82,16 @@ export type PatientInvoiceContext = {
         createdAt: string;
     })[];
 };
+export type ReleaseHandoff = {
+    cycleId: string;
+    patientId: string;
+    patientName: string;
+    medicalRecordNo: string;
+    releasedAt: string;
+    placement: PatientInvoiceContext['placements'][number];
+    invoices: { id: string; status: 'paid' | 'unpaid' }[];
+};
+export type ReleaseHandoffPage = { items: ReleaseHandoff[]; nextOffset: number | null };
 export type NewInvoice = {
     patientId: string;
     placementId?: string | null;

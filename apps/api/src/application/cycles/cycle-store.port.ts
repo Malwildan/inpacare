@@ -38,6 +38,21 @@ export interface CycleCandidate {
   id: string;
   name: string;
   medicalRecordNo: string;
+  firstAdmission: boolean;
+}
+export interface ReleaseBlockingTask {
+  id: string;
+  title: string;
+  status: "todo" | "in_progress";
+  picId: string;
+  picName: string;
+  startsAt: Date;
+  endsAt: Date;
+}
+export interface CycleDetail extends Record<string, unknown> {
+  status: string;
+  placementId: string | null;
+  requests: { id: string; status: string }[];
 }
 export interface CreatedCycle {
   id: string;
@@ -66,7 +81,7 @@ export interface CycleStore {
   detail(
     actor: Actor,
     cycleId: string,
-  ): Promise<Record<string, unknown> | undefined>;
+  ): Promise<CycleDetail | undefined>;
   requestDetail(
     cycleId: string,
     requestId: string,
@@ -199,7 +214,7 @@ export interface CycleStore {
   ): Promise<number>;
   extendPlacement(placementId: string, requestedEnd: string): Promise<void>;
   releaseDateNotStarted(startsOn: string, today: string): Promise<boolean>;
-  hasFutureTasks(placementId: string): Promise<boolean>;
+  releaseBlockingTasks(placementId: string): Promise<ReleaseBlockingTask[]>;
   releasePlacement(placementId: string, today: string): Promise<void>;
   setCycleStatus(cycleId: string, status: string): Promise<void>;
   incrementCycleVersion(cycleId: string): Promise<void>;
