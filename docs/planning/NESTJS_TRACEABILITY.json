@@ -6022,6 +6022,7 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/tasks/+page.server.ts#load",
+              "apps/web/src/lib/features/care-cycles/presentation/CycleTaskForm.svelte#createTask",
               "apps/web/src/lib/features/tasks/presentation/TasksPage.svelte#filterTasks,reloadHistory,open,submit,createTask,changeStatus,addNote,reassign,removeTask,updateTask"
             ],
             "handlers": [
@@ -6037,6 +6038,11 @@
           },
           "mappingComplete": true,
           "testReferences": [
+            {
+              "file": "tests/e2e/contextual-task.spec.ts",
+              "test": "coordinator creates a task from cycle detail and keeps the draft after a placement change",
+              "coverage": "contextual task creation, placement conflicts, assigned PIC board and API permission"
+            },
             {
               "file": "apps/api/test/contract/contract.test.cjs",
               "test": "OpenAPI paths, methods, success codes, DTO properties, and guards match compiled Nest metadata",
@@ -6086,6 +6092,7 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/tasks/+page.server.ts#load",
+              "apps/web/src/lib/features/care-cycles/presentation/CycleTasks.svelte#loadTasks",
               "apps/web/src/lib/features/tasks/presentation/TasksPage.svelte#filterTasks,reloadHistory,open,submit,createTask,changeStatus,addNote,reassign,removeTask,updateTask"
             ],
             "handlers": [
@@ -6101,6 +6108,11 @@
           },
           "mappingComplete": true,
           "testReferences": [
+            {
+              "file": "tests/e2e/contextual-task.spec.ts",
+              "test": "coordinator creates a task from cycle detail and keeps the draft after a placement change",
+              "coverage": "contextual task creation, placement conflicts, assigned PIC board and API permission"
+            },
             {
               "file": "apps/api/test/contract/contract.test.cjs",
               "test": "OpenAPI paths, methods, success codes, DTO properties, and guards match compiled Nest metadata",
@@ -10231,6 +10243,24 @@
           "file": "tests/api/test_workflows.py",
           "test": "test_inpatient_handoffs_preserve_release_rules_and_administration",
           "coverage": "HTTP checks cover the admissions-only projection, committed release, replay, failed billing, and separate payment status."
+        }
+      ]
+    },
+    {
+      "operation": "completeMeasurement",
+      "route": "POST /api/v1/tasks/{id}/complete-measurement",
+      "actualTargetSymbol": "apps/api/src/presentation/http/tasks/tugas.controller.ts#TugasController.selesaikanPengukuran",
+      "status": "mapped_unverified",
+      "testReferences": [
+        {
+          "file": "tests/e2e/task-measurements.spec.ts",
+          "test": "the nurse saves a task observation in its episode and still completes ordinary tasks with notes",
+          "coverage": "Browser and live API cover task start, fixed patient context, validation and retained input, authorization, saved vitals, exact replay, and ordinary task notes."
+        },
+        {
+          "file": "apps/api/test/integration/atomicity.integration.cjs",
+          "test": "measurement completion rolls back on task history failure and concurrent retries save one result",
+          "coverage": "PostgreSQL checks rollback after a late write failure, stale versions, placement changes, authorization and concurrent retries; it does not exercise rendering."
         }
       ]
     }

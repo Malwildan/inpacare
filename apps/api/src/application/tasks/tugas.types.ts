@@ -1,4 +1,8 @@
-import { TaskChanges, TaskStatus } from "../../domain/tasks/tugas-perawatan";
+import { TaskChanges, TaskStatus, TaskType } from "../../domain/tasks/tugas-perawatan";
+import { ObservationInput } from "../medical-records/observation-writes";
+export interface CompleteMeasurementInput extends ObservationInput {
+  expectedVersion: number;
+}
 export interface MoveTaskInput {
   expectedVersion: number;
   status: TaskStatus;
@@ -12,6 +16,7 @@ export interface TaskFilters {
   priority?: string;
   roomId?: string;
   patientId?: string;
+  cycleId?: string;
   picId?: string;
   from?: string;
   to?: string;
@@ -19,8 +24,10 @@ export interface TaskFilters {
   offset?: number;
 }
 export interface CreateTaskInput {
+  type?: TaskType;
   patientId: string;
   placementId: string;
+  cycleContext?: { cycleId: string; placementVersion: number };
   picId: string;
   title: string;
   description?: string;

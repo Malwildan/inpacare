@@ -27,4 +27,13 @@ export class DashboardSiklusController {
   ) {
     return this.service.requestDetail(actor, id, requestId);
   }
+  @Get(":id/requests/:requestId/review")
+  @Roles("DOKTER")
+  reviewRequest(
+    @CurrentActor() actor: Actor,
+    @Param("id") id: string,
+    @Param("requestId") requestId: string,
+  ) {
+    return this.service.reviewRequest(actor, id, requestId);
+  }
 }

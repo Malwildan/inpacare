@@ -1,7 +1,7 @@
 import { Actor } from "../../domain/auth/actor";
 import { requireClinical } from "../../domain/auth/permissions";
 import { DomainError } from "../../domain/shared/domain-error";
-import { hasCompleteBloodPressure } from "../../domain/medical-records/vital-signs";
+import { ObservationInput, saveObservation, validateObservation } from "./observation-writes";
 import { id } from "../shared/runtime";
 import { UnitOfWork } from "../shared/unit-of-work.port";
 import { PatientAccess, canReadPatient } from "../patients/patient-access";
@@ -26,33 +26,10 @@ export interface DeleteMedicalRecordInput {
   expectedVersion: number;
   reason: string;
 }
-export interface ObservationInput {
-  symptoms: string;
-  nursingNote?: string;
-  observedAt: string;
-  temperature?: number;
-  systolic?: number;
-  diastolic?: number;
-  pulse?: number;
-  respiratoryRate?: number;
-  spo2?: number;
-}
 export interface UpdateObservationInput extends ObservationInput {
   expectedVersion: number;
   reason: string;
 }
-const validateObservation = (input: ObservationInput) => {
-  if (!input.symptoms.trim())
-    throw DomainError.validation("Isi Gejala sebelum menyimpan observasi.");
-  if (
-    !/T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(input.observedAt)
-  )
-    throw DomainError.validation("Waktu pemeriksaan tidak valid. Periksa tanggal, jam, dan zona waktu pemeriksaan.");
-  if (!hasCompleteBloodPressure(input.systolic, input.diastolic))
-    throw DomainError.validation(
-      "Tekanan darah belum lengkap. Isi Sistolik dan Diastolik dalam mmHg, atau kosongkan keduanya.",
-    );
-};
 export class RekamMedisUseCases {
   constructor(
     private readonly store: MedicalRecordStore,
@@ -111,7 +88,7 @@ export class RekamMedisUseCases {
       const detail = await tx.cycles.detail(actor, cycleId);
       if (!detail) throw DomainError.notFound();
       const scope = { cycleId, patientId: String(detail.patientId) };
-      await this.saveObservation(tx.medicalRecords, actor, scope, input);
+      await saveObservation(tx.medicalRecords, actor, scope, input);
       return { items: await tx.medicalRecords.listObservations(actor, scope) };
     });
   }
@@ -249,7 +226,7 @@ export class RekamMedisUseCases {
       const scope = await this.lockRecordObservationScope(tx, actor, recordId);
       if (!("cycleId" in scope))
         throw DomainError.conflict("Buka rekap rawat inap pasien untuk menambah observasi.");
-      await this.saveObservation(tx.medicalRecords, actor, scope, input, recordId);
+      await saveObservation(tx.medicalRecords, actor, scope, input, { recordId });
       return this.readRecord(tx.medicalRecords, tx.patients, tx.cycles, actor, recordId);
     });
   }
@@ -262,44 +239,6 @@ export class RekamMedisUseCases {
     }
     await canReadPatient(tx.patients, actor, record.patient_id);
     return { recordId, patientId: record.patient_id, doctorId: record.doctor_id };
-  }
-  private async saveObservation(
-    store: MedicalRecordStore,
-    actor: Actor,
-    scope: { cycleId: string; patientId: string },
-    input: ObservationInput,
-    recordId?: string,
-  ) {
-    const observationId = id();
-    const observation = {
-      ...scope,
-      id: observationId,
-      nurseId: actor.id,
-      symptoms: input.symptoms.trim(),
-      nursingNote: input.nursingNote?.trim() ?? "",
-      observedAt: input.observedAt,
-    };
-    await store.createObservation(observation);
-    const vitals = {
-      temperature: input.temperature ?? null,
-      systolic: input.systolic ?? null,
-      diastolic: input.diastolic ?? null,
-      pulse: input.pulse ?? null,
-      respiratoryRate: input.respiratoryRate ?? null,
-      spo2: input.spo2 ?? null,
-    };
-    if (Object.values(vitals).some((value) => value !== null)) {
-      await store.createVitals({ id: id(), observationId, ...vitals });
-    }
-    await store.createRecordHistory({
-      id: id(),
-      entityId: observationId,
-      actorId: actor.id,
-      action: "created",
-      reason: "Observasi dicatat",
-      after: { ...scope, recordId, observedAt: observation.observedAt },
-      entityType: "observation",
-    });
   }
   async updateObservation(
     actor: Actor,

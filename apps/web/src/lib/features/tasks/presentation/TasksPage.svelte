@@ -7,7 +7,9 @@ import { Input } from '$lib/shared/ui/input/index.js';
 import FormSelect from '$lib/shared/ui/form-select.svelte';
 import { Textarea } from '$lib/shared/ui/textarea/index.js';
 import { goto, invalidateAll } from '$app/navigation';
-import type { Tasks, TasksPageData, Task, TaskHistory, NewTask, BoardStatus, TaskBoard } from '$lib/features/tasks';
+import { boardStatuses, type Tasks, type TasksPageData, type Task, type TaskHistory, type NewTask, type BoardStatus, type TaskBoard } from '$lib/features/tasks';
+import { ObservationFields, readObservationForm } from '$lib/features/medical-records';
+import { ApiError } from '$lib/shared/errors';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { date } from '$lib/shared/format';
 import { formText } from '$lib/shared/presentation/form';
@@ -15,7 +17,7 @@ import Modal from '$lib/shared/ui/dialog-frame.svelte';
 import StatusBadge from '$lib/shared/ui/status-badge.svelte';
 import { Badge } from '$lib/shared/ui/badge/index.js';
 import { ArrowDownToLine, ArrowRightLeft, Ban, ChevronDown, Eye, Filter, ListPlus, LockKeyhole, Pencil, Plus, RefreshCw, Save, Search, SlidersHorizontal, Trash2, Undo2, UserRoundPen, X } from 'lucide-svelte';
-import { onDestroy, untrack } from 'svelte';
+import { onDestroy, tick, untrack } from 'svelte';
 let { data, tasks, taskId = '', cycleId = '' }: {
     data: TasksPageData;
     tasks: Tasks;
@@ -37,7 +39,10 @@ let toFilter = $state('');
 $effect(() => { search = data.filters.search; statusFilter = data.filters.status; priorityFilter = data.filters.priority; roomFilter = data.filters.roomId; patientFilter = data.filters.patientId; picFilter = data.filters.picId; fromFilter = data.filters.from; toFilter = data.filters.to; });
 let creating = $state(false);
 let selected = $state<Task | null>(null);
-let taskView = $state<'detail' | 'edit' | 'note' | 'reassign' | 'audit'>('detail');
+let taskView = $state<'detail' | 'edit' | 'note' | 'measure' | 'reassign' | 'audit'>('detail');
+const measurementFormId = $props.id();
+let measurementError = $state('');
+let measurementAlert = $state<HTMLParagraphElement>();
 let selectedAudit = $state<TaskHistory | null>(null);
 let filterOpen = $state(false);
 let history = $state<TaskHistory[]>([]);
@@ -85,6 +90,7 @@ function canDrag(task: Task) { return task.status !== 'done' && task.status !== 
 function allowed(task: Task, status: BoardStatus) {
     if (task.status === 'done' || task.status === 'cancelled') return false;
     if (!canOperate(task)) return false;
+    if (task.type === 'measurement' && status === 'done') return false;
     if (status === task.status) return !filtered;
     return (task.status === 'todo' && status === 'in_progress') || (task.status === 'in_progress' && status === 'done') || (coordinator && status === 'cancelled' && (task.status === 'todo' || task.status === 'in_progress'));
 }
@@ -92,13 +98,14 @@ function dropLockReason(task: Task, status: BoardStatus) {
     if (task.status === 'done' || task.status === 'cancelled') return 'Tugas selesai atau dibatalkan tidak dapat dipindahkan.';
     if (!canOperate(task)) return 'Hanya penanggung jawab atau koordinator yang dapat memindahkan tugas ini.';
     if (status === 'cancelled' && !coordinator) return 'Hanya koordinator yang dapat membatalkan tugas.';
+    if (task.type === 'measurement' && task.status === 'in_progress' && status === 'done') return 'Simpan hasil observasi untuk menyelesaikan tugas pengukuran.';
     if (task.status === 'todo' && status === 'done') return 'Pindahkan ke Sedang dikerjakan terlebih dahulu.';
     return 'Tugas tidak dapat kembali ke Belum dikerjakan.';
 }
 function statusLabel(status: string) { return statuses.find(([key]) => key === status)?.[1] ?? status; }
 function priorityLabel(priority: string) { return ({ high: 'Tinggi', normal: 'Normal', low: 'Rendah' } as Record<string, string>)[priority] ?? priority; }
 function auditFieldLabel(key: string) {
-    const labels: Record<string, string> = { search: 'Pencarian', from: 'Dari tanggal', to: 'Sampai tanggal', id: 'ID tugas', title: 'Judul', description: 'Deskripsi', notes: 'Catatan tindakan', status: 'Status', priority: 'Prioritas', version: 'Versi', pic_id: 'Penanggung jawab', pic_nurse_id: 'Penanggung jawab', patient_id: 'Pasien', room_id: 'Ruangan', placement_id: 'Penempatan', starts_at: 'Waktu mulai', ends_at: 'Waktu selesai', created_at: 'Waktu dibuat', created_by: 'Dibuat oleh', created_by_id: 'Dibuat oleh', updated_at: 'Waktu diperbarui', actor_id: 'Pelaku', before_task_id: 'Tugas sebelumnya' };
+    const labels: Record<string, string> = { search: 'Pencarian', from: 'Dari tanggal', to: 'Sampai tanggal', id: 'ID tugas', type: 'Jenis tugas', cycle_id: 'Rekap rawat inap', observation_id: 'ID observasi', title: 'Judul', description: 'Deskripsi', notes: 'Catatan tindakan', status: 'Status', priority: 'Prioritas', version: 'Versi', pic_id: 'Penanggung jawab', pic_nurse_id: 'Penanggung jawab', patient_id: 'Pasien', room_id: 'Ruangan', placement_id: 'Penempatan', starts_at: 'Waktu mulai', ends_at: 'Waktu selesai', created_at: 'Waktu dibuat', created_by: 'Dibuat oleh', created_by_id: 'Dibuat oleh', updated_at: 'Waktu diperbarui', actor_id: 'Pelaku', before_task_id: 'Tugas sebelumnya' };
     const normalized = key.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/-/g, '_').toLowerCase();
     return labels[normalized] ?? key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').replace(/^./, value => value.toUpperCase());
 }
@@ -121,7 +128,11 @@ function auditActionLabel(action: string) {
 }
 function startMove(task: Task, status?: BoardStatus, before: string | null = null) {
     if (pending.includes(task.id)) return;
-    if (reasonTaskId !== task.id) reason = ''; reasonTaskId = task.id; moving = task; destination = status ?? (filtered ? (task.status === 'todo' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'cancelled') : task.status as BoardStatus); beforeId = before ?? '';
+    if (reasonTaskId !== task.id) reason = '';
+    reasonTaskId = task.id;
+    moving = task;
+    destination = status ?? (filtered ? boardStatuses.find(column => allowed(task, column)) : undefined) ?? task.status as BoardStatus;
+    beforeId = before ?? '';
 }
 async function refreshColumn(status: BoardStatus, current = generation) {
     if (data.filters.status && data.filters.status !== status) return;
@@ -286,7 +297,7 @@ catch (failure) {
     toast.error(sessionFailure(failure, 'load', 'Detail tugas'));
     selected = null;
 } }
-async function submit(operation: () => Promise<unknown>) {
+async function submit(operation: () => Promise<unknown>, onError?: (error: unknown) => void) {
     if (busy) return false;
     busy = true;
     const toastId = toast.loading('Menyimpan perubahan…');
@@ -298,7 +309,10 @@ async function submit(operation: () => Promise<unknown>) {
         );
         return true;
     } catch (e) {
-        toast.error(sessionFailure(e, 'save', 'tugas perawatan'), { id: toastId });
+        if (onError) {
+            toast.dismiss(toastId);
+            onError(e);
+        } else toast.error(sessionFailure(e, 'save', 'tugas perawatan'), { id: toastId });
         return false;
     } finally {
         busy = false;
@@ -307,9 +321,46 @@ async function submit(operation: () => Promise<unknown>) {
 async function createTask(event: SubmitEvent) { event.preventDefault(); const f = new FormData(event.currentTarget as HTMLFormElement); const placement = placements.find((p) => p.id === formText(f, 'placementId')); if (!placement) {
     toast.error('Pilih penempatan pasien yang masih aktif.');
     return;
-} const toIso = (s: string) => new Date(s).toISOString(); const ok = await submit(() => tasks.create({ patientId: placement.patientId, placementId: placement.id, picId: formText(f, 'picId'), title: formText(f, 'title'), description: formText(f, 'description'), notes: formText(f, 'notes'), priority: formText(f, 'priority') as NewTask['priority'], startsAt: toIso(String(formText(f, 'startsAt'))), endsAt: toIso(String(formText(f, 'endsAt'))) })); if (ok)
+} const toIso = (s: string) => new Date(s).toISOString(); const ok = await submit(() => tasks.create({ patientId: placement.patientId, placementId: placement.id, type: formText(f, 'type') === 'measurement' ? 'measurement' : undefined, picId: formText(f, 'picId'), title: formText(f, 'title'), description: formText(f, 'description'), notes: formText(f, 'notes'), priority: formText(f, 'priority') as NewTask['priority'], startsAt: toIso(String(formText(f, 'startsAt'))), endsAt: toIso(String(formText(f, 'endsAt'))) })); if (ok)
     creating = false; }
 async function changeStatus(task: Task, status: BoardStatus) { if (status === 'cancelled') startMove(task, status); else await moveTask(task, status, null); }
+function showMeasurementForm() {
+    measurementError = '';
+    taskView = 'measure';
+}
+async function startMeasurement(task: Task) {
+    if (task.picId !== data.user.id) return;
+    const started = await submit(async () => {
+        const updated = await tasks.update(task.id, { expectedVersion: task.version, status: 'in_progress' });
+        if (selected?.id === task.id) selected = updated;
+    });
+    if (started && selected?.id === task.id) {
+        showMeasurementForm();
+        await reloadHistory(task.id);
+    }
+}
+async function completeMeasurement(event: SubmitEvent) {
+    event.preventDefault();
+    const task = selected;
+    if (busy || !task || task.picId !== data.user.id || task.status !== 'in_progress') return;
+    const form = new FormData(event.currentTarget as HTMLFormElement);
+    measurementError = '';
+    const saved = await submit(async () => {
+        const result = await tasks.completeMeasurement(task.id, { ...readObservationForm(form), expectedVersion: task.version });
+        if (selected?.id === task.id) selected = result.task;
+    }, error => {
+        measurementError = error instanceof ApiError && error.status === 401
+            ? 'Sesi berakhir. Masuk kembali di tab lain, lalu coba lagi.'
+            : sessionFailure(error, 'save', 'hasil observasi');
+    });
+    if (saved && selected?.id === task.id) {
+        taskView = 'detail';
+        await reloadHistory(task.id);
+    } else if (measurementError) {
+        await tick();
+        measurementAlert?.focus();
+    }
+}
 async function addNote(event: SubmitEvent) {
     event.preventDefault();
     const task = selected;
@@ -407,10 +458,10 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 </div>
 
 {#if creating || selected || moving || (deletionOpen && deletingTask)}
-<Modal title={creating ? 'Buat tugas perawatan' : moving ? `Pindahkan ${moving.title}` : deletionOpen ? 'Hapus tugas?' : taskView === 'edit' ? 'Ubah detail tugas' : taskView === 'note' ? 'Tambah catatan' : taskView === 'reassign' ? 'Alihkan penanggung jawab' : taskView === 'audit' ? 'Rincian perubahan tugas' : selected?.title ?? 'Detail tugas'}
+<Modal title={creating ? 'Buat tugas perawatan' : moving ? `Pindahkan ${moving.title}` : deletionOpen ? 'Hapus tugas?' : taskView === 'edit' ? 'Ubah detail tugas' : taskView === 'note' ? 'Tambah catatan' : taskView === 'measure' ? 'Isi hasil observasi' : taskView === 'reassign' ? 'Alihkan penanggung jawab' : taskView === 'audit' ? 'Rincian perubahan tugas' : selected?.title ?? 'Detail tugas'}
  description={moving ? 'Pilih status tujuan dan posisi tugas. Pembatalan memerlukan alasan.' : undefined}
  busy={!moving && (busy || !!selected && pending.includes(selected.id))}
- protectChanges={creating || !moving && !deletionOpen && ['edit', 'note', 'reassign'].includes(taskView)}
+ protectChanges={creating || !moving && !deletionOpen && ['edit', 'note', 'measure', 'reassign'].includes(taskView)}
  formKey={creating ? 'create' : moving ? 'move' : deletionOpen ? 'delete' : taskView === 'audit' ? `audit-${selectedAudit?.id}` : taskView}
  backLabel={selected && (moving && !pending.includes(moving.id) || deletionOpen || taskView !== 'detail') ? 'Kembali ke detail' : undefined}
  onclose={() => { if (moving) closeMove(); else if (deletionOpen) deletionOpen = false; else if (creating) creating = false; else if (taskView !== 'detail') taskView = 'detail'; else closeDetail(); }}>
@@ -418,6 +469,7 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
  {#if creating && coordinator}<form class="form-grid" onsubmit={createTask}>
 	<label class="field">Penempatan pasien<FormSelect name="placementId" required options={[{ value: "", label: "Pilih pasien / ruangan" }, ...(placements).map((p) => ({ value: p.id, label: (p.patientName) + " · " + (p.roomName) + " (" + date(p.startsOn) + "–" + date(p.endsOn) + ")" }))]} /></label>
 	<label class="field">Perawat penanggung jawab<FormSelect name="picId" required options={[{ value: "", label: "Pilih perawat aktif" }, ...(data.reference.staff.filter((u)=>u.role==='PERAWAT'&&u.active)).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label>
+    <label class="field">Jenis tugas<FormSelect name="type" options={[{ value: 'regular', label: 'Perawatan umum' }, { value: 'measurement', label: 'Pengukuran' }]} /></label>
 	<label class="field">Judul tugas<Input class="h-11 text-base md:text-sm" name="title" required maxlength={150} /></label><label class="field">Prioritas<FormSelect name="priority" options={[{ value: "normal", label: "Normal" }, { value: "high", label: "Tinggi" }, { value: "low", label: "Rendah" }]} /></label>
 	<label class="field">Waktu mulai<FormDatePicker class="h-11 text-base md:text-sm" name="startsAt" type="datetime-local" required /></label><label class="field">Waktu selesai<FormDatePicker class="h-11 text-base md:text-sm" name="endsAt" type="datetime-local" required /></label>
 	<label class="field">Deskripsi<Textarea name="description" rows={2}></Textarea></label><label class="field">Catatan awal<Textarea name="notes" rows={2}></Textarea></label>
@@ -434,6 +486,16 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
         </form>
  {:else if selected}
   {#if taskView === 'edit'}<form class="form-grid" onsubmit={updateTask}><label class="field">Judul tugas<Input class="h-11 text-base md:text-sm" name="title" value={selected.title} required maxlength={150}/></label><label class="field">Prioritas<FormSelect name="priority" value={selected.priority} options={[{ value: "low", label: "Rendah" }, { value: "normal", label: "Normal" }, { value: "high", label: "Tinggi" }]} /></label><label class="field">Mulai<FormDatePicker class="h-11 text-base md:text-sm" name="startsAt" type="datetime-local" value={localInput(selected.startsAt)} required/></label><label class="field">Selesai<FormDatePicker class="h-11 text-base md:text-sm" name="endsAt" type="datetime-local" value={localInput(selected.endsAt)} required/></label><label class="field full">Deskripsi<Textarea value={[(selected.description)].join("")} name="description" rows={3}></Textarea></label><div class="form-actions"><Button variant="outline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> Simpan detail</Button></div></form>
+  {:else if taskView === 'measure'}
+   <form class="flex flex-col gap-4" method="post" aria-labelledby={measurementFormId} onsubmit={completeMeasurement}>
+    <p id={measurementFormId}><strong>{selected.patientName}</strong> ({selected.medicalRecordNo}) · {selected.roomName}</p>
+    <ObservationFields />
+    <p class="empty:hidden text-sm text-destructive" role="alert" tabindex="-1" bind:this={measurementAlert}>{measurementError}</p>
+    <div class="form-actions">
+     <Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button>
+     <Button type="submit" class="h-11" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan…' : 'Simpan hasil dan selesaikan tugas'}</Button>
+    </div>
+   </form>
   {:else if taskView === 'note'}<form class="flex flex-col gap-4" onsubmit={addNote}><label class="field">Catatan tindakan<Textarea value={[(selected.notes)].join("")} name="notes" rows={2} maxlength={3000} required></Textarea></label><div class="form-actions"><Button variant="outline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> Simpan catatan</Button></div></form>
   {:else if taskView === 'reassign'}<form class="flex flex-col gap-4" onsubmit={reassign}><label class="field">Alihkan ke perawat<FormSelect name="picId" required options={[...(data.reference.staff.filter((u)=>u.role==='PERAWAT'&&u.active&&u.id!==selected?.picId)).map((nurse) => ({ value: nurse.id, label: (nurse.name) }))]} /></label><label class="field">Alasan pengalihan<Input class="h-11 text-base md:text-sm" name="reason" required maxlength={500} /></label><div class="form-actions"><Button variant="outline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4" disabled={busy}><UserRoundPen aria-hidden="true" /> Alihkan penanggung jawab</Button></div></form>
   {:else if taskView === 'audit' && selectedAudit}
@@ -452,12 +514,18 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
    <div><dt>Pasien</dt><dd>{selected.patientName} <span class="muted">({selected.medicalRecordNo})</span></dd></div>
    <div><dt>Ruangan</dt><dd>{selected.roomName}</dd></div>
    <div><dt>Penanggung jawab</dt><dd>{selected.picName}</dd></div>
+   {#if selected.type === 'measurement'}<div><dt>Jenis tugas</dt><dd>Pengukuran</dd></div>{/if}
    <div><dt>Status</dt><dd>{statusLabel(selected.status)}</dd></div>
    <div><dt>Prioritas</dt><dd>{priorityLabel(selected.priority)}</dd></div>
    <div><dt>Jadwal</dt><dd>{local(selected.startsAt)}<br />sampai {local(selected.endsAt)}</dd></div>
    <div><dt>Dibuat oleh</dt><dd>{selected.createdByName}</dd></div>
   </dl>
-  {#if canOperate(selected) && selected.status!=='done' && selected.status!=='cancelled' && statuses.some(([key])=>allowed(selected!,key as BoardStatus))}<Button variant="default" class="h-11 px-4" disabled={pending.includes(selected.id)} onclick={()=>selected&&startMove(selected)}><ArrowRightLeft aria-hidden="true" /> Pindahkan</Button>{/if}
+  {#if selected.type === 'measurement' && selected.picId === data.user.id && selected.status === 'todo'}
+   <Button class="h-11" disabled={busy || pending.includes(selected.id)} onclick={() => selected && startMeasurement(selected)}>Mulai</Button>
+  {:else if selected.type === 'measurement' && selected.picId === data.user.id && selected.status === 'in_progress'}
+   <Button class="h-11" disabled={busy || pending.includes(selected.id)} onclick={showMeasurementForm}>Isi hasil observasi</Button>
+  {/if}
+  {#if canOperate(selected) && selected.status!=='done' && selected.status!=='cancelled' && statuses.some(([key])=>allowed(selected!,key as BoardStatus))}<Button variant={selected.type === 'measurement' && selected.picId === data.user.id ? 'outline' : 'default'} class="h-11 px-4" disabled={busy || pending.includes(selected.id)} onclick={()=>selected&&startMove(selected)}><ArrowRightLeft aria-hidden="true" /> Pindahkan</Button>{/if}
  </section>
  <section class="detail-section"><h3>Deskripsi</h3><p class="detail-copy">{selected.description||'Tidak ada deskripsi.'}</p></section>
  <section class="detail-section"><h3>Catatan tindakan</h3><p class="detail-copy">{selected.notes||'Belum ada catatan.'}</p></section>

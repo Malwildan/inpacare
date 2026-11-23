@@ -49,9 +49,29 @@ export interface ReleaseBlockingTask {
   endsAt: Date;
 }
 export interface CycleDetail extends Record<string, unknown> {
+  id: string;
+  patientId: string;
+  patientName: string;
+  medicalRecordNo: string;
+  doctorId: string;
+  room: string | null;
   status: string;
+  version: number;
   placementId: string | null;
   requests: { id: string; status: string }[];
+}
+export interface CycleRequestDetail {
+  id: string;
+  cycleId: string;
+  kind: "extend" | "release";
+  requestedEnd: string | null;
+  reason: string;
+  requestedBy: string;
+  status: string;
+  decidedBy: string | null;
+  note: string | null;
+  createdAt: string;
+  decidedAt: string | null;
 }
 export interface CycleAssignee {
   id: string;
@@ -90,7 +110,7 @@ export interface CycleStore {
   requestDetail(
     cycleId: string,
     requestId: string,
-  ): Promise<Record<string, unknown> | undefined>;
+  ): Promise<CycleRequestDetail | undefined>;
   activeDoctor(doctorId: string): Promise<boolean>;
   canReadPatient(actor: Actor, patientId: string): Promise<boolean>;
   lockPatient(patientId: string): Promise<boolean>;
@@ -177,6 +197,8 @@ export interface CycleStore {
         version: number | string;
         status: string;
         nurse_id: string;
+        doctor_id: string;
+        placement_id: string | null;
       }
     | undefined
   >;

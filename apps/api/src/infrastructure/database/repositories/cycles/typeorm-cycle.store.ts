@@ -4,6 +4,7 @@ import { isCoordinator } from "../../../../domain/auth/permissions";
 import {
   CycleAssignee,
   CycleDetail,
+  CycleRequestDetail,
   CycleCandidate,
   ReleaseBlockingTask,
   CycleListFilters,
@@ -83,7 +84,12 @@ export class TypeOrmCycleStore implements CycleStore {
   async detail(actor: Actor, cycleId: string) {
     const rows = await this.manager.query<{ item: CycleDetail }[]>(
       `SELECT jsonb_build_object('id',c.id,'patientId',c.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',c.placement_id,'room',r.name,'doctorId',c.doctor_id,'doctorName',d.name,'nurseId',c.nurse_id,'nurseName',n.name,'status',c.status,'version',c.version,'createdAt',c.created_at,'requests',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',q.id,'kind',q.kind,'requestedEnd',q.requested_end,'reason',q.reason,'requestedBy',ru.name,'status',q.status,'decidedBy',du.name,'note',q.decision_note,'createdAt',q.created_at,'decidedAt',q.decided_at) ORDER BY q.created_at DESC) FROM cycle_requests q JOIN users ru ON ru.id=q.requested_by LEFT JOIN users du ON du.id=q.decided_by WHERE q.cycle_id=c.id),'[]'::jsonb)) ||
-        CASE WHEN $3::boolean THEN jsonb_build_object('assignmentHistory', COALESCE((
+        CASE WHEN $3::boolean THEN jsonb_build_object(
+          'taskPlacement', CASE WHEN c.status<>'released' AND pl.status='active' AND pl.patient_id=c.patient_id
+            AND NOT EXISTS(SELECT 1 FROM cycles released WHERE released.placement_id=pl.id AND released.status='released' AND released.deleted_at IS NULL)
+            THEN jsonb_build_object('id',pl.id,'roomName',r.name,'startsOn',pl.starts_on,'endsOn',pl.ends_on,'version',pl.version)
+            ELSE NULL END,
+          'assignmentHistory', COALESCE((
           SELECT jsonb_agg(jsonb_build_object(
             'id',h.id,'actorId',h.actor_id,'actorName',changed_by.name,
             'previousNurseId',h.before_data->>'nurseId','previousNurseName',COALESCE(previous_nurse.name,h.before_data->>'nurseId'),
@@ -101,7 +107,7 @@ export class TypeOrmCycleStore implements CycleStore {
     return rows[0]?.item;
   }
   async requestDetail(cycleId: string, requestId: string) {
-    const rows = await this.manager.query(
+    const rows = await this.manager.query<{ item: CycleRequestDetail }[]>(
       `SELECT jsonb_build_object('id',q.id,'cycleId',q.cycle_id,'kind',q.kind,'requestedEnd',q.requested_end,'reason',q.reason,'requestedBy',u.name,'status',q.status,'decidedBy',du.name,'note',q.decision_note,'createdAt',q.created_at,'decidedAt',q.decided_at) AS item FROM cycle_requests q JOIN users u ON u.id=q.requested_by LEFT JOIN users du ON du.id=q.decided_by WHERE q.id=$1 AND q.cycle_id=$2`,
       [requestId, cycleId],
     );
@@ -300,7 +306,7 @@ export class TypeOrmCycleStore implements CycleStore {
   }
   async lockCycle(id: string) {
     const r = await this.manager.query(
-      `SELECT version,status,nurse_id FROM cycles WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`,
+      `SELECT version,status,nurse_id,doctor_id,placement_id FROM cycles WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`,
       [id],
     );
     return r[0];

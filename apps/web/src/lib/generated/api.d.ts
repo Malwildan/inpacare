@@ -577,6 +577,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cycles/{id}/requests/{requestId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Baca konteks pengajuan untuk dokter penanggung jawab */
+        get: operations["GET_cycles_id_requests_requestId_review"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invoices/patients/{patientId}/context": {
         parameters: {
             query?: never;
@@ -731,6 +748,26 @@ export interface paths {
          * @description Hanya penanggung jawab saat ini atau koordinator. Gunakan null pada beforeTaskId untuk menaruh tugas di akhir daftar tujuan. Hanya koordinator yang dapat membatalkan tugas dengan alasan.
          */
         post: operations["POST_tasks_id_move"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}/complete-measurement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Simpan hasil dan selesaikan tugas pengukuran
+         * @description Hanya penanggung jawab aktif pada tugas pengukuran yang sedang dikerjakan. Pasien dan rekap diambil dari tugas. Observasi, tanda vital, status selesai, dan riwayat disimpan bersama. Pengiriman ulang isian dan versi yang sama mengembalikan ID observasi yang sudah tersimpan.
+         */
+        post: operations["POST_tasks_id_complete_measurement"];
         delete?: never;
         options?: never;
         head?: never;
@@ -947,6 +984,10 @@ export interface components {
             version: number;
             createdById: string;
             createdByName: string;
+            /** @enum {string} */
+            type: "regular" | "measurement";
+            /** @description Rekap asal tugas yang dibuat dari detail rekap atau rekap untuk tugas pengukuran. */
+            cycleId: string | null;
         };
         TaskHistory: {
             id: string;
@@ -1007,6 +1048,8 @@ export interface components {
             spo2: number | null;
             /** Format: date-time */
             createdAt: string;
+            /** @description Tugas pengukuran yang menghasilkan observasi ini, jika ada. */
+            taskId: string | null;
         };
         MedicalRecord: {
             id: string;
@@ -1047,6 +1090,43 @@ export interface components {
             /** Format: date-time */
             decidedAt: string | null;
         };
+        CycleRequestReview: {
+            cycle: {
+                id: string;
+                patientId: string;
+                patientName: string;
+                medicalRecordNo: string;
+                status: string;
+                version: number;
+            };
+            request: components["schemas"]["CycleRequest"];
+            placement: {
+                id: string;
+                room: string | null;
+                /** Format: date */
+                startsOn: string;
+                /** Format: date */
+                endsOn: string;
+                /** @enum {string} */
+                status: "active" | "cancelled";
+            } | null;
+            records: components["schemas"]["MedicalSummary"][];
+            observations: components["schemas"]["Observation"][];
+            approvalBlocker: string | null;
+            blockingTasks: {
+                id: string;
+                title: string;
+                /** @enum {string} */
+                status: "todo" | "in_progress";
+                picName: string;
+                /** Format: date-time */
+                startsAt: string;
+                /** Format: date-time */
+                endsAt: string;
+            }[];
+            /** Format: date */
+            reviewDate: string;
+        };
         Cycle: {
             id: string;
             patientId: string;
@@ -1069,6 +1149,16 @@ export interface components {
             assignmentHistory?: components["schemas"]["CycleAssignmentEvent"][];
             /** @description Hanya tersedia pada detail rekap yang belum dilepas untuk perawat yang ditugaskan. */
             releaseReadiness?: components["schemas"]["ReleaseReadiness"];
+            /** @description Penempatan aktif yang dapat digunakan untuk membuat tugas dari rekap. Hanya tersedia bagi koordinator perawat. */
+            taskPlacement?: {
+                id: string;
+                roomName: string;
+                /** Format: date */
+                startsOn: string;
+                /** Format: date */
+                endsOn: string;
+                version: number;
+            } | null;
         };
         InvoiceLine: {
             id: string;
@@ -1208,6 +1298,16 @@ export interface components {
             startsAt: string;
             /** Format: date-time */
             endsAt: string;
+            /**
+             * @description Jika tidak diisi, jenisnya regular. Jenis measurement memerlukan rekap yang aktif pada penempatan.
+             * @enum {string}
+             */
+            type?: "regular" | "measurement";
+            /** @description Sertakan saat membuat tugas dari detail rekap. Gunakan versi penempatan yang ditampilkan di detail tersebut. */
+            cycleContext?: {
+                cycleId: string;
+                placementVersion: number;
+            };
         };
         UpdateTask: {
             expectedVersion: number;
@@ -1698,6 +1798,23 @@ export interface components {
             status: "todo" | "in_progress" | "done" | "cancelled";
             beforeTaskId: string | null;
             reason?: string;
+        };
+        CompleteMeasurement: {
+            symptoms: string;
+            nursingNote?: string;
+            /** Format: date-time */
+            observedAt: string;
+            temperature?: number;
+            systolic?: number;
+            diastolic?: number;
+            pulse?: number;
+            respiratoryRate?: number;
+            spo2?: number;
+            expectedVersion: number;
+        };
+        CompletedMeasurement: {
+            task: components["schemas"]["Task"];
+            observationId: string;
         };
         /** @description Identitas pasien baru. Server menentukan medicalRecordNo yang unik setelah pendaftaran berhasil. Klien tidak mengirim nilai tersebut. */
         NewPatient: {
@@ -3088,6 +3205,8 @@ export interface operations {
                 roomId?: string;
                 patientId?: string;
                 picId?: string;
+                /** @description Batasi hasil pada tugas yang dibuat dari rekap ini, sesuai akses akun. */
+                cycleId?: string;
                 from?: string;
                 to?: string;
                 /** @description Nilai dibatasi hingga 100. */
@@ -5748,6 +5867,65 @@ export interface operations {
             };
         };
     };
+    GET_cycles_id_requests_requestId_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Permintaan berhasil. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleRequestReview"];
+                };
+            };
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Layanan mengalami gangguan. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     GET_invoices_patients_patientId_context: {
         parameters: {
             query?: never;
@@ -6425,6 +6603,89 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Akun tidak memiliki izin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Isian atau pilihan perlu diperbaiki. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Layanan mengalami gangguan. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    POST_tasks_id_complete_measurement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Nilainya harus sama dengan origin aplikasi. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteMeasurement"];
+            };
+        };
+        responses: {
+            /** @description Permintaan berhasil. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompletedMeasurement"];
                 };
             };
             /** @description Sesi tidak tersedia atau sudah berakhir. */

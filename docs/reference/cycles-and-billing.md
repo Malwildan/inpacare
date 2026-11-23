@@ -50,6 +50,10 @@ Ajukan `extend` atau `release` untuk pasien yang sedang dirawat. Isi alasan. Sel
 
 Untuk pelepasan, kirim `{"kind":"release","requestedEnd":null,"reason":"Kondisi sudah stabil."}`. Respons `201` memuat ID permintaan, ID rekap, jenis, tanggal, alasan, dan `status:"pending"`. Hanya satu permintaan per rekap dapat menunggu keputusan.
 
+### `GET /cycles/{id}/requests/{requestId}/review` (DOKTER yang ditugaskan)
+
+Respons memuat identitas pasien, status dan versi rekap, pengajuan, penempatan, hingga lima rekam medis yang boleh dibaca, dan hingga lima observasi terbaru dari rekap tersebut. Observasi tersedia sejak dicatat, termasuk sebelum rekam medis dibuat. Untuk pengajuan yang menunggu, `approvalBlocker` menjelaskan kendala persetujuan saat ditinjau dan `blockingTasks` memuat tugas yang menghalangi pelepasan. Saat dokter menyimpan keputusan, API memeriksa ulang keadaan terbaru.
+
 ### `POST /cycles/{id}/requests/{requestId}/decision` (DOKTER yang ditugaskan)
 
 Isi catatan keputusan dan sertakan versi rekap saat ini.

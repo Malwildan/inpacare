@@ -1785,6 +1785,16 @@
             }
           },
           {
+            "name": "cycleId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            },
+            "description": "Batasi hasil pada tugas yang dibuat dari rekap ini, sesuai akses akun."
+          },
+          {
             "name": "from",
             "in": "query",
             "required": false,
@@ -5538,6 +5548,93 @@
         ]
       }
     },
+    "/api/v1/cycles/{id}/requests/{requestId}/review": {
+      "get": {
+        "operationId": "GET_cycles_id_requests_requestId_review",
+        "summary": "Baca konteks pengajuan untuk dokter penanggung jawab",
+        "responses": {
+          "200": {
+            "description": "Permintaan berhasil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleRequestReview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesi tidak tersedia atau sudah berakhir.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau tidak tersedia untuk akun ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Layanan mengalami gangguan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "x-controller-roles": [
+          "DOKTER"
+        ]
+      }
+    },
     "/api/v1/invoices/patients/{patientId}/context": {
       "get": {
         "operationId": "GET_invoices_patients_patientId_context",
@@ -6542,6 +6639,124 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/MoveTask"
+              }
+            }
+          }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
+      }
+    },
+    "/api/v1/tasks/{id}/complete-measurement": {
+      "post": {
+        "operationId": "POST_tasks_id_complete_measurement",
+        "summary": "Simpan hasil dan selesaikan tugas pengukuran",
+        "tags": [
+          "Tasks"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permintaan berhasil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletedMeasurement"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesi tidak tersedia atau sudah berakhir.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tidak memiliki izin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau tidak tersedia untuk akun ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian atau pilihan perlu diperbaiki.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Layanan mengalami gangguan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "PERAWAT"
+        ],
+        "description": "Hanya penanggung jawab aktif pada tugas pengukuran yang sedang dikerjakan. Pasien dan rekap diambil dari tugas. Observasi, tanda vital, status selesai, dan riwayat disimpan bersama. Pengiriman ulang isian dan versi yang sama mengembalikan ID observasi yang sudah tersimpan.",
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteMeasurement"
               }
             }
           }
@@ -7558,6 +7773,21 @@
           },
           "createdByName": {
             "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "regular",
+              "measurement"
+            ]
+          },
+          "cycleId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36,
+            "description": "Rekap asal tugas yang dibuat dari detail rekap atau rekap untuk tugas pengukuran."
           }
         },
         "required": [
@@ -7578,7 +7808,9 @@
           "endsAt",
           "version",
           "createdById",
-          "createdByName"
+          "createdByName",
+          "type",
+          "cycleId"
         ],
         "additionalProperties": false
       },
@@ -7810,6 +8042,14 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "taskId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36,
+            "description": "Tugas pengukuran yang menghasilkan observasi ini, jika ada."
           }
         },
         "required": [
@@ -7827,7 +8067,8 @@
           "pulse",
           "respiratoryRate",
           "spo2",
-          "createdAt"
+          "createdAt",
+          "taskId"
         ],
         "additionalProperties": false
       },
@@ -7993,6 +8234,169 @@
         ],
         "additionalProperties": false
       },
+      "CycleRequestReview": {
+        "type": "object",
+        "properties": {
+          "cycle": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 36
+              },
+              "patientId": {
+                "type": "string",
+                "maxLength": 36
+              },
+              "patientName": {
+                "type": "string"
+              },
+              "medicalRecordNo": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "patientId",
+              "patientName",
+              "medicalRecordNo",
+              "status",
+              "version"
+            ],
+            "additionalProperties": false
+          },
+          "request": {
+            "$ref": "#/components/schemas/CycleRequest"
+          },
+          "placement": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "maxLength": 36
+                  },
+                  "room": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "startsOn": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "endsOn": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "cancelled"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "room",
+                  "startsOn",
+                  "endsOn",
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MedicalSummary"
+            },
+            "maxItems": 5
+          },
+          "observations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Observation"
+            },
+            "maxItems": 5
+          },
+          "approvalBlocker": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "blockingTasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "in_progress"
+                  ]
+                },
+                "picName": {
+                  "type": "string"
+                },
+                "startsAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endsAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "status",
+                "picName",
+                "startsAt",
+                "endsAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "reviewDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "cycle",
+          "request",
+          "placement",
+          "records",
+          "observations",
+          "approvalBlocker",
+          "blockingTasks",
+          "reviewDate"
+        ],
+        "additionalProperties": false
+      },
       "Cycle": {
         "type": "object",
         "properties": {
@@ -8072,6 +8476,42 @@
           "releaseReadiness": {
             "$ref": "#/components/schemas/ReleaseReadiness",
             "description": "Hanya tersedia pada detail rekap yang belum dilepas untuk perawat yang ditugaskan."
+          },
+          "taskPlacement": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Penempatan aktif yang dapat digunakan untuk membuat tugas dari rekap. Hanya tersedia bagi koordinator perawat.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 36
+              },
+              "roomName": {
+                "type": "string"
+              },
+              "startsOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "endsOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "id",
+              "roomName",
+              "startsOn",
+              "endsOn",
+              "version"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -8646,6 +9086,34 @@
           "endsAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "regular",
+              "measurement"
+            ],
+            "description": "Jika tidak diisi, jenisnya regular. Jenis measurement memerlukan rekap yang aktif pada penempatan."
+          },
+          "cycleContext": {
+            "type": "object",
+            "description": "Sertakan saat membuat tugas dari detail rekap. Gunakan versi penempatan yang ditampilkan di detail tersebut.",
+            "properties": {
+              "cycleId": {
+                "type": "string",
+                "maxLength": 36,
+                "minLength": 1
+              },
+              "placementVersion": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "cycleId",
+              "placementVersion"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -10687,6 +11155,81 @@
             "maxLength": 500
           }
         }
+      },
+      "CompleteMeasurement": {
+        "type": "object",
+        "properties": {
+          "symptoms": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1
+          },
+          "nursingNote": {
+            "type": "string",
+            "maxLength": 3000
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "temperature": {
+            "type": "number",
+            "minimum": 30,
+            "maximum": 45
+          },
+          "systolic": {
+            "type": "integer",
+            "minimum": 50,
+            "maximum": 250
+          },
+          "diastolic": {
+            "type": "integer",
+            "minimum": 30,
+            "maximum": 150
+          },
+          "pulse": {
+            "type": "integer",
+            "minimum": 20,
+            "maximum": 250
+          },
+          "respiratoryRate": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 60
+          },
+          "spo2": {
+            "type": "number",
+            "minimum": 50,
+            "maximum": 100
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "symptoms",
+          "observedAt",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "CompletedMeasurement": {
+        "type": "object",
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/Task"
+          },
+          "observationId": {
+            "type": "string",
+            "maxLength": 36
+          }
+        },
+        "required": [
+          "task",
+          "observationId"
+        ],
+        "additionalProperties": false
       },
       "NewPatient": {
         "type": "object",

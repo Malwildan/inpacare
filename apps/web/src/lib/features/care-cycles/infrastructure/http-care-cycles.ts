@@ -19,6 +19,7 @@ export function createHttpCareCycles(http: HttpClient): CareCycles {
         reassign: (id, input) => http.request<Schemas['CycleReassigned']>(`${path(id)}/assignee`, { method: 'PATCH', body: JSON.stringify(input satisfies Schemas['ReassignCycle']) }),
         remove: (id, input) => http.request(path(id), { method: 'DELETE', body: JSON.stringify(input satisfies Schemas['DeleteCycle']) }),
         request: (id, input) => http.request(`${path(id)}/requests`, { method: 'POST', body: JSON.stringify(input satisfies Schemas['NewCycleRequest']) }),
+        review: (id, requestId) => http.request<Schemas['CycleRequestReview']>(`${path(id)}/requests/${encodeURIComponent(requestId)}/review`),
         decide: (id, requestId, input) => http.request(`${path(id)}/requests/${encodeURIComponent(requestId)}/decision`, { method: 'POST', body: JSON.stringify(input satisfies Schemas['DecideCycleRequest']) })
     };
 }

@@ -1,12 +1,34 @@
-import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import { Type } from "class-transformer";
+import { IsDefined, IsIn, IsInt, IsObject, IsOptional, IsString, Length, MaxLength, Min, ValidateIf, ValidateNested } from "class-validator";
 import { CreateTaskInput } from "../../../../application/tasks/tugas.types";
+import { taskTypes, TaskType } from "../../../../domain/tasks/tugas-perawatan";
+
+class TaskCycleContextDto {
+  @IsString()
+  @Length(1, 36)
+  cycleId!: string;
+
+  @IsInt()
+  @Min(1)
+  placementVersion!: number;
+}
+
 export class CreateTaskDto implements CreateTaskInput {
+  @ValidateIf((_, value) => value !== undefined)
+  @IsIn([...taskTypes], { message: "Pilih jenis tugas dari daftar." })
+  type?: TaskType;
   @IsString({ message: "Pilih pasien." })
   @MaxLength(36, { message: "Pilih pasien." })
   patientId!: string;
   @IsString({ message: "Pilih penempatan pasien yang masih aktif." })
   @MaxLength(36, { message: "Pilih penempatan pasien yang masih aktif." })
   placementId!: string;
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsDefined()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TaskCycleContextDto)
+  cycleContext?: TaskCycleContextDto;
   @IsString({ message: "Pilih perawat penanggung jawab." })
   @MaxLength(36, { message: "Pilih perawat penanggung jawab." })
   picId!: string;

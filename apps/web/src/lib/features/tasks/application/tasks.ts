@@ -1,4 +1,4 @@
-import type { Task, TaskHistory, NewTask, UpdateTask, ReassignTask, DeleteTask, MoveTask } from '../domain/models';
+import type { Task, TaskHistory, NewTask, UpdateTask, ReassignTask, DeleteTask, MoveTask, CompleteMeasurement } from '../domain/models';
 import type { User } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
 import { ApiError } from '$lib/shared/errors';
@@ -13,16 +13,18 @@ export type BoardStatus = typeof boardStatuses[number];
 export type BoardColumn = { items: Task[]; total: number; error: boolean; filtered: boolean };
 export type TaskBoard = Record<BoardStatus, BoardColumn>;
 export type TasksRepository = {
-    list(query: TaskFilters & {
+    list(query: Partial<TaskFilters> & {
         limit: number;
         offset: number;
         order?: 'board';
+        cycleId?: string;
     }): Promise<TaskPage>;
     get(id: string): Promise<Task>;
     history(id: string): Promise<TaskHistory[]>;
     create(input: NewTask): Promise<Task>;
     update(id: string, input: UpdateTask): Promise<Task>;
     move(id: string, input: MoveTask): Promise<Task>;
+    completeMeasurement(id: string, input: CompleteMeasurement): Promise<{ task: Task; observationId: string }>;
     reassign(id: string, input: ReassignTask): Promise<Task>;
     remove(id: string, input: DeleteTask): Promise<unknown>;
 };

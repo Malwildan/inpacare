@@ -35,6 +35,10 @@ export class TaskFilterDto implements TaskFilters {
   @IsOptional()
   @IsString()
   @MaxLength(36)
+  cycleId?: string;
+  @IsOptional()
+  @IsString()
+  @MaxLength(36)
   picId?: string;
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/)

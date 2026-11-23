@@ -187,11 +187,11 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
     );
     return rows.length === 1 && !rows[0].deleted_at ? rows[0].id : undefined;
   }
-  async listObservations(actor: Actor, scope: ObservationScope) {
+  async listObservations(actor: Actor, scope: ObservationScope, limit?: number) {
     const episode = "cycleId" in scope;
     const rows = await this.manager.query(
       `SELECT jsonb_build_object(
-        'id',o.id,'nurseId',o.nurse_id,'nurseName',nu.name,'symptoms',o.symptoms,'nursingNote',o.nursing_note,
+        'id',o.id,'taskId',o.task_id,'nurseId',o.nurse_id,'nurseName',nu.name,'symptoms',o.symptoms,'nursingNote',o.nursing_note,
         'observedAt',o.observed_at,'createdAt',o.created_at,'version',o.version,'temperature',v.temperature,
         'systolic',v.systolic,'diastolic',v.diastolic,'bloodPressure',v.systolic::text||'/'||v.diastolic::text,
         'pulse',v.pulse,'respiratoryRate',v.respiratory_rate,'spo2',v.spo2) AS item
@@ -199,14 +199,23 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
         LEFT JOIN vital_signs v ON v.observation_id=o.id AND v.deleted_at IS NULL
         WHERE o.patient_id=$1 AND o.deleted_at IS NULL AND ${
           episode ? "o.cycle_id=$2" : "o.record_id=$2 AND o.cycle_id IS NULL AND ($3 OR o.nurse_id=$4)"
-        } ORDER BY o.observed_at DESC,o.id`,
-      episode ? [scope.patientId, scope.cycleId] : [
-        scope.patientId, scope.recordId, actor.role === "DOKTER" && actor.id === scope.doctorId, actor.id,
+        } ORDER BY o.observed_at DESC,o.id LIMIT $${episode ? 3 : 5}`,
+      episode ? [scope.patientId, scope.cycleId, limit ?? null] : [
+        scope.patientId, scope.recordId, actor.role === "DOKTER" && actor.id === scope.doctorId, actor.id, limit ?? null,
       ],
     );
     return rows.map((row: { item: Record<string, unknown> }) => row.item);
   }
+  async completedTaskObservation(taskId: string, completionHash: string) {
+    const [row] = await this.manager.query(
+      "SELECT id FROM observations WHERE task_id=$1 AND task_completion_hash=$2",
+      [taskId, completionHash],
+    );
+    return row?.id as string | undefined;
+  }
   async createObservation(d: {
+    taskId?: string;
+    completionHash?: string;
     id: string;
     patientId: string;
     cycleId: string;
@@ -216,8 +225,8 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
     observedAt: string;
   }) {
     await this.manager.query(
-      `INSERT INTO observations(id,patient_id,cycle_id,nurse_id,symptoms,nursing_note,observed_at) VALUES($1,$2,$3,$4,$5,$6,$7)`,
-      [d.id, d.patientId, d.cycleId, d.nurseId, d.symptoms, d.nursingNote, d.observedAt],
+      `INSERT INTO observations(id,patient_id,cycle_id,nurse_id,symptoms,nursing_note,observed_at,task_id,task_completion_hash) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [d.id, d.patientId, d.cycleId, d.nurseId, d.symptoms, d.nursingNote, d.observedAt, d.taskId ?? null, d.completionHash ?? null],
     );
   }
   async createVitals(d: {

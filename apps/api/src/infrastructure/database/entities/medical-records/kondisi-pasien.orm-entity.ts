@@ -13,6 +13,10 @@ export class KondisiPasien {
   patientId!: string;
   @Column({ name: "cycle_id", type: "varchar", length: 36, nullable: true })
   cycleId!: string | null;
+  @Column({ name: "task_id", type: "varchar", length: 36, nullable: true, unique: true })
+  taskId!: string | null;
+  @Column({ name: "task_completion_hash", type: "text", nullable: true })
+  taskCompletionHash!: string | null;
   @Column({ name: "nurse_id", type: "varchar", length: 36 })
   nurseId!: string;
   @Column({ name: "symptoms", type: "text" })

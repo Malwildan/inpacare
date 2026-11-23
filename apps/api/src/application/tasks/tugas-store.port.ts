@@ -1,5 +1,7 @@
 import { Actor } from "../../domain/auth/actor";
+import { TaskType } from "../../domain/tasks/tugas-perawatan";
 export interface TaskRecord {
+  type: TaskType;
   id: string;
   title: string;
   description: string;
@@ -7,6 +9,7 @@ export interface TaskRecord {
   createdById: string;
   createdByName: string;
   patientId: string;
+  cycleId: string | null;
   patientName: string;
   medicalRecordNo: string;
   roomId: string;
@@ -20,6 +23,8 @@ export interface TaskRecord {
   version: number;
 }
 export interface LockedTask {
+  type: TaskType;
+  cycle_id: string | null;
   id: string;
   patient_id: string;
   room_id: string;
@@ -57,6 +62,7 @@ export interface TaskStore {
       priority: string | null;
       roomId: string | null;
       patientId: string | null;
+      cycleId: string | null;
       picId: string | null;
       from: string | null;
       to: string | null;
@@ -77,26 +83,24 @@ export interface TaskStore {
   lockBoard(): Promise<void>;
   movePosition(taskId: string, actor: Actor, status: string, beforeTaskId: string | null): Promise<boolean>;
   requireActivePic(picId: string): Promise<void>;
+  requireActiveCoordinator(actorId: string): Promise<void>;
   patientExistsForUpdate(patientId: string): Promise<boolean>;
   placementRoom(placementId: string): Promise<string | undefined>;
   activePlacement(
     placementId: string,
     patientId: string,
-    starts: Date,
-    ends: Date,
-  ): Promise<
-    | {
-        roomId: string;
-      }
-    | undefined
-  >;
+  ): Promise<{ roomId: string; startsOn: string; endsOn: string; version: number } | undefined>;
   lockRoom(roomId: string): Promise<void>;
   lockReleasedCycles(placementId: string): Promise<boolean>;
+  measurementCycle(patientId: string, placementId: string): Promise<string | undefined>;
+  lockCycleForTask(cycleId: string, patientId: string): Promise<{ placementId: string | null; status: string } | undefined>;
   createTask(input: {
+    type: TaskType;
     id: string;
     patientId: string;
     roomId: string;
     placementId: string;
+    cycleId: string | null;
     picId: string;
     actorId: string;
     title: string;

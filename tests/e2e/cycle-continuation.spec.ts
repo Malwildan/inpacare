@@ -194,6 +194,10 @@ test('doctor decision keeps detail open with the server result and no nursing ac
         const current = await (await page.request.get(`/api/v1/cycles/${cycle.id}`)).json();
         await write(page.request, 'PATCH', `/cycles/${cycle.id}`, { ...input, expectedVersion: current.version });
     }
+    await write(page.request, 'POST', `/cycles/${cycle.id}/observations`, {
+        symptoms: 'Kondisi sintetis sebelum keputusan dokter.',
+        observedAt: new Date().toISOString(),
+    });
     await write(page.request, 'POST', `/cycles/${cycle.id}/requests`, { kind: 'release', reason: 'Pengajuan sintetis untuk ditolak dokter.' });
     await signIn(page.request, 'hendra');
     await page.goto('/dashboard?status=pending_approval', { waitUntil: 'networkidle' });
@@ -201,7 +205,7 @@ test('doctor decision keeps detail open with the server result and no nursing ac
     const detail = page.getByRole('dialog');
     await expect(detail.getByRole('button', { name: 'Mulai perawatan' })).toHaveCount(0);
     await expect(detail.getByRole('button', { name: 'Ajukan ke dokter' })).toHaveCount(0);
-    await detail.getByRole('button', { name: 'Tinjau keputusan' }).click();
+    await expect(detail.getByText('Kondisi sintetis sebelum keputusan dokter.')).toBeVisible();
     await detail.getByLabel('Catatan keputusan').fill('Lanjutkan pemantauan sintetis.');
     await detail.getByRole('button', { name: 'Tolak', exact: true }).click();
     await expect(detail.getByText('Ditolak', { exact: true })).toBeVisible();

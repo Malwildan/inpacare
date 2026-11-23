@@ -535,6 +535,56 @@ test("task edits recheck active PIC and placement, and creation history retains 
   assert.equal((await useCases.tasks.history(nurse, task.id)).total, 1);
 });
 
+test("contextual task creation validates the active assignee and current placement before writing", { skip: !enabled }, async () => {
+  const f = await scenario("release");
+  const assigneeId = newId();
+  await ds.query("INSERT INTO users(id,username,name,role,password_hash) VALUES($1,$2,'Inactive Assignee','PERAWAT','test-only')", [assigneeId, `inactive-${assigneeId}`]);
+  await ds.query("INSERT INTO nurses(id,user_id,active,name) VALUES($1,$2,false,'Inactive Assignee')", [newId(), assigneeId]);
+  await ds.query("UPDATE cycles SET nurse_id=$2 WHERE id=$1", [f.cycleId, assigneeId]);
+  const latest = await useCases.cycles.detail(nurse, f.cycleId);
+  assert.equal(latest.nurseId, assigneeId);
+  assert.equal(latest.taskPlacement.id, f.placementId);
+  const candidates = await useCases.cycles.assignmentCandidates(nurse);
+  assert.ok(!candidates.items.some(candidate => candidate.id === assigneeId));
+  const input = {
+    cycleContext: { cycleId: f.cycleId, placementVersion: latest.taskPlacement.version },
+    patientId: f.patientId, placementId: f.placementId, picId: assigneeId,
+    title: "Contextual task", priority: "normal",
+    startsAt: `${day()}T08:00:00+07:00`, endsAt: `${day()}T09:00:00+07:00`,
+  };
+  await assert.rejects(useCases.tasks.create(nurse, input), validationError(/Penanggung jawab harus perawat aktif/));
+  const replacement = { ...input, picId: nurse.id };
+  await assert.rejects(
+    useCases.tasks.create(nurse, { ...replacement, endsAt: `${day(12)}T09:00:00+07:00` }),
+    validationError(/mencakup seluruh waktu tugas/),
+  );
+  const other = await scenario("release");
+  await assert.rejects(
+    useCases.tasks.create(nurse, { ...replacement, patientId: other.patientId, placementId: other.placementId }),
+    error => error.code === "NOT_FOUND",
+  );
+  await ds.query("UPDATE users SET coordinator=false WHERE id=$1", [nurse.id]);
+  try {
+    await assert.rejects(useCases.tasks.create(nurse, replacement), error => error.code === "FORBIDDEN");
+  } finally {
+    await ds.query("UPDATE users SET coordinator=true WHERE id=$1", [nurse.id]);
+  }
+  await ds.query("UPDATE cycles SET placement_id=NULL,status='pending' WHERE id=$1", [f.cycleId]);
+  await assert.rejects(useCases.tasks.create(nurse, replacement), error => error.code === "CONFLICT");
+  assert.equal((await useCases.cycles.detail(nurse, f.cycleId)).taskPlacement, null);
+  assert.deepEqual((await useCases.tasks.list(nurse, { patientId: f.patientId })).items, []);
+  await ds.query("UPDATE cycles SET placement_id=$2,status='assigned' WHERE id=$1", [f.cycleId, f.placementId]);
+  const created = await useCases.tasks.create(nurse, replacement);
+  assert.equal(created.cycleId, f.cycleId);
+  assert.equal(created.picId, nurse.id);
+  assert.equal((await useCases.tasks.history(nurse, created.id)).items[0].after.cycle_id, f.cycleId);
+  assert.deepEqual((await useCases.tasks.list(nurse, { cycleId: other.cycleId })).items, []);
+  const linked = await useCases.tasks.list(nurse, { cycleId: f.cycleId, status: "todo" });
+  assert.deepEqual(linked.items.map(task => task.id), [created.id]);
+  assert.equal(linked.total, 1);
+  assert.equal(linked.counts.todo, 1);
+});
+
 test("clinical correction requires a meaningful reason and preserves the submitted audit explanation", { skip: !enabled }, async () => {
   const f = await scenario("release");
   const service = useCases.medicalRecords;
@@ -805,4 +855,89 @@ test('a final save failure rolls back the cycle while preserving an existing pla
   } finally {
     await ds.query('DROP TRIGGER fail_admission_result ON cycle_creation_requests; DROP FUNCTION fail_admission_result()');
   }
+});
+
+test("measurement completion rolls back on task history failure and concurrent retries save one result", { skip: !enabled }, async () => {
+  const { patientId, placementId, cycleId } = await scenario("release");
+  const tasks = useCases.tasks;
+  const create = {
+    patientId, placementId, picId: nurse.id, title: "Synthetic measurement",
+    type: "measurement", priority: "normal",
+    startsAt: `${day()}T09:00:00+07:00`, endsAt: `${day()}T10:00:00+07:00`,
+  };
+  const task = await tasks.create(nurse, create);
+  assert.equal(task.type, "measurement");
+  assert.equal(task.cycleId, cycleId);
+  const result = {
+    expectedVersion: 2, observedAt: new Date().toISOString(), symptoms: "Synthetic observation",
+    systolic: 120, diastolic: 80, nursingNote: "Synthetic nursing note",
+  };
+
+  await assert.rejects(tasks.completeMeasurement(nurse, task.id, { ...result, expectedVersion: 1 }), { code: "VALIDATION_FAILED" });
+  await tasks.update(nurse, task.id, { expectedVersion: 1, status: "in_progress" });
+  const readTaskState = () => ds.query("SELECT status,version,board_position FROM tasks WHERE id=$1", [task.id]);
+  const inProgress = await readTaskState();
+  assert.equal(inProgress[0].status, "in_progress");
+  assert.equal(inProgress[0].version, 2);
+  const assertUnsaved = async () => {
+    assert.deepEqual(await readTaskState(), inProgress);
+    assert.equal((await tasks.history(nurse, task.id)).total, 2);
+    assert.deepEqual(await ds.query("SELECT id FROM observations WHERE cycle_id=$1", [cycleId]), []);
+    assert.deepEqual(await ds.query("SELECT id FROM medical_history WHERE after_data->>'taskId'=$1", [task.id]), []);
+  };
+  await assert.rejects(tasks.completeMeasurement({ ...nurse, id: "other-pic", coordinator: false }, task.id, result), { code: "NOT_FOUND" });
+  await assert.rejects(tasks.completeMeasurement({ ...nurse, id: "other-coordinator" }, task.id, result), { code: "FORBIDDEN" });
+  await assert.rejects(tasks.completeMeasurement(nurse, task.id, { ...result, expectedVersion: 1 }), { code: "CONFLICT" });
+  await assert.rejects(tasks.completeMeasurement(nurse, task.id, { ...result, diastolic: undefined }), validationError(/Tekanan darah belum lengkap/));
+  await assert.rejects(tasks.update(nurse, task.id, { expectedVersion: 2, status: "done" }), { code: "VALIDATION_FAILED" });
+  await assert.rejects(tasks.move(nurse, task.id, { expectedVersion: 2, status: "done", beforeTaskId: null }), { code: "VALIDATION_FAILED" });
+  await assertUnsaved();
+
+  await ds.query("UPDATE cycles SET placement_id=NULL WHERE id=$1", [cycleId]);
+  await assert.rejects(tasks.completeMeasurement(nurse, task.id, result), { code: "CONFLICT" });
+  await assertUnsaved();
+  await ds.query("UPDATE cycles SET placement_id=$2 WHERE id=$1", [cycleId, placementId]);
+
+  // The observation, vitals, medical history, and task update have been written when this trigger fails.
+  await ds.query(`CREATE FUNCTION fail_measurement_history() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW.after_data ? 'observationId' THEN RAISE EXCEPTION 'Synthetic measurement history failure'; END IF;
+        RETURN NEW;
+      END $$;
+    CREATE TRIGGER fail_measurement_history BEFORE INSERT ON task_history
+      FOR EACH ROW EXECUTE FUNCTION fail_measurement_history()`);
+  try {
+    await assert.rejects(tasks.completeMeasurement(nurse, task.id, result), /Synthetic measurement history failure/);
+    await assertUnsaved();
+  } finally {
+    await ds.query("DROP TRIGGER fail_measurement_history ON task_history; DROP FUNCTION fail_measurement_history()");
+  }
+
+  const [saved, retry] = await Promise.all([
+    tasks.completeMeasurement(nurse, task.id, result),
+    tasks.completeMeasurement(nurse, task.id, result),
+  ]);
+  assert.deepEqual(retry, saved);
+  assert.equal(saved.task.status, "done");
+  assert.equal(saved.task.version, 3);
+  assert.deepEqual(await ds.query(`SELECT o.id,o.patient_id,o.cycle_id,o.nurse_id,v.systolic,v.diastolic
+    FROM observations o JOIN vital_signs v ON v.observation_id=o.id WHERE o.task_id=$1`, [task.id]), [{
+    id: saved.observationId, patient_id: patientId, cycle_id: cycleId, nurse_id: nurse.id,
+    systolic: 120, diastolic: 80,
+  }]);
+  assert.deepEqual(await ds.query("SELECT entity_id FROM medical_history WHERE after_data->>'taskId'=$1", [task.id]), [{ entity_id: saved.observationId }]);
+  const history = await tasks.history(nurse, task.id);
+  assert.equal(history.total, 3);
+  assert.deepEqual(history.items.filter(item => item.after.status === "done").map(item => item.after.observationId), [saved.observationId]);
+  await assert.rejects(tasks.completeMeasurement(nurse, task.id, { ...result, symptoms: "Different submission" }), { code: "CONFLICT" });
+
+  const regular = await tasks.create(nurse, { ...create, type: undefined, title: "Synthetic regular task" });
+  assert.equal(regular.type, "regular");
+  assert.equal(regular.cycleId, null);
+  await tasks.update(nurse, regular.id, { expectedVersion: 1, status: "in_progress" });
+  await assert.rejects(tasks.completeMeasurement(nurse, regular.id, result), { code: "VALIDATION_FAILED" });
+  const finished = await tasks.update(nurse, regular.id, { expectedVersion: 2, status: "done", notes: "Synthetic action note" });
+  assert.equal(finished.status, "done");
+  assert.equal(finished.notes, "Synthetic action note");
+  assert.deepEqual(await ds.query("SELECT id FROM observations WHERE task_id=$1", [regular.id]), []);
 });
