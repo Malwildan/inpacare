@@ -1,11 +1,11 @@
 import { toastMessage } from '../toast.mjs';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { selectOption, optionLabels } from '../select-option.mjs';
 import { taskPlacement } from '../task-placement.mjs';
 
-const password = 'InpaCareDemo!2026';
+const password = process.env.SEED_DEMO_PASSWORD ?? 'InpaCareDemo!2026';
 const evidence = path.resolve('.local/evidence');
 const coordinator = 'USR-COORD';
 const dina = 'USR-NURSE-1';
@@ -27,12 +27,22 @@ function escape(value: string) {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-async function signIn(page: Page, username: string) {
-	await page.goto('/login');
-	await page.getByLabel('ID petugas').fill(username);
-	await page.getByLabel('Kata sandi', { exact: true }).fill(password);
-	await page.getByRole('button', { name: 'Masuk' }).click();
-	await expect(page).not.toHaveURL(/\/login$/);
+const sessions = new Map<string, Awaited<ReturnType<BrowserContext['cookies']>>>();
+
+async function signIn(page: Page, username: string, { fresh = false } = {}) {
+	const origin = test.info().project.use.baseURL!;
+	const key = `${origin}:${username}`;
+	const cookies = fresh ? undefined : sessions.get(key);
+	if (cookies) {
+		await page.context().addCookies(cookies);
+	} else {
+		const response = await page.request.post('/api/v1/session', {
+			headers: { Origin: origin }, data: { username, password },
+		});
+		expect(response.status(), await response.text()).toBe(200);
+		if (!fresh) sessions.set(key, await page.context().cookies(origin));
+	}
+	await page.goto('/dashboard', { waitUntil: 'networkidle' });
 }
 
 async function api<T = unknown>(page: Page, method: string, path: string, body?: unknown): Promise<T> {
@@ -273,7 +283,7 @@ test('terminal cards stay readable in Detail and cannot be moved or dragged', as
 
 test('same-column drag cancels and explicit ordering persists across sessions', async ({ browser }) => {
 	const author = await browser.newPage();
-	await signIn(author, 'rina');
+	await signIn(author, 'rina', { fresh: true });
 	const ref = await reference(author);
 	const prefix = unique('Tarik');
 	const titlesSeeded = [unique(`${prefix} A`), unique(`${prefix} B`), unique(`${prefix} C`)];
@@ -319,7 +329,7 @@ test('same-column drag cancels and explicit ordering persists across sessions', 
 	await expect(column(pic, 'Selesai').locator('.task-card').filter({ hasText: titlesSeeded[1] })).toBeVisible();
 
 	const second = await browser.newPage();
-	await signIn(second, 'rina');
+	await signIn(second, 'rina', { fresh: true });
 	await second.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
 	await expect.poll(() => titles(second, 'Sedang dikerjakan', prefix)).toEqual([titlesSeeded[2], titlesSeeded[0]]);
 	await expect(column(second, 'Selesai').locator('.task-card').filter({ hasText: titlesSeeded[1] })).toBeVisible();

@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-test('notifications show truthful loading, retry and keyboard dismissal', async ({ page }) => {
- await page.goto('/login');
- await page.getByLabel('ID petugas').fill('rina');
- await page.getByLabel('Kata sandi', { exact: true }).fill('InpaCareDemo!2026');
- await page.getByRole('button', { name: 'Masuk', exact: true }).click();
+test('notifications show truthful loading, retry and keyboard dismissal', async ({ page, baseURL }) => {
+ const session = await page.request.post('/api/v1/session', {
+  headers: { Origin: baseURL! },
+  data: { username: 'rina', password: process.env.SEED_DEMO_PASSWORD ?? 'InpaCareDemo!2026' },
+ });
+ expect(session.status()).toBe(200);
+ await page.goto('/dashboard', { waitUntil: 'networkidle' });
  await expect(page).toHaveURL(/\/dashboard$/);
  let release!: () => void;
  const gate = new Promise<void>(resolve => { release = resolve; });

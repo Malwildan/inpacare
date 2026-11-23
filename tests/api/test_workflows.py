@@ -11,6 +11,7 @@ import http.cookiejar
 import json
 import os
 import tempfile
+import threading
 import time
 import unittest
 import urllib.error
@@ -403,13 +404,192 @@ class Workflows(unittest.TestCase):
             "decision": "approve", "note": "Pemutaran ulang", "expectedVersion": 1,
         }), 404, "NOT_FOUND")
 
-        status, blocked = self.dina.request("POST", "/cycles/CY-004/requests", {
+        self.assert_error(self.dina.request("POST", "/cycles/CY-004/requests", {
             "kind": "release", "requestedEnd": None, "reason": f"Pelepasan tes {self.tag}",
-        })
-        self.assertEqual(status, 201, blocked)
-        self.assert_error(self.users["maya"].request("POST", f"/cycles/CY-004/requests/{blocked['id']}/decision", {
-            "decision": "approve", "note": "Cek penugasan", "expectedVersion": 1,
         }), 409, "CONFLICT")
+
+    def test_inpatient_handoffs_preserve_release_rules_and_administration(self) -> None:
+        jakarta = timezone(timedelta(hours=7))
+        today = datetime.now(jakarta).date()
+        day = lambda offset: (today + timedelta(days=offset)).isoformat()
+        person_input = {"name": f"Pasien serah terima {self.tag}", "birthDate": "1980-01-01", "gender": "P", "bpjs": False}
+        status, person = self.admisi.request("POST", "/patients", person_input)
+        self.assertIn(status, (200, 201), person)
+        status, room = self.rina.request("POST", "/rooms", {
+            "name": f"Ruang serah terima {self.tag}", "roomClass": "Uji", "capacity": 1, "dailyRate": "0",
+        })
+        self.assertIn(status, (200, 201), room)
+        status, scheduled_patient = self.admisi.request("POST", "/patients", {**person_input, "name": f"Pasien jadwal {self.tag}"})
+        self.assertIn(status, (200, 201), scheduled_patient)
+        status, scheduled = self.dina.request("POST", "/cycles", {
+            "patientId": scheduled_patient["id"], "doctorId": self.hendra.user["id"],
+            "newPlacement": {"roomId": room["id"], "startsOn": day(4), "endsOn": day(5)},
+        })
+        self.assertEqual(status, 201, scheduled)
+        scheduled_path = f"/cycles/{scheduled['id']}"
+        self.assertEqual(self.dina.request("PATCH", scheduled_path, {"status": "in_care", "expectedVersion": 1})[0], 200)
+        self.assertEqual(self.dina.request("GET", scheduled_path)[1]["releaseReadiness"]["prerequisite"], "placement_not_started")
+        self.assert_error(self.dina.request("POST", f"{scheduled_path}/requests", {
+            "kind": "release", "reason": "Penempatan belum dimulai",
+        }), 409, "CONFLICT")
+
+        status, cycle = self.dina.request("POST", "/cycles", {
+            "patientId": person["id"], "doctorId": self.hendra.user["id"],
+            "newPlacement": {"roomId": room["id"], "startsOn": day(-1), "endsOn": day(3)},
+        })
+        self.assertEqual(status, 201, cycle)
+        path = f"/cycles/{cycle['id']}"
+        self.assertEqual(self.dina.request("GET", path)[1]["releaseReadiness"]["prerequisite"], "care_not_started")
+        self.assertEqual(self.dina.request("PATCH", path, {"status": "in_care", "expectedVersion": 1})[0], 200)
+        self.assert_error(self.bima.request("GET", path), 404, "NOT_FOUND")
+        self.assert_error(self.admisi.request("GET", path), 403, "FORBIDDEN")
+        self.assertNotIn("releaseReadiness", self.hendra.request("GET", path)[1])
+
+        def task(label, offset, pic):
+            status, result = self.rina.request("POST", "/tasks", {
+                "patientId": person["id"], "placementId": cycle["placementId"], "picId": pic.user["id"],
+                "title": label, "description": "Rincian klinis sintetis", "priority": "normal",
+                "startsAt": f"{day(offset)}T09:00:00+07:00", "endsAt": f"{day(offset)}T10:00:00+07:00",
+            })
+            self.assertIn(status, (200, 201), result)
+            return result
+
+        past = task("Tugas lewat", -1, self.dina)
+        self.assertEqual(self.dina.request("GET", path)[1]["releaseReadiness"]["tasks"], [])
+        first = task("Tugas besok", 1, self.dina)
+        other = task("Tugas PIC lain", 2, self.bima)
+        readiness = self.dina.request("GET", path)[1]["releaseReadiness"]
+        self.assertIsNone(readiness["prerequisite"])
+        self.assertEqual([item["id"] for item in readiness["tasks"]], [first["id"], other["id"]])
+        self.assertNotIn(past["id"], [item["id"] for item in readiness["tasks"]])
+        self.assertEqual(set(readiness["tasks"][0]), {"id", "title", "status", "picName", "startsAt", "endsAt", "canOpen"})
+        self.assertEqual(readiness["tasks"][0]["status"], "todo")
+        self.assertTrue(readiness["tasks"][0]["canOpen"])
+        self.assertFalse(readiness["tasks"][1]["canOpen"])
+        self.assert_error(self.dina.request("GET", f"/tasks/{other['id']}"), 404, "NOT_FOUND")
+
+        release = {"kind": "release", "reason": "Catatan klinis sintetis"}
+        self.assert_error(self.dina.request("POST", f"{path}/requests", release), 409, "CONFLICT")
+        task_path = f"/tasks/{first['id']}"
+        self.assert_error(self.dina.request("PATCH", task_path, {
+            "status": "cancelled", "reason": "Tidak berwenang", "expectedVersion": 1,
+        }), 422, "VALIDATION_FAILED")
+        self.assertEqual(self.dina.request("PATCH", task_path, {"status": "in_progress", "expectedVersion": 1})[0], 200)
+        self.assertEqual(self.dina.request("PATCH", task_path, {"status": "done", "expectedVersion": 2})[0], 200)
+        self.assert_error(self.rina.request("PATCH", f"/tasks/{other['id']}", {
+            "status": "cancelled", "expectedVersion": 1,
+        }), 422, "VALIDATION_FAILED")
+        self.assertEqual(self.rina.request("PATCH", f"/tasks/{other['id']}", {
+            "status": "cancelled", "expectedVersion": 1, "reason": "Jadwal dibatalkan oleh koordinator",
+        })[0], 200)
+        self.assertIn("Jadwal dibatalkan oleh koordinator", [
+            row["reason"] for row in self.rina.request("GET", f"/tasks/{other['id']}/history")[1]["items"]
+        ])
+
+        def submit_release():
+            status, result = self.dina.request("POST", f"{path}/requests", release)
+            self.assertEqual(status, 201, result)
+            return f"{path}/requests/{result['id']}/decision"
+
+        def decision(endpoint, version, choice="approve"):
+            return self.hendra.request("POST", endpoint, {
+                "decision": choice, "expectedVersion": version, "note": "Keputusan sintetis",
+            })
+
+        def handoffs():
+            status, body = self.admisi.request("GET", "/invoices/release-handoffs")
+            self.assertEqual(status, 200, body)
+            return [row for row in body["items"] if row["cycleId"] == cycle["id"]]
+
+        self.assert_error(self.dina.request("GET", "/invoices/release-handoffs"), 403, "FORBIDDEN")
+        self.assert_error(self.hendra.request("GET", "/invoices/release-handoffs"), 403, "FORBIDDEN")
+        self.assertEqual(decision(submit_release(), 2, "reject")[0], 200)
+        self.assertEqual(handoffs(), [])
+        endpoint = submit_release()
+        detail = self.dina.request("GET", path)[1]
+        self.assertEqual([item["kind"] for item in detail["requests"] if item["status"] == "pending"], ["release"])
+        self.assert_error(self.dina.request("POST", f"{path}/requests", release), 409, "CONFLICT")
+
+        physician_detail = self.hendra.request("GET", path)[1]
+        # This task commits after the nurse submitted and the physician opened the detail.
+        late = task("Tugas baru setelah pengajuan", 1, self.dina)
+        self.assert_error(decision(endpoint, physician_detail["version"]), 409, "CONFLICT")
+        self.assertEqual(handoffs(), [])
+        self.assertEqual(self.dina.request("GET", path)[1]["releaseReadiness"]["tasks"][0]["id"], late["id"])
+        self.assertEqual(self.rina.request("PATCH", f"/tasks/{late['id']}", {
+            "status": "cancelled", "reason": "Tugas digantikan", "expectedVersion": 1,
+        })[0], 200)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda _: decision(endpoint, detail["version"]), range(2)))
+        self.assertEqual(sorted(status for status, _ in results), [200, 404], results)
+        entries = handoffs()
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(set(entries[0]), {"cycleId", "patientId", "patientName", "medicalRecordNo", "releasedAt", "placement", "invoices"})
+        self.assertEqual(entries[0]["placement"]["id"], cycle["placementId"])
+        self.assertEqual(entries[0]["placement"]["endsOn"], day(0))
+        self.assertEqual(entries[0]["invoices"], [])
+        invoice_input = {"patientId": person["id"], "placementId": cycle["placementId"], "coveredAmount": "0"}
+        self.assert_error(self.admisi.request("POST", "/invoices", {**invoice_input, "lines": []}), 422, "VALIDATION_FAILED")
+        self.assertEqual(handoffs(), entries)
+        status, invoice = self.admisi.request("POST", "/invoices", {
+            **invoice_input, "lines": [{"description": "Biaya manual", "unitPrice": "10", "quantity": 1}],
+        })
+        self.assertEqual(status, 201, invoice)
+        self.assertEqual(handoffs()[0]["invoices"], [{"id": invoice["id"], "status": "unpaid"}])
+        self.assert_error(self.dina.request("PATCH", f"/invoices/{invoice['id']}", {
+            "status": "paid", "reason": "Cek izin", "expectedVersion": 1,
+        }), 403, "FORBIDDEN")
+        self.assertEqual(self.admisi.request("PATCH", f"/invoices/{invoice['id']}", {
+            "status": "paid", "reason": "Pembayaran diperiksa", "expectedVersion": 1,
+        })[0], 200)
+        self.assertEqual(handoffs()[0]["invoices"], [{"id": invoice["id"], "status": "paid"}])
+        self.assertEqual(self.dina.request("GET", path)[1]["status"], "released")
+        returning = self.dina.request("GET", "/cycles/creation-candidates")[1]["items"]
+        self.assertIn({"id": person["id"], "name": person["name"], "medicalRecordNo": person["medicalRecordNo"], "firstAdmission": False}, returning)
+        status, next_episode = self.dina.request("POST", "/cycles", {
+            "patientId": person["id"], "doctorId": self.hendra.user["id"],
+        })
+        self.assertEqual(status, 201, next_episode)
+        self.assertEqual(next_episode["patientId"], person["id"])
+        self.assertNotEqual(next_episode["id"], cycle["id"])
+        self.assertEqual(len(handoffs()), 1)
+
+    def test_registration_handoff_and_parallel_cycle_starts(self) -> None:
+        name = f"Pasien antrean {self.tag}"
+        payload = {"name": name, "birthDate": "1979-01-01", "gender": "P", "bpjs": True}
+        self.assert_error(self.admisi.request("POST", "/patients", payload), 422, "VALIDATION_FAILED")
+        candidates = "/cycles/creation-candidates"
+        before = self.dina.request("GET", candidates)[1]["items"]
+        self.assertNotIn(name, [item["name"] for item in before])
+        status, patient = self.admisi.request("POST", "/patients", {**payload, "bpjs": False})
+        self.assertIn(status, (200, 201), patient)
+        self.assert_error(self.admisi.request("GET", candidates), 403, "FORBIDDEN")
+        self.assert_error(self.hendra.request("GET", candidates), 403, "FORBIDDEN")
+        status, after = self.dina.request("GET", candidates)
+        self.assertEqual(status, 200, after)
+        self.assertIn({"id": patient["id"], "name": name, "medicalRecordNo": patient["medicalRecordNo"], "firstAdmission": True}, after["items"])
+
+        common = {"patientId": patient["id"], "doctorId": self.hendra.user["id"], "placementId": None}
+        self.assert_error(self.admisi.request("POST", "/cycles", common), 403, "FORBIDDEN")
+        start = threading.Barrier(2)
+        attempts = [(nurse, {**common, "requestId": str(uuid.uuid4())}) for nurse in (self.dina, self.bima)]
+
+        def create(attempt):
+            nurse, data = attempt
+            start.wait(timeout=10)
+            return nurse.request("POST", "/cycles", data)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(create, attempts))
+        self.assertEqual(sorted(status for status, _ in results), [201, 409], results)
+        index = next(i for i, (status, _) in enumerate(results) if status == 201)
+        nurse, data = attempts[index]
+        created = results[index][1]
+        self.assertEqual(created["status"], "pending")
+        self.assertIsNone(created["placementId"])
+        self.assertEqual(nurse.request("POST", "/cycles", data), (201, created))
+        self.assertNotIn(patient["id"], [item["id"] for item in self.dina.request("GET", candidates)[1]["items"]])
 
     def test_unplaced_cycle_cannot_advance_but_placed_cycle_can(self) -> None:
         status, cycle = self.dina.request("POST", "/cycles", {"patientId":"PT-009","doctorId":"USR-DOCTOR-1","placementId":None})

@@ -3,6 +3,10 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 
 test.setTimeout(60_000);
 
+const jakartaDate = (days: number) => new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(new Date(Date.now() + days * 86_400_000));
+
 async function signIn(api: APIRequestContext, username: string) {
     const response = await api.post('/api/v1/session', {
         headers: { origin: test.info().project.use.baseURL! },
@@ -30,12 +34,15 @@ async function createCycle(page: Page, withPlacement = false) {
     await signIn(page.request, 'admisi');
     const patient = await write(page.request, '/patients', { name, birthDate: '2000-01-01', gender: 'P', bpjs: false });
     await signIn(page.request, withPlacement ? 'rina' : 'dina');
+    const room = withPlacement ? await write(page.request, '/rooms', {
+        name: `Ruang ${name}`, roomClass: 'Uji', capacity: 1, dailyRate: '0',
+    }) : null;
     const cycle = await write(page.request, '/cycles', {
         patientId: patient.id,
         doctorId: 'USR-DOCTOR-1',
-        ...(withPlacement ? {
+        ...(room ? {
             nurseId: 'USR-COORD',
-            newPlacement: { roomId: 'RG-004', startsOn: '2066-01-01', endsOn: '2066-01-02' },
+            newPlacement: { roomId: room.id, startsOn: jakartaDate(0), endsOn: jakartaDate(1) },
         } : {}),
     });
     return { name, id: cycle.id as string };
@@ -58,7 +65,7 @@ test('keyboard activation opens the exact request and retries a failed read with
             write(doctor, `/cycles/${id}/requests/${requestId}/decision`, { decision: 'reject', note, expectedVersion });
         await decide(first.id, 2, 'Catatan untuk permintaan pertama');
         const second = await write(page.request, `/cycles/${id}/requests`, {
-            kind: 'extend', requestedEnd: '2066-01-03', reason: 'Alasan permintaan kedua'
+            kind: 'extend', requestedEnd: jakartaDate(2), reason: 'Alasan permintaan kedua'
         });
         await decide(second.id, 3, 'Catatan untuk permintaan kedua');
 

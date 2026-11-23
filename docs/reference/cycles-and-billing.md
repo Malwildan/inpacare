@@ -12,6 +12,10 @@ Dokter dan perawat menerima rekap sesuai penugasan. Admisi menerima `403 FORBIDD
 {"items":[{"id":"cyc-1","patientId":"pat-1","patientName":"Siti Rahmawati","medicalRecordNo":"RM-004218","placementId":"plc-1","room":"Melati 01","doctorName":"dr. Hendra Wijaya","nurseName":"Dina Putri","status":"in_care","version":2,"createdAt":"2026-10-29T10:00:00Z","requests":[]}],"total":1}
 ```
 
+### `GET /cycles/creation-candidates` (PERAWAT)
+
+Daftar memuat ID, nama, dan nomor rekam medis pasien yang belum memiliki siklus aktif. Nilai `firstAdmission: true` menandai pasien tanpa rekap terdahulu yang tersimpan. Pasien ini tampil di antrean mulai rawat inap setelah pendaftaran. Pasien lama tetap dapat dicari dari formulir mulai rawat inap.
+
 ### `POST /cycles` (PERAWAT)
 
 Rekap tanpa penempatan berstatus `pending`. Jika memilih penempatan aktif milik pasien atau membuat penempatan baru, rekap berstatus `assigned`. Gunakan dokter `DOKTER` yang aktif. Batas satu rekap aktif per pasien mencegah rekap ganda.
@@ -24,7 +28,7 @@ Respons `201` berisi `id`, `patientId`, `placementId`, `doctorId`, `nurseId`, `s
 
 ### `GET /cycles/{id}`
 
-Hanya perawat atau dokter yang ditugaskan dapat membaca rekap beserta ID petugas dan riwayat pengajuan.
+Hanya perawat atau dokter yang ditugaskan dapat membaca rekap beserta ID petugas dan riwayat pengajuan. Untuk perawat yang ditugaskan pada siklus yang belum dilepas, detail juga memuat `releaseReadiness`. Ringkasan ini memuat prasyarat penempatan/perawatan yang masih berlaku dan tugas belum selesai atau belum dibatalkan yang waktu selesainya masih di depan. Setiap tugas memuat status, penanggung jawab, jadwal, dan `canOpen` sesuai cakupan akses tugas. Pengajuan yang masih menunggu tetap tercatat di `requests`.
 
 ### `PATCH /cycles/{id}` (PERAWAT yang ditugaskan)
 
@@ -54,7 +58,7 @@ Isi catatan keputusan dan sertakan versi rekap saat ini.
 {"decision":"approve","note":"Jadwal observasi dilanjutkan.","expectedVersion":3}
 ```
 
-`decision` menerima `approve` atau `reject`. Saat disetujui, API menyimpan status permintaan, perubahan penempatan atau rekap, serta notifikasi perawat dalam satu transaksi. Perpanjangan harus melewati jadwal aktif dan memenuhi kapasitas setiap hari. Pelepasan mempersingkat penempatan yang sudah dimulai hingga hari ini menurut waktu fasilitas. Tugas aktif mendatang menghalangi pelepasan. Penolakan mencatat keputusan dan mempertahankan penempatan serta status rekap. Contoh respons adalah `{"ok":true,"status":"approved","version":4}`. Jika terjadi konflik, transaksi tidak menyimpan perubahan sebagian.
+`decision` menerima `approve` atau `reject`. Saat disetujui, API menyimpan status permintaan, perubahan penempatan atau rekap, serta notifikasi perawat dalam satu transaksi. Perpanjangan harus melewati jadwal aktif dan memenuhi kapasitas setiap hari. Pelepasan mempersingkat penempatan yang sudah dimulai hingga hari ini menurut waktu fasilitas. API memeriksa penempatan dan tugas penghalang saat perawat mengajukan pelepasan dan saat dokter menyetujuinya. Penolakan mencatat keputusan dan mempertahankan penempatan serta status rekap. Contoh respons adalah `{"ok":true,"status":"approved","version":4}`. Jika terjadi konflik, transaksi tidak menyimpan perubahan sebagian.
 
 ## Notifikasi
 
@@ -77,6 +81,10 @@ Hanya ADMISI dapat membaca daftar dan detail, membuat tagihan, atau mengubah sta
 ### `GET /invoices?search=&status=&limit=`
 
 Cari nama pasien, nomor rekam medis, atau ID tagihan. Filter `status` menerima `unpaid|paid`. Batas bawaan 50 dan maksimal 100. Nilai `total` menghitung baris pada halaman hasil. Tiap baris memuat ID, identitas, penempatan, kepesertaan BPJS saat tagihan dibuat, `totalAmount`, `coveredAmount`, `payableAmount`, status pembayaran, versi, waktu, dan jumlah rincian.
+
+### `GET /invoices/release-handoffs?offset=`
+
+Antrean administrasi akhir menampilkan satu baris per episode dengan pelepasan yang sudah disetujui. Data mencakup identitas pasien, rekap, penempatan, waktu keputusan, serta ID dan status tagihan terkait penempatan. Hasil diurutkan dari pelepasan terbaru dan memuat hingga 20 episode serta `nextOffset` jika masih ada halaman berikutnya. Pembayaran tetap dicatat melalui perubahan tagihan.
 
 ### `POST /invoices`
 

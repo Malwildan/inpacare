@@ -8,6 +8,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
   MinLength,
@@ -120,6 +121,14 @@ export class VerifyClaimDto implements VerifyClaimInput {
   reason!: string;
   @IsBoolean({ message: "Pilih status verifikasi klaim." })
   verified!: boolean;
+}
+export class ReleaseHandoffQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(2147483647)
+  offset?: number;
 }
 export class InvoiceQueryDto implements InvoiceListFilters {
   @IsOptional()

@@ -54,7 +54,7 @@ test('coordinator assigns a cycle, monitors the handoff and refreshes after a st
 
         const listUrl = `/dashboard?patientId=${patient.id}&status=assigned`;
         await page.goto(listUrl, { waitUntil: 'networkidle' });
-        await page.getByRole('button', { name: 'Mulai rawat inap' }).click();
+        await page.getByRole('button', { name: 'Mulai rawat inap', exact: true }).click();
         const dialog = page.getByRole('dialog');
         await selectOption(dialog.getByRole('combobox', { name: 'Pasien terdaftar' }), patient.id);
         await selectOption(dialog.getByRole('combobox', { name: 'Dokter penanggung jawab' }), newCycle.doctorId);

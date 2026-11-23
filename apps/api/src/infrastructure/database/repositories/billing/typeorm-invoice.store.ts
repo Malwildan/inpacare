@@ -2,6 +2,7 @@ import { EntityManager } from "typeorm";
 import {
   InvoiceListFilters,
   InvoiceStore,
+  ReleaseHandoff,
 } from "../../../../application/billing/invoice-store.port";
 export class TypeOrmInvoiceStore implements InvoiceStore {
   constructor(private readonly manager: EntityManager) {}
@@ -15,6 +16,33 @@ export class TypeOrmInvoiceStore implements InvoiceStore {
       items: rows.map((r: { item: Record<string, unknown> }) => r.item),
       total: rows.length,
     };
+  }
+  async releaseHandoffs(offset: number, limit: number) {
+    // Approval and release commit together. Read the episode from that transaction's durable state.
+    return this.manager.query<ReleaseHandoff[]>(
+      `SELECT c.id AS "cycleId", p.id AS "patientId", p.name AS "patientName",
+         p.medical_record_no AS "medicalRecordNo", approval.decided_at AS "releasedAt",
+         jsonb_build_object('id', pl.id, 'roomId', r.id, 'room', r.name,
+           'startsOn', pl.starts_on, 'endsOn', pl.ends_on, 'status', pl.status) AS placement,
+         COALESCE((
+           SELECT jsonb_agg(jsonb_build_object('id', i.id, 'status', i.status) ORDER BY i.created_at DESC,i.id)
+           FROM invoices i
+           WHERE i.patient_id=p.id AND i.placement_id=pl.id AND i.deleted_at IS NULL
+         ), '[]'::jsonb) AS invoices
+       FROM cycles c
+       JOIN patients p ON p.id=c.patient_id
+       JOIN placements pl ON pl.id=c.placement_id
+       JOIN rooms r ON r.id=pl.room_id
+       JOIN (
+         SELECT cycle_id, max(decided_at) AS decided_at FROM cycle_requests
+         WHERE kind='release' AND status='approved' AND decided_at IS NOT NULL
+         GROUP BY cycle_id
+       ) approval ON approval.cycle_id=c.id
+       WHERE c.status='released' AND c.deleted_at IS NULL
+       ORDER BY approval.decided_at DESC,c.id
+       LIMIT $1 OFFSET $2`,
+      [limit, offset],
+    );
   }
   async patientInfo(patientId: string) {
     const [p] = await this.manager.query(

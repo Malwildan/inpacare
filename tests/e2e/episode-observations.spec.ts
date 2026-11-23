@@ -28,7 +28,7 @@ test('nurse observations made before a record are visible to the attending docto
 
     const dashboard = `/dashboard?patientId=${patient.id}&search=${patient.medicalRecordNo}`;
     await page.goto(dashboard);
-    await expect(page.getByRole('searchbox')).toHaveValue(patient.medicalRecordNo, { timeout: 20_000 });
+    await expect(page.getByRole('searchbox', { name: 'Cari nama atau nomor rekam medis' })).toHaveValue(patient.medicalRecordNo, { timeout: 20_000 });
     await page.getByRole('button', { name: 'Lihat detail' }).click();
     await page.getByRole('button', { name: 'Observasi keperawatan' }).click();
     await expect(page.getByText('Belum ada observasi keperawatan.')).toBeVisible();
@@ -46,7 +46,7 @@ test('nurse observations made before a record are visible to the attending docto
 
     await signIn(page.request, 'hendra');
     await page.goto(dashboard);
-    await expect(page.getByRole('searchbox')).toHaveValue(patient.medicalRecordNo, { timeout: 20_000 });
+    await expect(page.getByRole('searchbox', { name: 'Cari nama atau nomor rekam medis' })).toHaveValue(patient.medicalRecordNo, { timeout: 20_000 });
     await page.getByRole('button', { name: 'Lihat detail' }).click();
     await page.getByRole('button', { name: 'Observasi keperawatan' }).click();
     await expect(page.getByText('Keluhan berkurang setelah beristirahat')).toBeVisible();

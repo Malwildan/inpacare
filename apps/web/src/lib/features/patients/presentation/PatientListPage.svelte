@@ -64,7 +64,7 @@ async function create(event: SubmitEvent) {
         });
         creating = false;
         savedId = patient.id;
-        notice = `Pasien ${patient.name} berhasil ditambahkan dengan nomor rekam medis ${patient.medicalRecordNo}.`;
+        notice = `Pasien ${patient.name} berhasil ditambahkan dengan nomor rekam medis ${patient.medicalRecordNo}. Pasien siap diproses oleh tim perawatan untuk mulai rawat inap.`;
         try {
             await goto(`/patients?${new URLSearchParams({ q: patient.medicalRecordNo })}`, { refreshAll: true, reset: true });
         } catch {

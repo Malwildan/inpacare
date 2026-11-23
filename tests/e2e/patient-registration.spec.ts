@@ -10,7 +10,7 @@ async function signIn(page: Page, username: string) {
         data: { username, password: process.env.SEED_DEMO_PASSWORD || 'InpaCareDemo!2026' },
     });
     expect(session.status()).toBe(200);
-    await page.goto(username === 'admisi' ? '/patients' : '/dashboard');
+    await page.goto(username === 'admisi' ? '/patients' : '/dashboard', { waitUntil: 'networkidle' });
     await expect(page.getByRole('button', { name: /Keluar/ })).toBeVisible();
 }
 async function headers(page: Page) {
@@ -20,7 +20,6 @@ async function headers(page: Page) {
 
 test('admissions registers with a generated record number and finds it after reload', async ({ page }, testInfo) => {
     await signIn(page, 'admisi');
-    await page.getByRole('navigation', { name: 'Navigasi utama', exact: true }).getByRole('link', { name: 'Data pasien', exact: true }).click();
     await page.getByRole('button', { name: 'Tambah pasien', exact: true }).click();
     await expect(page.getByLabel('Nama lengkap')).toBeFocused();
     await expect(page.getByLabel('Nomor rekam medis', { exact: true })).toHaveAttribute('readonly', '');

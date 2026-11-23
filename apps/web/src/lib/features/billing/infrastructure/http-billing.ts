@@ -11,6 +11,7 @@ export function createHttpBilling(http: HttpClient): BillingRepository {
     const line = (id: string, lineId: string) => `${path(id)}/lines/${encodeURIComponent(lineId)}`;
     return {
         list: async () => (await http.request<Schemas['InvoicePage']>('/invoices')).items,
+        releaseHandoffs: offset => http.request<Schemas['ReleaseHandoffPage']>(`/invoices/release-handoffs?offset=${offset}`),
         detail: id => http.request<Schemas['InvoiceDetail']>(path(id)),
         patientContext: id => http.request<Schemas['InvoicePatientContext']>(`/invoices/patients/${encodeURIComponent(id)}/context`),
         create: input => http.request<Schemas['InvoiceCreated']>('/invoices', { method: 'POST', body: JSON.stringify(input satisfies Schemas['NewInvoice']) }),

@@ -3,7 +3,7 @@ import type { NewObservation, Observation } from '$lib/features/medical-records'
 import type { User } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
 export type CycleFilters = Record<'search' | 'status' | 'roomId' | 'patientId', string>;
-export type CycleCandidate = { id: string; name: string; medicalRecordNo: string };
+export type CycleCandidate = { id: string; name: string; medicalRecordNo: string; firstAdmission: boolean };
 export type CareCycles = {
     creationCandidates(): Promise<CycleCandidate[]>;
     assignmentCandidates(): Promise<CycleAssignee[]>;
