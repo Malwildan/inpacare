@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { selectDate } from '../select-date.mjs';
 import { selectOption } from '../select-option.mjs';
 
-const password = [REDACTED_SECRET] ?? 'InpaCareDemo!2026';
+const password = process.env.SEED_DEMO_PASSWORD ?? 'InpaCareDemo!2026';
 const jakartaDate = (days: number) => new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
 }).format(new Date(Date.now() + days * 86400000));
