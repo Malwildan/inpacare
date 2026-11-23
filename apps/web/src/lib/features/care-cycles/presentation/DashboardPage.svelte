@@ -257,7 +257,7 @@ async function deleteCycle(cycle: CycleDetail) {
 <svelte:head><title>Rekap rawat inap | InpaCare</title></svelte:head>
 <div class="dashboard-page flex min-w-0 flex-col gap-6">
 <section class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-	<div><h1 class="page-title">Rekap rawat inap</h1><p class="page-subtitle">Lihat penempatan, status perawatan, dan permintaan untuk setiap pasien.</p></div>
+	<div><h1 class="page-title">Rekap rawat inap</h1></div>
 </section>
 
 <section class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" aria-label="Jumlah rekap menurut status">
@@ -270,7 +270,7 @@ async function deleteCycle(cycle: CycleDetail) {
     <div class="create-panel"><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" onclick={openCreate}><Plus aria-hidden="true" /> Mulai rawat inap</Button></div>
 {/if}
 {#if createOpen}
-    <Modal busy={busy} protectChanges title="Mulai rawat inap" description="Pilih pasien, dokter, dan penempatan dalam satu formulir." onclose={() => { if (!busy) createOpen = false; }}>
+    <Modal busy={busy} protectChanges title="Mulai rawat inap" onclose={() => { if (!busy) createOpen = false; }}>
         {#snippet children(close)}
         <p class="create-help">Gunakan penempatan yang ada atau pilih ruang dan periode baru. Jika ruang belum tersedia, simpan sebagai Menunggu.</p>
         {#if data.creationCandidates.length === 0}
