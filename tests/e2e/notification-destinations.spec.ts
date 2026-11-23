@@ -33,7 +33,10 @@ async function createCycle(page: Page, withPlacement = false) {
     const cycle = await write(page.request, '/cycles', {
         patientId: patient.id,
         doctorId: 'USR-DOCTOR-1',
-        ...(withPlacement ? { newPlacement: { roomId: 'RG-004', startsOn: '2066-01-01', endsOn: '2066-01-02' } } : {}),
+        ...(withPlacement ? {
+            nurseId: 'USR-COORD',
+            newPlacement: { roomId: 'RG-004', startsOn: '2066-01-01', endsOn: '2066-01-02' },
+        } : {}),
     });
     return { name, id: cycle.id as string };
 }
