@@ -1,6 +1,7 @@
 // Dibuat oleh scripts/generate-public-errors.mjs. Sunting pesan pada sumbernya.
 export const publicErrors: Record<string, readonly string[]> = {
     "CONFLICT": [
+        "Buka rekap rawat inap pasien untuk menambah observasi.",
         "Data sudah berubah. Muat ulang untuk melihat data terbaru, lalu periksa perubahan Anda sebelum menyimpan kembali.",
         "Hanya rekap berstatus Menunggu yang dapat dihapus.",
         "Kapasitas lebih kecil daripada jumlah penempatan yang sudah tersimpan. Masukkan kapasitas yang dapat menampung penempatan tersebut.",
@@ -22,6 +23,7 @@ export const publicErrors: Record<string, readonly string[]> = {
         "Perubahan status rekap ditolak. Periksa status terbaru dan pilih tindakan yang tersedia.",
         "Rekap belum memiliki penempatan. Periksa detail rekap sebelum melanjutkan permintaan.",
         "Rekap belum memiliki penempatan. Pilih penempatan sebelum memulai perawatan.",
+        "Rekap memiliki observasi atau rekam medis. Pertahankan rekap untuk menyimpan riwayat pasien.",
         "Ruang ini tidak menerima penempatan. Pilih ruang yang tersedia.",
         "Ruang penuh pada sebagian rentang tanggal. Pilih ruang lain atau sesuaikan tanggal.",
         "Ruang penuh pada tanggal perpanjangan. Periksa kapasitas sebelum memutuskan permintaan.",
@@ -138,6 +140,7 @@ export const publicErrors: Record<string, readonly string[]> = {
         "Pilih perawat penanggung jawab.",
         "Pilih perawat yang berbeda dari penanggung jawab saat ini.",
         "Pilih prioritas tugas dari daftar.",
+        "Pilih rekap rawat inap.",
         "Pilih ruang.",
         "Pilih status pembayaran Belum lunas atau Lunas.",
         "Pilih status rekap rawat inap dari daftar.",

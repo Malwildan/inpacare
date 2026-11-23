@@ -9,6 +9,10 @@ export function createHttpCareCycles(http: HttpClient): CareCycles {
         assignmentCandidates: async () => (await http.request<Schemas['CycleAssignmentCandidates']>('/cycles/assignment-candidates')).items,
         dashboard: async (filters) => { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value)); return (await http.request<Schemas['CyclePage']>(`/cycles/dashboard${query.size ? '?' + query : ''}`)).items; },
         detail: id => http.request<Schemas['Cycle']>(path(id)),
+        observations: async id => (await http.request<Schemas['CycleObservations']>(`${path(id)}/observations`)).items,
+        addObservation: async (id, input) => (await http.request<Schemas['CycleObservations']>(`${path(id)}/observations`, {
+            method: 'POST', body: JSON.stringify(input satisfies Schemas['NewObservation'])
+        })).items,
         create: input => http.request<Schemas['CycleCreated']>('/cycles', { method: 'POST', body: JSON.stringify(input satisfies Schemas['NewCycle']) }, created =>
             typeof created.id === 'string' && (created.status === 'assigned' || created.status === 'pending')),
         change: (id, input) => http.request(path(id), { method: 'PATCH', body: JSON.stringify(input satisfies Schemas['ChangeCycleStatus']) }),

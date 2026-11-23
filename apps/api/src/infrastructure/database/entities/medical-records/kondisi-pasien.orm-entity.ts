@@ -7,8 +7,12 @@ import { Pengguna } from "../auth/pengguna.orm-entity";
 export class KondisiPasien {
   @PrimaryColumn({ name: "id", type: "varchar", length: 36 })
   id!: string;
-  @Column({ name: "record_id", type: "varchar", length: 36 })
-  recordId!: string;
+  @Column({ name: "record_id", type: "varchar", length: 36, nullable: true })
+  recordId!: string | null;
+  @Column({ name: "patient_id", type: "varchar", length: 36 })
+  patientId!: string;
+  @Column({ name: "cycle_id", type: "varchar", length: 36, nullable: true })
+  cycleId!: string | null;
   @Column({ name: "nurse_id", type: "varchar", length: 36 })
   nurseId!: string;
   @Column({ name: "symptoms", type: "text" })
@@ -19,9 +23,9 @@ export class KondisiPasien {
   observedAt!: Date;
   @Column({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
-  @ManyToOne(() => RekamMedis, { nullable: false, onDelete: "RESTRICT" })
+  @ManyToOne(() => RekamMedis, { nullable: true, onDelete: "RESTRICT" })
   @JoinColumn({ name: "record_id", referencedColumnName: "id" })
-  recordIdRelation!: RekamMedis;
+  recordIdRelation!: RekamMedis | null;
   @ManyToOne(() => Pengguna, { nullable: false, onDelete: "RESTRICT" })
   @JoinColumn({ name: "nurse_id", referencedColumnName: "id" })
   nurseIdRelation!: Pengguna;

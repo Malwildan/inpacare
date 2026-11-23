@@ -16,6 +16,7 @@ import type { CareCycles, DashboardData, Cycle as CycleDetail, ChangeCycle, NewC
 import { isUnconfirmedSave, sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
 import { NotificationDialog, type Notifications } from '$lib/features/notifications';
+import CycleObservations from './CycleObservations.svelte';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
 const statusLabels: Record<string, string> = { pending: 'Menunggu', assigned: 'Sudah ditempatkan', in_care: 'Dalam perawatan', extend: 'Diperpanjang', released: 'Pelepasan' };
 const requestLabels: Record<string, string> = { pending: 'Menunggu keputusan', approved: 'Disetujui', rejected: 'Ditolak' };
@@ -74,7 +75,8 @@ let canManage = $derived(data.user.role === 'PERAWAT' && selectedCycle?.nurseId 
 let canAssign = $derived(data.user.role === 'PERAWAT' && data.user.coordinator);
 let pendingRequest = $derived(selectedCycle?.requests.find(item => item.status === 'pending'));
 let detailLoading = $state(false);
-let cycleView = $state<'detail' | 'placement' | 'request' | 'decision' | 'delete' | 'assignee'>('detail');
+let cycleView = $state<'detail' | 'placement' | 'request' | 'decision' | 'delete' | 'assignee' | 'observations'>('detail');
+let observationEditing = $state(false);
 let decisionRequestId = $state('');
 let requestKind = $state('release');
 let cycles = $derived(data.cycles);
@@ -359,12 +361,13 @@ async function deleteCycle(cycle: CycleDetail) {
 </Card>
 
 {#if selectedCycleId}
-<Modal {busy} title={cycleView === 'detail' ? 'Detail rekap rawat inap' : cycleView === 'placement' ? 'Ubah penempatan' : cycleView === 'request' ? 'Ajukan perpanjangan atau pelepasan' : cycleView === 'decision' ? 'Keputusan dokter' : cycleView === 'assignee' ? 'Alihkan penanggung jawab' : 'Hapus rekap berstatus Menunggu?'}
+<Modal {busy} title={cycleView === 'detail' ? 'Detail rekap rawat inap' : cycleView === 'observations' ? 'Observasi keperawatan' : cycleView === 'placement' ? 'Ubah penempatan' : cycleView === 'request' ? 'Ajukan perpanjangan atau pelepasan' : cycleView === 'decision' ? 'Keputusan dokter' : cycleView === 'assignee' ? 'Alihkan penanggung jawab' : 'Hapus rekap berstatus Menunggu?'}
  description="Informasi perawatan, penanggung jawab, dan permintaan perubahan pasien."
- protectChanges={cycleView !== 'detail' && cycleView !== 'delete'} formKey={cycleView}
- initialFocus={destination?.requestId ? '[data-notification-request]' : undefined}
- backLabel={cycleView !== 'detail' ? 'Kembali ke detail' : undefined}
- onclose={() => { if (cycleView === 'detail') closeDetail(); else { cycleView = 'detail'; deletingCycle = null; } }}>
+ protectChanges={cycleView === 'observations' ? observationEditing : cycleView !== 'detail' && cycleView !== 'delete'}
+ formKey={observationEditing ? 'observation-form' : cycleView}
+ initialFocus={cycleView === 'detail' && destination?.requestId ? '[data-notification-request]' : undefined}
+ backLabel={observationEditing ? 'Kembali ke observasi' : cycleView !== 'detail' ? 'Kembali ke detail' : undefined}
+ onclose={() => { if (observationEditing) observationEditing = false; else if (cycleView === 'detail') closeDetail(); else { cycleView = 'detail'; deletingCycle = null; } }}>
  {#snippet children(close)}
  {#if detailError}<p class="error mb-4" role="alert">{detailError}</p>{/if}
  {#if detailSuccess}<p class="mb-4 text-sm" role="status">{detailSuccess}</p>{/if}
@@ -388,6 +391,12 @@ async function deleteCycle(cycle: CycleDetail) {
                 <form class="card-actions" onsubmit={(event) => transition(event, selectedCycle!)}><Button type="submit" disabled={busy || detailNeedsRefresh}><Check aria-hidden="true" /> {selectedCycle.status === 'pending' ? 'Konfirmasi sudah ditempatkan' : 'Mulai perawatan'}</Button></form>
             {/if}
 			{#if canManage && selectedCycle.placementId && ['in_care', 'extend'].includes(selectedCycle.status)}<div class="card-actions"><Button variant="outline" disabled={busy || detailNeedsRefresh || !!pendingRequest} onclick={() => cycleView = 'request'}><Send aria-hidden="true" /> Ajukan perpanjangan / pelepasan</Button>{#if pendingRequest}<p class="approval-note">Pengajuan sebelumnya masih menunggu keputusan dokter.</p>{/if}</div>{/if}
+			<div class="card-actions">
+				<Button variant="outline" disabled={busy || detailNeedsRefresh} onclick={() => cycleView = 'observations'}>Observasi keperawatan</Button>
+				{#if data.user.role === 'DOKTER' && selectedCycle.doctorId === data.user.id}
+					<Button variant="outline" href={`/medical-records?cycleId=${encodeURIComponent(selectedCycle.id)}`}><Plus aria-hidden="true" /> Tambah rekam medis</Button>
+				{/if}
+			</div>
             {#if canAssign}
                 {@const history = selectedCycle.assignmentHistory ?? []}
                 <section class="detail-section">
@@ -419,7 +428,11 @@ async function deleteCycle(cycle: CycleDetail) {
 		{:else}<Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" disabled={busy} onclick={() => void refreshDetail()}><RefreshCw aria-hidden="true" /> Coba lagi</Button>{/if}
  {:else if selectedCycle}
  <p class="mb-5 font-medium">{selectedCycle.patientName} · {selectedCycle.medicalRecordNo}</p>
- {#if cycleView === 'placement'}<form onsubmit={(event)=>assignPlacement(event,selectedCycle!)}><label class="field">Penempatan<FormSelect name="placementId" bind:value={detailPlacementId} disabled={busy || detailNeedsRefresh} options={[{ value: "", label: "Belum ditempatkan" }, ...(data.reference.placements.filter((p)=>p.status==='active'&&p.patientId===selectedCycle!.patientId)).map((placement) => ({ value: placement.id, label: (placement.roomName) + " · " + date(placement.startsOn) + "–" + date(placement.endsOn) }))]} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || detailNeedsRefresh}><Save aria-hidden="true" /> Simpan penempatan</Button></div></form>
+ {#if cycleView === 'observations'}
+    {#key selectedCycle.id}
+        <CycleObservations cycleId={selectedCycle.id} {careCycles} canRecord={canManage} bind:busy bind:editing={observationEditing} onCancel={close} />
+    {/key}
+ {:else if cycleView === 'placement'}<form onsubmit={(event)=>assignPlacement(event,selectedCycle!)}><label class="field">Penempatan<FormSelect name="placementId" bind:value={detailPlacementId} disabled={busy || detailNeedsRefresh} options={[{ value: "", label: "Belum ditempatkan" }, ...(data.reference.placements.filter((p)=>p.status==='active'&&p.patientId===selectedCycle!.patientId)).map((placement) => ({ value: placement.id, label: (placement.roomName) + " · " + date(placement.startsOn) + "–" + date(placement.endsOn) }))]} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || detailNeedsRefresh}><Save aria-hidden="true" /> Simpan penempatan</Button></div></form>
  {:else if cycleView === 'request'}{#if pendingRequest}<p class="approval-note" id="cycle-request-blocked">Pengajuan sebelumnya masih menunggu keputusan dokter. Pengajuan baru belum dapat dikirim.</p>{/if}<form onsubmit={(event) => request(event, selectedCycle!)}><fieldset class="request-fields" disabled={busy || detailNeedsRefresh || !!pendingRequest} aria-describedby={pendingRequest ? 'cycle-request-blocked' : undefined}><legend class="request-legend">Pengajuan perubahan perawatan</legend><div class="form-grid"><label class="field">Jenis permintaan<FormSelect name="kind" bind:value={requestKind} options={[{ value: "release", label: "Pelepasan" }, { value: "extend", label: "Perpanjangan" }]} /></label>{#if requestKind === 'extend'}<label class="field">Perpanjang sampai tanggal<FormDatePicker class="h-11 text-base md:text-sm" name="requestedEnd" type="date" required /></label>{/if}<label class="field full">Alasan<Textarea name="reason" maxlength={500} required></Textarea></label></div><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline"><Send aria-hidden="true" /> Ajukan ke dokter</Button></div></fieldset></form>
  {:else if cycleView === 'decision'}<form onsubmit={(event) => decide(event, selectedCycle!, decisionRequestId, String((event.submitter as HTMLButtonElement)?.value))}><label class="field">Catatan keputusan<Input class="h-11 text-base md:text-sm" name="note" maxlength={500} required disabled={busy || detailNeedsRefresh} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="outline" type="submit" class="h-11 px-4 no-underline hover:no-underline" name="decision" value="reject" disabled={busy || detailNeedsRefresh}><X aria-hidden="true" /> Tolak</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" name="decision" value="approve" disabled={busy || detailNeedsRefresh}><Check aria-hidden="true" /> Setujui</Button></div></form>
  {:else if cycleView === 'assignee'}

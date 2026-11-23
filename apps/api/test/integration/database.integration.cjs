@@ -12,6 +12,17 @@ const { test } = require("node:test");
 const ADMIN_URL = process.env.INPACARE_TEST_DATABASE_ADMIN_URL;
 const API_DIR = path.resolve(__dirname, "../..");
 const CLI = path.join(API_DIR, "dist", "infrastructure", "database", "cli.js");
+const expectedMigrations = [
+  "Baseline1793577600000",
+  "RebuildDelta1793577600001",
+  "AuditAlignment1793577600002",
+  "TaskBoardPosition1793577600003",
+  "PatientRecordNumber1793577600004",
+  "CycleCreationRequests1793577600005",
+  "PlacementHistory1793577600006",
+  "EpisodeObservations1793577600062",
+  "NotificationRequestTargets1793577600066",
+];
 const BASELINE = path.join(
   API_DIR,
   "src",
@@ -133,7 +144,7 @@ test(
       );
       assert.deepEqual(
         history.rows.map((row) => row.name),
-        ["Baseline1793577600000", "RebuildDelta1793577600001", "AuditAlignment1793577600002", "TaskBoardPosition1793577600003", "PatientRecordNumber1793577600004", "CycleCreationRequests1793577600005", "PlacementHistory1793577600006", "NotificationRequestTargets1793577600066"],
+        expectedMigrations,
       );
       const deltaFields = await client.query(
         `SELECT table_name,column_name FROM information_schema.columns WHERE table_schema=current_schema() AND ((table_name='cycles' AND column_name='deleted_at') OR (table_name='invoices' AND column_name='claim_verified') OR (table_name='invoice_lines' AND column_name='room_item_id')) ORDER BY table_name,column_name`,
@@ -352,10 +363,14 @@ test(
         `INSERT INTO cycles(id,patient_id,placement_id,doctor_id,nurse_id,status) VALUES('CY-LEGACY','PT-LEGACY','PL-LEGACY','LEGACY-DR','LEGACY-NR','in_care')`,
       );
       await client.query(
-        `INSERT INTO medical_records(id,patient_id,doctor_id,complaint,diagnosis,treatment) VALUES('MR-LEGACY','PT-LEGACY','LEGACY-DR','complaint','diagnosis','treatment')`,
+        `INSERT INTO medical_records(id,patient_id,doctor_id,complaint,diagnosis,treatment,record_date) VALUES
+          ('MR-LEGACY','PT-LEGACY','LEGACY-DR','complaint','diagnosis','treatment','2026-01-01'),
+          ('MR-UNMAPPED','PT-LEGACY','LEGACY-DR','complaint','diagnosis','treatment','2025-12-31')`,
       );
       await client.query(
-        `INSERT INTO observations(id,record_id,nurse_id,symptoms,observed_at) VALUES('OB-LEGACY','MR-LEGACY','LEGACY-NR','legacy symptom','2026-01-01T00:00:00Z')`,
+        `INSERT INTO observations(id,record_id,nurse_id,symptoms,observed_at) VALUES
+          ('OB-LEGACY','MR-LEGACY','LEGACY-NR','legacy symptom','2026-01-01T00:00:00Z'),
+          ('OB-UNMAPPED','MR-UNMAPPED','LEGACY-NR','unmapped symptom','2025-12-31T00:00:00Z')`,
       );
       await client.query(
         `INSERT INTO tasks(id,patient_id,room_id,placement_id,pic_id,created_by,title,starts_at,ends_at,priority) VALUES('TK-LEGACY','PT-LEGACY','RG-LEGACY','PL-LEGACY','LEGACY-NR','LEGACY-DR','legacy task','2026-01-01T00:00:00Z','2026-01-01T01:00:00Z','normal')`,
@@ -363,6 +378,7 @@ test(
       await client.query(`INSERT INTO tasks(id,patient_id,room_id,placement_id,pic_id,created_by,title,starts_at,ends_at,priority) VALUES
         ('TK-B','PT-LEGACY','RG-LEGACY','PL-LEGACY','LEGACY-NR','LEGACY-DR','b','2025-01-01T00:00:00Z','2025-01-01T01:00:00Z','normal'),
         ('TK-A','PT-LEGACY','RG-LEGACY','PL-LEGACY','LEGACY-NR','LEGACY-DR','a','2025-01-01T00:00:00Z','2025-01-01T01:00:00Z','normal')`);
+      await client.query("INSERT INTO vital_signs(id,observation_id,systolic,diastolic) VALUES('VS-LEGACY','OB-LEGACY',120,80)");
       const before = await client.query(
         `SELECT u.id,u.password_hash,p.birth_date::text AS birth_date,r.daily_rate::text AS daily_rate,c.doctor_id,c.nurse_id,t.id AS task_id FROM users u CROSS JOIN patients p CROSS JOIN rooms r CROSS JOIN cycles c CROSS JOIN tasks t WHERE u.id='LEGACY-DR' AND p.id='PT-LEGACY' AND r.id='RG-LEGACY' AND c.id='CY-LEGACY' AND t.id='TK-LEGACY'`,
       );
@@ -372,6 +388,17 @@ test(
       const adopted = runCli("adopt", adoptDb, tempCwd);
       assertCliSucceeded(adopted, "baseline adoption");
       client = await connect(adoptDb);
+      const observations = await client.query(`
+        SELECT o.id,o.record_id,o.patient_id,o.cycle_id,o.nurse_id,o.symptoms,o.version,m.cycle_id AS record_cycle,v.systolic
+        FROM observations o JOIN medical_records m ON m.id=o.record_id
+        LEFT JOIN vital_signs v ON v.observation_id=o.id ORDER BY o.id
+      `);
+      assert.deepEqual(observations.rows, [
+        { id: "OB-LEGACY", record_id: "MR-LEGACY", patient_id: "PT-LEGACY", cycle_id: "CY-LEGACY",
+          nurse_id: "LEGACY-NR", symptoms: "legacy symptom", version: 1, record_cycle: "CY-LEGACY", systolic: 120 },
+        { id: "OB-UNMAPPED", record_id: "MR-UNMAPPED", patient_id: "PT-LEGACY", cycle_id: null,
+          nurse_id: "LEGACY-NR", symptoms: "unmapped symptom", version: 1, record_cycle: null, systolic: null },
+      ]);
       const board = await client.query("SELECT id FROM tasks WHERE id IN ('TK-A','TK-B','TK-LEGACY') ORDER BY board_position,id");
       assert.deepEqual(board.rows.map(row => row.id), ['TK-A', 'TK-B', 'TK-LEGACY']);
       const after = await client.query(
@@ -425,7 +452,7 @@ test(
       );
       assert.deepEqual(
         migrationRows.rows.map((row) => row.name),
-        ["Baseline1793577600000", "RebuildDelta1793577600001", "AuditAlignment1793577600002", "TaskBoardPosition1793577600003", "PatientRecordNumber1793577600004", "CycleCreationRequests1793577600005", "PlacementHistory1793577600006", "NotificationRequestTargets1793577600066"],
+        expectedMigrations,
       );
       const repeatedAdopt = runCli("adopt", adoptDb, tempCwd);
       assertCliSucceeded(repeatedAdopt, "repeat baseline adoption");

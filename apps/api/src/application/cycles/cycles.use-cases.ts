@@ -255,6 +255,8 @@ export class CyclesUseCases {
         throw DomainError.conflict(
           "Tutup permintaan yang masih menunggu sebelum menghapus rekap.",
         );
+      if (await tx.medicalRecords.hasEpisodeClinicalData(cycleId))
+        throw DomainError.conflict("Rekap memiliki observasi atau rekam medis. Pertahankan rekap untuk menyimpan riwayat pasien.");
       const after = await tx.cycles.softDeleteCycle(cycleId);
       if (!after) throw DomainError.notFound();
       await tx.cycles.addCycleHistory({

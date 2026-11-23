@@ -22,6 +22,7 @@ import Modal from '$lib/shared/ui/dialog-frame.svelte';
 
 	let search = $state('');
 	let creating = $state(false);
+	$effect(() => { creating = Boolean(data.cycle); });
 	let busy = $state(false);
 
 	const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -35,7 +36,8 @@ import Modal from '$lib/shared/ui/dialog-frame.svelte';
 		busy = true;
 		try {
 			const row = await medical.create({
-				patientId: formText(f, 'patientId'),
+				patientId: data.cycle?.patientId ?? formText(f, 'patientId'),
+				cycleId: data.cycle?.id,
 				complaint: formText(f, 'complaint'),
 				diagnosis: formText(f, 'diagnosis'),
 				treatment: formText(f, 'treatment'),
@@ -94,21 +96,23 @@ import Modal from '$lib/shared/ui/dialog-frame.svelte';
 			</Card>
 			<Card>
 				<CardHeader class="gap-0.5">
-					<CardTitle class="text-2xl font-semibold tabular-nums">{data.records.reduce((n: number, r) => n + Number(r.observationCount), 0)}</CardTitle>
-					<CardDescription class="text-[13px]">Observasi tersimpan</CardDescription>
+					<CardTitle class="text-2xl font-semibold tabular-nums">{data.records.filter((r) => Number(r.observationCount) > 0).length}</CardTitle>
+					<CardDescription class="text-[13px]">Rekam medis dengan observasi</CardDescription>
 				</CardHeader>
 			</Card>
 		{/if}
 	</section>
 
 	{#if creating && doctors}
-		<Modal title="Tambah rekam medis" {busy} protectChanges wide onclose={() => creating = false}>
+		<Modal title="Tambah rekam medis" description={data.cycle ? `${data.cycle.patientName} · ${data.cycle.medicalRecordNo}` : undefined} {busy} protectChanges wide onclose={() => creating = false}>
 		{#snippet children(close)}<form class="flex flex-col gap-5" onsubmit={create}>
 					<FieldGroup class="grid gap-4 sm:grid-cols-2">
-						<Field>
-							<FieldLabel for="record-patient">Pasien</FieldLabel>
-							<FormSelect id="record-patient" name="patientId" required class="w-full" options={[{ value: "", label: "Pilih pasien yang ditangani" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} />
-						</Field>
+						{#if !data.cycle}
+							<Field>
+								<FieldLabel for="record-patient">Pasien</FieldLabel>
+								<FormSelect id="record-patient" name="patientId" required class="w-full" options={[{ value: "", label: "Pilih pasien yang ditangani" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} />
+							</Field>
+						{/if}
 						<Field>
 							<FieldLabel for="record-date">Tanggal rekam medis</FieldLabel>
 							<FormDatePicker id="record-date" type="date" name="recordDate" value={today} required class="h-11 px-3 text-base md:text-base" />

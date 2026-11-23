@@ -8,12 +8,14 @@ export interface RecordRow extends Record<string, unknown> {
   id: string;
   patient_id: string;
   doctor_id: string;
+  cycle_id: string | null;
   version: number | string;
   deleted_at?: Date | null;
 }
 export interface ObservationRow extends Record<string, unknown> {
   id: string;
-  record_id: string;
+  record_id: string | null;
+  cycle_id: string | null;
   nurse_id: string;
   patient_id: string;
   symptoms: string;
@@ -30,6 +32,10 @@ export interface VitalRow extends Record<string, unknown> {
   respiratory_rate: number | null;
   spo2: number | null;
 }
+export type ObservationScope =
+  | { cycleId: string; patientId: string }
+  | { recordId: string; patientId: string; doctorId: string };
+
 export interface MedicalRecordStore {
   list(
     actor: Actor,
@@ -45,6 +51,7 @@ export interface MedicalRecordStore {
   createRecord(input: {
     id: string;
     patientId: string;
+    cycleId: string | null;
     doctorId: string;
     complaint: string;
     diagnosis: string;
@@ -74,15 +81,13 @@ export interface MedicalRecordStore {
     },
   ): Promise<void>;
   deleteRecord(recordId: string): Promise<void>;
-  lockRecordPatient(recordId: string): Promise<
-    | {
-        patient_id: string;
-      }
-    | undefined
-  >;
+  hasEpisodeClinicalData(cycleId: string): Promise<boolean>;
+  episodeForRecordDate(patientId: string, recordDate: string): Promise<string | undefined>;
+  listObservations(actor: Actor, scope: ObservationScope): Promise<Record<string, unknown>[]>;
   createObservation(input: {
     id: string;
-    recordId: string;
+    patientId: string;
+    cycleId: string;
     nurseId: string;
     symptoms: string;
     nursingNote: string;
@@ -99,7 +104,7 @@ export interface MedicalRecordStore {
     spo2: number | null;
   }): Promise<void>;
   lockObservation(
-    recordId: string,
+    scope: ObservationScope,
     observationId: string,
   ): Promise<ObservationRow | undefined>;
   lockVital(observationId: string): Promise<VitalRow | undefined>;

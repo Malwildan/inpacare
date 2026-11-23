@@ -138,10 +138,11 @@ async function main(): Promise<void> {
           "INSERT INTO placements(id,patient_id,room_id,starts_on,ends_on,created_by) VALUES($1,$2,$3,$4,$5,$6)",
           [placement, patient, room, isoDate(start), isoDate(end), "USR-COORD"],
         );
+        const cycle = `CY-${String(i + 1).padStart(3, "0")}`;
         await manager.query(
           "INSERT INTO cycles(id,patient_id,placement_id,doctor_id,nurse_id,status) VALUES($1,$2,$3,$4,$5,$6)",
           [
-            `CY-${String(i + 1).padStart(3, "0")}`,
+            cycle,
             patient,
             placement,
             doctor,
@@ -151,7 +152,7 @@ async function main(): Promise<void> {
         );
         const record = `MR-${String(i + 1).padStart(3, "0")}`;
         await manager.query(
-          "INSERT INTO medical_records(id,patient_id,doctor_id,complaint,diagnosis,treatment,notes) VALUES($1,$2,$3,$4,$5,$6,$7)",
+          "INSERT INTO medical_records(id,patient_id,doctor_id,complaint,diagnosis,treatment,notes,cycle_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
           [
             record,
             patient,
@@ -160,17 +161,20 @@ async function main(): Promise<void> {
             "Diagnosis contoh — bukan data klinis nyata",
             "Rencana perawatan contoh",
             "Data sintetis untuk demonstrasi aplikasi.",
+            cycle,
           ],
         );
         const observation = `OB-${String(i + 1).padStart(3, "0")}`;
         await manager.query(
-          "INSERT INTO observations(id,record_id,nurse_id,symptoms,nursing_note,observed_at) VALUES($1,$2,$3,$4,$5,now())",
+          "INSERT INTO observations(id,record_id,nurse_id,symptoms,nursing_note,observed_at,patient_id,cycle_id) VALUES($1,$2,$3,$4,$5,now(),$6,$7)",
           [
             observation,
             record,
             "USR-NURSE-1",
             "Keluhan berkurang",
             "Observasi sintetis.",
+            patient,
+            cycle,
           ],
         );
         await manager.query(
