@@ -13,7 +13,7 @@
 
 <PaginationPrimitive.PrevButton
 	bind:ref
-	aria-label="Go to previous page"
+	aria-label="Buka halaman sebelumnya"
 	class={cn(
 		buttonVariants({ variant: "ghost", size: "default" }),
 		"pl-1.5!",
@@ -22,5 +22,5 @@
 	{...restProps}
 >
 	<ChevronLeftIcon data-icon="inline-start" class="cn-rtl-flip" />
-	<span class="hidden sm:block">Previous</span>
+	<span class="hidden sm:block">Sebelumnya</span>
 </PaginationPrimitive.PrevButton>

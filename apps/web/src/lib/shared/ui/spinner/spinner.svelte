@@ -12,7 +12,7 @@
 		color,
 		stroke,
 		className: legacyClassName,
-		"aria-label": ariaLabel = "Loading",
+		"aria-label": ariaLabel = "Memuat",
 		...restProps
 	}: SVGAttributes<SVGSVGElement> = $props();
 </script>

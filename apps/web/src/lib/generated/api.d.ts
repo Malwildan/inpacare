@@ -11,15 +11,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read session */
+        /** Baca sesi saat ini */
         get: operations["GET_session"];
         put?: never;
         /**
-         * Create session
-         * @description Same-origin Origin required. Sets HttpOnly session and readable csrf_token cookies; returns user.csrfToken.
+         * Masuk dan buat sesi
+         * @description Gunakan Origin yang sama dengan aplikasi. Respons memasang kuki session dengan HttpOnly dan kuki csrf_token yang dapat dibaca. Token juga tersedia di user.csrfToken.
          */
         post: operations["POST_session"];
-        /** Revoke session */
+        /** Keluar dan akhiri sesi */
         delete: operations["DELETE_session"];
         options?: never;
         head?: never;
@@ -33,7 +33,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Load references */
+        /** Muat data referensi */
         get: operations["GET_reference"];
         put?: never;
         post?: never;
@@ -50,10 +50,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Search scoped patients */
+        /** Cari pasien sesuai akses */
         get: operations["GET_patients"];
         put?: never;
-        /** Register patient (admissions only) */
+        /** Daftarkan pasien (Admisi) */
         post: operations["POST_patients"];
         delete?: never;
         options?: never;
@@ -68,7 +68,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read patient context */
+        /** Baca ringkasan pasien */
         get: operations["GET_patients_id_context"];
         put?: never;
         post?: never;
@@ -85,7 +85,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List doctor and nurse references */
+        /** Daftar dokter dan perawat */
         get: operations["GET_staff"];
         put?: never;
         post?: never;
@@ -102,12 +102,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List rooms and items */
+        /** Daftar ruang dan fasilitas */
         get: operations["GET_rooms"];
         put?: never;
         /**
-         * Create room
-         * @description Coordinator nurse only.
+         * Tambah ruang rawat inap
+         * @description Hanya koordinator perawat.
          */
         post: operations["POST_rooms"];
         delete?: never;
@@ -123,20 +123,20 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read room */
+        /** Baca detail ruang */
         get: operations["GET_rooms_id"];
         put?: never;
         post?: never;
         /**
-         * Soft-delete an unused room
-         * @description Coordinator nurse only.
+         * Arsipkan ruang yang tidak digunakan
+         * @description Hanya koordinator perawat.
          */
         delete: operations["DELETE_rooms_id"];
         options?: never;
         head?: never;
         /**
-         * Update room
-         * @description Coordinator nurse only.
+         * Ubah detail ruang
+         * @description Hanya koordinator perawat.
          */
         patch: operations["PATCH_rooms_id"];
         trace?: never;
@@ -151,8 +151,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Add room item
-         * @description Coordinator nurse only.
+         * Tambah fasilitas ruang
+         * @description Hanya koordinator perawat.
          */
         post: operations["POST_rooms_id_items"];
         delete?: never;
@@ -168,7 +168,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read inclusive bounded occupancy */
+        /** Baca keterisian ruang dalam rentang tanggal */
         get: operations["GET_occupancy"];
         put?: never;
         post?: never;
@@ -188,8 +188,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create placement
-         * @description Nurses, including coordinators, create an initial placement for an accessible patient. Patient then room lock; checks maintenance, duplicate patient overlaps and daily peak capacity.
+         * Tempatkan pasien
+         * @description Perawat dan koordinator dapat membuat penempatan awal untuk pasien sesuai akses. Sistem mengunci data pasien lalu ruang, memeriksa pemeliharaan, jadwal pasien yang bertumpang tindih, dan kapasitas tertinggi setiap hari.
          */
         post: operations["POST_placements"];
         delete?: never;
@@ -205,12 +205,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List bounded task board */
+        /** Muat daftar tugas perawatan */
         get: operations["GET_tasks"];
         put?: never;
         /**
-         * Create task
-         * @description Coordinator only; room derives from active placement; start and end may match.
+         * Buat tugas perawatan
+         * @description Hanya koordinator. Ruang mengikuti penempatan aktif. Waktu mulai dan selesai boleh sama.
          */
         post: operations["POST_tasks"];
         delete?: never;
@@ -226,20 +226,20 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read scoped task */
+        /** Baca detail tugas sesuai akses */
         get: operations["GET_tasks_id"];
         put?: never;
         post?: never;
         /**
-         * Soft delete task
-         * @description Coordinator only, expectedVersion and reason required.
+         * Hapus tugas dari papan
+         * @description Hanya koordinator. Sertakan expectedVersion dan alasan.
          */
         delete: operations["DELETE_tasks_id"];
         options?: never;
         head?: never;
         /**
-         * Progress task or update notes
-         * @description PIC progress and notes; coordinator cancellation with reason; requires expectedVersion.
+         * Ubah status atau catatan tugas
+         * @description Penanggung jawab dapat memperbarui status dan catatan. Koordinator dapat membatalkan tugas dengan alasan. Sertakan expectedVersion.
          */
         patch: operations["PATCH_tasks_id"];
         trace?: never;
@@ -254,8 +254,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Reassign task
-         * @description Coordinator only, expectedVersion and reason required.
+         * Alihkan penanggung jawab tugas
+         * @description Hanya koordinator. Sertakan expectedVersion dan alasan.
          */
         post: operations["POST_tasks_id_reassign"];
         delete?: never;
@@ -271,7 +271,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read task history */
+        /** Baca riwayat tugas */
         get: operations["GET_tasks_id_history"];
         put?: never;
         post?: never;
@@ -288,10 +288,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List medical records */
+        /** Daftar rekam medis */
         get: operations["GET_medical_records"];
         put?: never;
-        /** Create medical record */
+        /** Buat rekam medis */
         post: operations["POST_medical_records"];
         delete?: never;
         options?: never;
@@ -306,15 +306,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read medical record */
+        /** Baca detail rekam medis */
         get: operations["GET_medical_records_id"];
         put?: never;
         post?: never;
-        /** Soft-delete a medical record */
+        /** Arsipkan rekam medis */
         delete: operations["DELETE_medical_records_id"];
         options?: never;
         head?: never;
-        /** Update authored record */
+        /** Koreksi rekam medis yang dibuat sendiri */
         patch: operations["PATCH_medical_records_id"];
         trace?: never;
     };
@@ -328,8 +328,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Add nurse observation
-         * @description Measurements receive format checks only.
+         * Tambahkan observasi perawat
+         * @description Nilai pengukuran diperiksa sesuai format yang ditetapkan.
          */
         post: operations["POST_medical_records_id_observations"];
         delete?: never;
@@ -345,10 +345,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List assigned cycles */
+        /** Daftar rekap rawat inap sesuai penugasan */
         get: operations["GET_cycles"];
         put?: never;
-        /** Create cycle recap */
+        /** Buat rekap rawat inap */
         post: operations["POST_cycles"];
         delete?: never;
         options?: never;
@@ -363,15 +363,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read cycle and decisions */
+        /** Baca rekap dan keputusan dokter */
         get: operations["GET_cycles_id"];
         put?: never;
         post?: never;
-        /** Soft-delete a cycle */
+        /** Hapus rekap rawat inap dari daftar */
         delete: operations["DELETE_cycles_id"];
         options?: never;
         head?: never;
-        /** Progress cycle */
+        /** Lanjutkan status rekap rawat inap */
         patch: operations["PATCH_cycles_id"];
         trace?: never;
     };
@@ -385,8 +385,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Request extension or release
-         * @description Assigned nurse, status in_care or extend; one pending request.
+         * Ajukan perpanjangan atau pelepasan
+         * @description Hanya perawat yang ditugaskan, pada status in_care atau extend. Hanya satu permintaan dapat menunggu keputusan.
          */
         post: operations["POST_cycles_id_requests"];
         delete?: never;
@@ -402,7 +402,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List notifications */
+        /** Daftar notifikasi */
         get: operations["GET_notifications"];
         put?: never;
         post?: never;
@@ -421,7 +421,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Mark notification read */
+        /** Tandai notifikasi sebagai sudah dibaca */
         post: operations["POST_notifications_id_read"];
         delete?: never;
         options?: never;
@@ -437,12 +437,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List invoices
-         * @description Total counts the bounded result page.
+         * Daftar tagihan
+         * @description Total menunjukkan jumlah tagihan di halaman hasil.
          */
         get: operations["GET_invoices"];
         put?: never;
-        /** Create invoice */
+        /** Buat tagihan */
         post: operations["POST_invoices"];
         delete?: never;
         options?: never;
@@ -457,17 +457,17 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read invoice/history */
+        /** Baca tagihan dan riwayatnya */
         get: operations["GET_invoices_id"];
         put?: never;
         post?: never;
-        /** Soft-delete an unpaid invoice */
+        /** Hapus tagihan yang belum lunas dari daftar */
         delete: operations["DELETE_invoices_id"];
         options?: never;
         head?: never;
         /**
-         * Update invoice status, lines, or coverage
-         * @description ADMISI only. Send status, lines (replaces all lines), and/or coveredAmount with reason and expectedVersion. Totals are recomputed server-side; the edit and history entry commit atomically. Status-only requests remain supported.
+         * Ubah status pembayaran, rincian, atau nilai jaminan
+         * @description Hanya ADMISI. Sertakan status, lines untuk mengganti seluruh rincian, atau coveredAmount. Sertakan juga reason dan expectedVersion. Server menghitung ulang total dan menyimpan perubahan bersama riwayatnya dalam satu transaksi. Permintaan yang hanya mengubah status tetap didukung.
          */
         patch: operations["PATCH_invoices_id"];
         trace?: never;
@@ -483,15 +483,15 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Soft-delete a room item
-         * @description Coordinator nurse only.
+         * Hapus fasilitas dari daftar ruang
+         * @description Hanya koordinator perawat.
          */
         delete: operations["DELETE_rooms_id_items_itemId"];
         options?: never;
         head?: never;
         /**
-         * Update a room item
-         * @description Coordinator nurse only.
+         * Ubah fasilitas ruang
+         * @description Hanya koordinator perawat.
          */
         patch: operations["PATCH_rooms_id_items_itemId"];
         trace?: never;
@@ -507,15 +507,15 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Cancel a placement without active tasks or cycles
-         * @description Coordinator only. Requires a reason and expectedVersion; active cycles or tasks block cancellation. History is committed atomically with the change.
+         * Batalkan penempatan tanpa rekap atau tugas aktif
+         * @description Hanya koordinator. Sertakan alasan dan expectedVersion. Selesaikan rekap atau tugas aktif sebelum pembatalan. Riwayat dan pembatalan disimpan dalam satu transaksi.
          */
         delete: operations["DELETE_placements_id"];
         options?: never;
         head?: never;
         /**
-         * Reschedule or move a placement
-         * @description Coordinator only. Requires a reason and expectedVersion. Cycle-linked periods must follow doctor approval; room moves must preserve task dependencies. History is committed atomically with the change.
+         * Ubah jadwal atau ruang penempatan
+         * @description Hanya koordinator. Sertakan alasan dan expectedVersion. Perubahan tanggal untuk penempatan terkait rekap memerlukan persetujuan dokter. Perpindahan ruang harus tetap mencakup tugas yang terkait. Riwayat dan perubahan disimpan dalam satu transaksi.
          */
         patch: operations["PATCH_placements_id"];
         trace?: never;
@@ -533,7 +533,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Correct an observation and its vital signs */
+        /** Koreksi observasi dan tanda vital */
         patch: operations["PATCH_medical_records_id_observations_observationId"];
         trace?: never;
     };
@@ -544,7 +544,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List cycles for the dashboard */
+        /** Daftar rekap rawat inap */
         get: operations["GET_cycles_dashboard"];
         put?: never;
         post?: never;
@@ -561,7 +561,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read a cycle request */
+        /** Baca permintaan terkait rekap */
         get: operations["GET_cycles_id_requests_requestId"];
         put?: never;
         post?: never;
@@ -578,7 +578,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read patient and invoice context */
+        /** Baca data pasien untuk tagihan */
         get: operations["GET_invoices_patients_patientId_context"];
         put?: never;
         post?: never;
@@ -598,11 +598,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Delete an invoice line */
+        /** Hapus rincian layanan */
         delete: operations["DELETE_invoices_id_lines_lineId"];
         options?: never;
         head?: never;
-        /** Edit an invoice line */
+        /** Ubah rincian layanan */
         patch: operations["PATCH_invoices_id_lines_lineId"];
         trace?: never;
     };
@@ -615,7 +615,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Record claim verification */
+        /** Simpan hasil verifikasi klaim */
         post: operations["POST_invoices_id_claim_verification"];
         delete?: never;
         options?: never;
@@ -630,7 +630,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Check API and database availability */
+        /** Periksa ketersediaan API dan basis data */
         get: operations["GET_health"];
         put?: never;
         post?: never;
@@ -649,7 +649,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Doctor decision */
+        /** Simpan keputusan dokter */
         post: operations["POST_cycles_id_requests_request_id_decision"];
         delete?: never;
         options?: never;
@@ -664,7 +664,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List registered patients without an active care cycle */
+        /** Daftar pasien terdaftar tanpa rekap aktif */
         get: operations["GET_cycles_creation_candidates"];
         put?: never;
         post?: never;
@@ -684,8 +684,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Move or reorder a task
-         * @description Current PIC or coordinator. Null beforeTaskId appends to the full destination list; cancellation requires a coordinator and reason.
+         * Pindahkan atau atur urutan tugas
+         * @description Hanya penanggung jawab saat ini atau koordinator. Gunakan null pada beforeTaskId untuk menaruh tugas di akhir daftar tujuan. Hanya koordinator yang dapat membatalkan tugas dengan alasan.
          */
         post: operations["POST_tasks_id_move"];
         delete?: never;
@@ -702,8 +702,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Read placement changes and cancellations
-         * @description Coordinator only. Includes actor, time, reason and before/after values, including cancelled placements.
+         * Baca riwayat perubahan dan pembatalan penempatan
+         * @description Hanya koordinator. Riwayat mencakup petugas, waktu, alasan, serta data sebelum dan sesudah perubahan, termasuk pembatalan.
          */
         get: operations["GET_placements_id_history"];
         put?: never;
@@ -753,7 +753,7 @@ export interface components {
             capacity: number;
             status: string;
             picId: string | null;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             dailyRate: string;
             version: number;
         };
@@ -762,7 +762,7 @@ export interface components {
             name: string;
             category: string;
             quantity: number;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             unitPrice: string;
         };
         RoomDetail: {
@@ -774,11 +774,11 @@ export interface components {
             status: "available" | "maintenance";
             picId: string | null;
             picName: string | null;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             dailyRate: string;
             version: number;
             items: components["schemas"]["RoomItem"][];
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             totalCost: string;
             occupants: number;
         };
@@ -979,12 +979,12 @@ export interface components {
             id: string;
             description: string;
             quantity: number;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             unitPrice: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             lineTotal: string;
             roomItemId: string | null;
-            /** @description Legacy invoice lines may have no recorded kind. */
+            /** @description Rincian tagihan lama mungkin tidak memiliki jenis layanan. */
             kind: string | null;
         };
         Invoice: {
@@ -994,11 +994,11 @@ export interface components {
             medicalRecordNo: string;
             placementId: string | null;
             bpjsSnapshot: boolean;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             totalAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             coveredAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             payableAmount: string;
             status: string;
             version: number;
@@ -1015,11 +1015,11 @@ export interface components {
             medicalRecordNo: string;
             placementId: string | null;
             bpjsSnapshot: boolean;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             totalAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             coveredAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             payableAmount: string;
             status: string;
             version: number;
@@ -1069,7 +1069,7 @@ export interface components {
             /** @enum {string} */
             status?: "available" | "maintenance";
             picId?: string | null;
-            /** @description Nonnegative decimal with at most two fractional digits. */
+            /** @description Nominal desimal nonnegatif dengan maksimal dua angka pecahan. */
             dailyRate?: string;
         };
         EditRoom: {
@@ -1079,7 +1079,7 @@ export interface components {
             /** @enum {string} */
             status: "available" | "maintenance";
             picId?: string | null;
-            /** @description Nonnegative decimal with at most two fractional digits. */
+            /** @description Nominal desimal nonnegatif dengan maksimal dua angka pecahan. */
             dailyRate: string;
             expectedVersion: number;
         };
@@ -1087,7 +1087,7 @@ export interface components {
             name: string;
             category: string;
             quantity: number;
-            /** @description Nonnegative decimal with at most two fractional digits. */
+            /** @description Nominal desimal nonnegatif dengan maksimal dua angka pecahan. */
             unitPrice: string;
         };
         NewPlacement: {
@@ -1167,7 +1167,7 @@ export interface components {
             respiratoryRate?: number;
             spo2?: number;
         };
-        /** @description Create a pending cycle without placement, or an assigned cycle using placementId or newPlacement (mutually exclusive). Reuse requestId with the same input to safely retry a submission. */
+        /** @description Buat rekap pending tanpa penempatan atau rekap assigned dengan salah satu dari placementId dan newPlacement. Gunakan requestId yang sama saat mengirim ulang isian yang sama. */
         NewCycle: {
             patientId: string;
             doctorId: string;
@@ -1175,7 +1175,7 @@ export interface components {
             newPlacement?: components["schemas"]["CyclePlacement"] | null;
             /**
              * Format: uuid
-             * @description Client-generated submission ID. The same nurse and ID return the original result; changed input returns 409.
+             * @description ID pengiriman dibuat oleh klien. Perawat dan ID yang sama akan menerima hasil awal. Perubahan isian dengan ID yang sama menghasilkan 409.
              */
             requestId?: string;
         };
@@ -1208,13 +1208,13 @@ export interface components {
             kind?: string;
             description: string;
             quantity: number;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             unitPrice: string;
         };
         NewInvoice: {
             patientId: string;
             placementId?: string | null;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             coveredAmount: string;
             lines: components["schemas"]["NewInvoiceLine"][];
         };
@@ -1222,7 +1222,7 @@ export interface components {
             status?: string;
             reason: string;
             expectedVersion: number;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             coveredAmount?: string;
             lines?: components["schemas"]["InvoiceLineInput"][];
         };
@@ -1294,11 +1294,11 @@ export interface components {
             patientId: string;
             patientName: string;
             bpjsSnapshot: boolean;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             totalAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             coveredAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             payableAmount: string;
             status: string;
             version: number;
@@ -1308,11 +1308,11 @@ export interface components {
             id: string;
             status: string;
             version: number;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             totalAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             coveredAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             payableAmount: string;
         };
         Deleted: {
@@ -1357,7 +1357,7 @@ export interface components {
             name: string;
             category: string;
             quantity: number;
-            /** @description Nonnegative decimal with at most two fractional digits. */
+            /** @description Nominal desimal nonnegatif dengan maksimal dua angka pecahan. */
             unitPrice: string;
             expectedVersion: number;
         };
@@ -1447,7 +1447,7 @@ export interface components {
             kind?: string;
             description: string;
             quantity: number;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             unitPrice: string;
             expectedVersion: number;
             reason: string;
@@ -1463,11 +1463,11 @@ export interface components {
             /** @enum {string} */
             status: "paid" | "unpaid";
             version: number;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             totalAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             coveredAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             payableAmount: string;
             lines?: components["schemas"]["InvoiceLine"][];
         };
@@ -1480,27 +1480,27 @@ export interface components {
                 kind: string;
                 description: string;
                 quantity: number;
-                /** @description Decimal string */
+                /** @description Nominal desimal dalam bentuk teks */
                 unitPrice: string;
-                /** @description Decimal string */
+                /** @description Nominal desimal dalam bentuk teks */
                 lineTotal: string;
             };
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             totalAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             coveredAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             payableAmount: string;
         };
         InvoiceLineDeleted: {
             ok: boolean;
             version: number;
             deletedLineId: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             totalAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             coveredAmount: string;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             payableAmount: string;
         };
         ClaimVerificationResult: {
@@ -1535,9 +1535,9 @@ export interface components {
             invoices: {
                 id: string;
                 status: string;
-                /** @description Decimal string */
+                /** @description Nominal desimal dalam bentuk teks */
                 totalAmount: string;
-                /** @description Decimal string */
+                /** @description Nominal desimal dalam bentuk teks */
                 payableAmount: string;
                 /** Format: date-time */
                 createdAt: string;
@@ -1579,7 +1579,7 @@ export interface components {
             kind?: string | null;
             description: string;
             quantity: number;
-            /** @description Decimal string */
+            /** @description Nominal desimal dalam bentuk teks */
             unitPrice: string;
         };
         CycleCandidatePage: {
@@ -1596,18 +1596,18 @@ export interface components {
             beforeTaskId: string | null;
             reason?: string;
         };
-        /** @description New patient identity. The server assigns a unique medicalRecordNo when registration succeeds; clients must not supply it. */
+        /** @description Identitas pasien baru. Server menentukan medicalRecordNo yang unik setelah pendaftaran berhasil. Klien tidak mengirim nilai tersebut. */
         NewPatient: {
             name: string;
             /**
              * Format: date
-             * @description Valid birth date, no later than today in Asia/Jakarta.
+             * @description Tanggal lahir valid dan paling akhir hari ini menurut Asia/Jakarta.
              */
             birthDate: string;
             /** @enum {string} */
             gender: "L" | "P";
             bpjs: boolean;
-            /** @description Required when bpjs is true; omit or use null otherwise. */
+            /** @description Wajib saat bpjs bernilai true. Untuk nilai lain, hilangkan kolom atau isi dengan null. */
             bpjsNumber?: string | null;
             address?: string | null;
         };
@@ -1643,7 +1643,7 @@ export interface components {
     };
     responses: never;
     parameters: {
-        /** @description Must match the application origin. */
+        /** @description Nilainya harus sama dengan origin aplikasi. */
         Origin: string;
     };
     requestBodies: never;
@@ -1661,7 +1661,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1670,7 +1670,7 @@ export interface operations {
                     "application/json": components["schemas"]["UserEnvelope"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1679,7 +1679,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1688,7 +1688,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1697,7 +1697,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1706,7 +1706,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1715,7 +1715,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -1730,7 +1730,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path?: never;
@@ -1742,10 +1742,10 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
-                    /** @description HttpOnly session cookie; Secure in production; SameSite=Lax. */
+                    /** @description Kuki sesi memakai HttpOnly dan SameSite=Lax. Atribut Secure aktif di produksi. */
                     "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
@@ -1753,7 +1753,7 @@ export interface operations {
                     "application/json": components["schemas"]["UserEnvelope"];
                 };
             };
-            /** @description Invalid credentials. */
+            /** @description ID petugas atau kata sandi ditolak. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1762,7 +1762,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Origin check failed. */
+            /** @description Pemeriksaan Origin gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1771,7 +1771,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Invalid request. */
+            /** @description Format permintaan tidak valid. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1780,14 +1780,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Login throttled. */
+            /** @description Batas percobaan masuk tercapai. Pesan menyebutkan sisa waktu tunggu. */
             429: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -1802,7 +1802,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path?: never;
@@ -1810,16 +1810,16 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             204: {
                 headers: {
-                    /** @description Clears the session cookie. */
+                    /** @description Menghapus kuki sesi. */
                     "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1828,7 +1828,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1837,7 +1837,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1846,7 +1846,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1855,7 +1855,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1864,7 +1864,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -1884,7 +1884,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1893,7 +1893,7 @@ export interface operations {
                     "application/json": components["schemas"]["Reference"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1902,7 +1902,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1911,7 +1911,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1920,7 +1920,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1929,7 +1929,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1938,7 +1938,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -1962,7 +1962,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1971,7 +1971,7 @@ export interface operations {
                     "application/json": components["schemas"]["PatientPage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1980,7 +1980,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1989,7 +1989,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1998,7 +1998,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2007,7 +2007,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2016,7 +2016,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2031,7 +2031,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path?: never;
@@ -2043,7 +2043,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2052,7 +2052,7 @@ export interface operations {
                     "application/json": components["schemas"]["Patient"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2061,7 +2061,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2070,7 +2070,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2079,7 +2079,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2088,7 +2088,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2097,7 +2097,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2119,7 +2119,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2128,7 +2128,7 @@ export interface operations {
                     "application/json": components["schemas"]["PatientContext"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2137,7 +2137,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2146,7 +2146,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2155,7 +2155,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2164,7 +2164,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2173,7 +2173,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2193,7 +2193,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2202,7 +2202,7 @@ export interface operations {
                     "application/json": components["schemas"]["StaffPage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2211,7 +2211,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2220,7 +2220,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2229,7 +2229,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2238,7 +2238,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2247,7 +2247,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2267,7 +2267,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2276,7 +2276,7 @@ export interface operations {
                     "application/json": components["schemas"]["RoomPage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2285,7 +2285,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2294,7 +2294,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2303,7 +2303,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2312,7 +2312,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2321,7 +2321,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2336,7 +2336,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path?: never;
@@ -2348,7 +2348,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2357,7 +2357,7 @@ export interface operations {
                     "application/json": components["schemas"]["RoomDetail"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2366,7 +2366,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2375,7 +2375,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2384,7 +2384,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2393,7 +2393,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2402,7 +2402,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2424,7 +2424,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2433,7 +2433,7 @@ export interface operations {
                     "application/json": components["schemas"]["RoomDetail"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2442,7 +2442,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2451,7 +2451,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2460,7 +2460,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2469,7 +2469,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2478,7 +2478,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2493,7 +2493,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -2507,7 +2507,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2516,7 +2516,7 @@ export interface operations {
                     "application/json": components["schemas"]["Deleted"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2525,7 +2525,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2534,7 +2534,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2543,7 +2543,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2552,7 +2552,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2561,7 +2561,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2576,7 +2576,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -2590,7 +2590,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2599,7 +2599,7 @@ export interface operations {
                     "application/json": components["schemas"]["RoomDetail"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2608,7 +2608,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2617,7 +2617,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2626,7 +2626,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2635,7 +2635,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2644,7 +2644,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2659,7 +2659,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -2673,7 +2673,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2682,7 +2682,7 @@ export interface operations {
                     "application/json": components["schemas"]["RoomDetail"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2691,7 +2691,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2700,7 +2700,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2709,7 +2709,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2718,7 +2718,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2727,7 +2727,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2744,7 +2744,7 @@ export interface operations {
                 from: string;
                 to: string;
                 roomId?: string;
-                /** @description Coordinator only. Include cancelled placements for audit history; they do not occupy beds. */
+                /** @description Hanya koordinator. Sertakan penempatan yang dibatalkan untuk melihat riwayat. Penempatan tersebut tidak memakai tempat tidur. */
                 includeCancelled?: "true" | "false";
             };
             header?: never;
@@ -2753,7 +2753,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2762,7 +2762,7 @@ export interface operations {
                     "application/json": components["schemas"]["PlacementPage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2771,7 +2771,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2780,7 +2780,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2789,7 +2789,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2798,7 +2798,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2807,7 +2807,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2822,7 +2822,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path?: never;
@@ -2834,7 +2834,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -2843,7 +2843,7 @@ export interface operations {
                     "application/json": components["schemas"]["PlacementResult"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2852,7 +2852,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2861,7 +2861,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2870,7 +2870,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2879,7 +2879,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2888,7 +2888,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2910,11 +2910,11 @@ export interface operations {
                 picId?: string;
                 from?: string;
                 to?: string;
-                /** @description Clamped to 100. */
+                /** @description Nilai dibatasi hingga 100. */
                 limit?: number;
-                /** @description Clamped to 100000. */
+                /** @description Nilai dibatasi hingga 100.000. */
                 offset?: number;
-                /** @description Use durable board order; omission preserves schedule order. */
+                /** @description Gunakan urutan papan yang tersimpan. Jika parameter kosong, gunakan urutan jadwal. */
                 order?: "board";
             };
             header?: never;
@@ -2923,7 +2923,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2932,7 +2932,7 @@ export interface operations {
                     "application/json": components["schemas"]["TaskPage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2941,7 +2941,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2950,7 +2950,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2959,7 +2959,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2968,7 +2968,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2977,7 +2977,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -2992,7 +2992,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path?: never;
@@ -3004,7 +3004,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3013,7 +3013,7 @@ export interface operations {
                     "application/json": components["schemas"]["Task"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3022,7 +3022,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3031,7 +3031,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3040,7 +3040,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3049,7 +3049,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3058,7 +3058,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -3080,7 +3080,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3089,7 +3089,7 @@ export interface operations {
                     "application/json": components["schemas"]["Task"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3098,7 +3098,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3107,7 +3107,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3116,7 +3116,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3125,7 +3125,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3134,7 +3134,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -3149,7 +3149,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -3163,7 +3163,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3172,7 +3172,7 @@ export interface operations {
                     "application/json": components["schemas"]["Deleted"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3181,7 +3181,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3190,7 +3190,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3199,7 +3199,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3208,7 +3208,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3217,7 +3217,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -3232,7 +3232,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -3246,7 +3246,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3255,7 +3255,7 @@ export interface operations {
                     "application/json": components["schemas"]["Task"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3264,7 +3264,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3273,7 +3273,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3282,7 +3282,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3291,7 +3291,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3300,7 +3300,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -3315,7 +3315,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -3329,7 +3329,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3338,7 +3338,7 @@ export interface operations {
                     "application/json": components["schemas"]["Task"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3347,7 +3347,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3356,7 +3356,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3365,7 +3365,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3374,7 +3374,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3383,7 +3383,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -3405,7 +3405,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3414,7 +3414,7 @@ export interface operations {
                     "application/json": components["schemas"]["TaskHistoryPage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3423,7 +3423,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3432,7 +3432,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3441,7 +3441,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3450,7 +3450,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3459,7 +3459,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -3483,7 +3483,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3492,7 +3492,7 @@ export interface operations {
                     "application/json": components["schemas"]["MedicalSummaryPage"] | components["schemas"]["AdmissionMedicalPage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3501,7 +3501,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3510,7 +3510,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3519,7 +3519,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3528,7 +3528,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3537,7 +3537,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -3552,7 +3552,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path?: never;
@@ -3564,7 +3564,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3573,7 +3573,7 @@ export interface operations {
                     "application/json": components["schemas"]["MedicalRecord"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3582,7 +3582,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3591,7 +3591,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3600,7 +3600,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3609,7 +3609,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3618,7 +3618,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -3640,7 +3640,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3649,7 +3649,7 @@ export interface operations {
                     "application/json": components["schemas"]["MedicalRecordDetail"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3658,7 +3658,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3667,7 +3667,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3676,7 +3676,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3685,7 +3685,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3694,7 +3694,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -3709,7 +3709,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -3723,7 +3723,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3732,7 +3732,7 @@ export interface operations {
                     "application/json": components["schemas"]["MedicalRecordDeleted"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3741,7 +3741,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3750,7 +3750,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3759,7 +3759,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3768,7 +3768,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3777,7 +3777,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -3792,7 +3792,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -3806,7 +3806,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3815,7 +3815,7 @@ export interface operations {
                     "application/json": components["schemas"]["MedicalRecord"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3824,7 +3824,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3833,7 +3833,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3842,7 +3842,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3851,7 +3851,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3860,7 +3860,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -3875,7 +3875,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -3889,7 +3889,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3898,7 +3898,7 @@ export interface operations {
                     "application/json": components["schemas"]["MedicalRecord"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3907,7 +3907,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3916,7 +3916,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3925,7 +3925,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3934,7 +3934,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3943,7 +3943,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -3968,7 +3968,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3977,7 +3977,7 @@ export interface operations {
                     "application/json": components["schemas"]["CyclePage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3986,7 +3986,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3995,7 +3995,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4004,7 +4004,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4013,7 +4013,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4022,7 +4022,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4037,7 +4037,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path?: never;
@@ -4049,7 +4049,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created */
+            /** @description Data berhasil dibuat */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -4058,7 +4058,7 @@ export interface operations {
                     "application/json": components["schemas"]["CycleCreated"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4067,7 +4067,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4076,7 +4076,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4085,7 +4085,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4094,7 +4094,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4103,7 +4103,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4125,7 +4125,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4134,7 +4134,7 @@ export interface operations {
                     "application/json": components["schemas"]["Cycle"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4143,7 +4143,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4152,7 +4152,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4161,7 +4161,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4170,7 +4170,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4179,7 +4179,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4194,7 +4194,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -4208,7 +4208,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4217,7 +4217,7 @@ export interface operations {
                     "application/json": components["schemas"]["DeleteCycleResult"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4226,7 +4226,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4235,7 +4235,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4244,7 +4244,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4253,7 +4253,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4262,7 +4262,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4277,7 +4277,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -4291,7 +4291,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4300,7 +4300,7 @@ export interface operations {
                     "application/json": components["schemas"]["VersionedResult"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4309,7 +4309,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4318,7 +4318,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4327,7 +4327,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4336,7 +4336,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4345,7 +4345,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4360,7 +4360,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -4374,7 +4374,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created */
+            /** @description Data berhasil dibuat */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -4383,7 +4383,7 @@ export interface operations {
                     "application/json": components["schemas"]["CycleRequestCreated"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4392,7 +4392,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4401,7 +4401,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4410,7 +4410,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4419,7 +4419,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4428,7 +4428,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4448,7 +4448,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4457,7 +4457,7 @@ export interface operations {
                     "application/json": components["schemas"]["NotificationPage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4466,7 +4466,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4475,7 +4475,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4484,7 +4484,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4493,7 +4493,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4502,7 +4502,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4517,7 +4517,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -4527,7 +4527,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4536,7 +4536,7 @@ export interface operations {
                     "application/json": components["schemas"]["NotificationRead"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4545,7 +4545,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4554,7 +4554,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4563,7 +4563,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4572,7 +4572,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4581,7 +4581,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4597,7 +4597,7 @@ export interface operations {
             query?: {
                 search?: string;
                 status?: "paid" | "unpaid";
-                /** @description Clamped to 100. */
+                /** @description Nilai dibatasi hingga 100. */
                 limit?: number;
             };
             header?: never;
@@ -4606,7 +4606,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4615,7 +4615,7 @@ export interface operations {
                     "application/json": components["schemas"]["InvoicePage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4624,7 +4624,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4633,7 +4633,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4642,7 +4642,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4651,7 +4651,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4660,7 +4660,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4675,7 +4675,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path?: never;
@@ -4687,7 +4687,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Created */
+            /** @description Data berhasil dibuat */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -4696,7 +4696,7 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceCreated"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4705,7 +4705,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4714,7 +4714,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4723,7 +4723,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4732,7 +4732,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4741,7 +4741,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4763,7 +4763,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4772,7 +4772,7 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceDetail"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4781,7 +4781,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4790,7 +4790,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4799,7 +4799,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4808,7 +4808,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4817,7 +4817,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4832,7 +4832,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -4846,7 +4846,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4855,7 +4855,7 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceDeleted"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4864,7 +4864,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4873,7 +4873,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4882,7 +4882,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4891,7 +4891,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4900,7 +4900,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4915,7 +4915,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -4929,7 +4929,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -4938,7 +4938,7 @@ export interface operations {
                     "application/json": components["schemas"]["PaymentResult"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4947,7 +4947,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4956,7 +4956,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -4965,7 +4965,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4974,7 +4974,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -4983,7 +4983,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -4998,7 +4998,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -5013,7 +5013,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5022,7 +5022,7 @@ export interface operations {
                     "application/json": components["schemas"]["RoomDetail"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5031,7 +5031,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5040,7 +5040,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5049,7 +5049,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5058,7 +5058,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5067,7 +5067,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -5082,7 +5082,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -5097,7 +5097,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5106,7 +5106,7 @@ export interface operations {
                     "application/json": components["schemas"]["RoomDetail"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5115,7 +5115,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5124,7 +5124,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5133,7 +5133,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5142,7 +5142,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5151,7 +5151,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -5166,7 +5166,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -5180,7 +5180,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5189,7 +5189,7 @@ export interface operations {
                     "application/json": components["schemas"]["PlacementCancelledResult"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5198,7 +5198,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5207,7 +5207,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5216,7 +5216,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5225,7 +5225,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5234,7 +5234,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -5249,7 +5249,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -5263,7 +5263,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5272,7 +5272,7 @@ export interface operations {
                     "application/json": components["schemas"]["PlacementMutationResult"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5281,7 +5281,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5290,7 +5290,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5299,7 +5299,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5308,7 +5308,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5317,7 +5317,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -5332,7 +5332,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -5347,7 +5347,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5356,7 +5356,7 @@ export interface operations {
                     "application/json": components["schemas"]["MedicalRecord"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5365,7 +5365,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5374,7 +5374,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5383,7 +5383,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5392,7 +5392,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5401,7 +5401,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -5426,7 +5426,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5435,7 +5435,7 @@ export interface operations {
                     "application/json": components["schemas"]["CyclePage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5444,7 +5444,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5453,7 +5453,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5462,7 +5462,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5471,7 +5471,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5480,7 +5480,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -5503,7 +5503,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5512,7 +5512,7 @@ export interface operations {
                     "application/json": components["schemas"]["CycleRequest"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5521,7 +5521,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5530,7 +5530,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5539,7 +5539,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5548,7 +5548,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5557,7 +5557,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -5579,7 +5579,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5588,7 +5588,7 @@ export interface operations {
                     "application/json": components["schemas"]["InvoicePatientContext"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5597,7 +5597,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5606,7 +5606,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5615,7 +5615,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5624,7 +5624,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5633,7 +5633,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -5648,7 +5648,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -5663,7 +5663,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5672,7 +5672,7 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceLineDeleted"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5681,7 +5681,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5690,7 +5690,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5699,7 +5699,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5708,7 +5708,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5717,7 +5717,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -5732,7 +5732,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -5747,7 +5747,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5756,7 +5756,7 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceLineMutation"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5765,7 +5765,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5774,7 +5774,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5783,7 +5783,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5792,7 +5792,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5801,7 +5801,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -5816,7 +5816,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -5830,7 +5830,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5839,7 +5839,7 @@ export interface operations {
                     "application/json": components["schemas"]["ClaimVerificationResult"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5848,7 +5848,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5857,7 +5857,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5866,7 +5866,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5875,7 +5875,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5884,7 +5884,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -5904,7 +5904,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Database connected. */
+            /** @description Koneksi ke basis data tersedia. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5918,7 +5918,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description Database unavailable. */
+            /** @description Basis data tidak dapat diakses. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5936,7 +5936,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -5951,7 +5951,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -5960,7 +5960,7 @@ export interface operations {
                     "application/json": components["schemas"]["VersionedResult"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5969,7 +5969,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5978,7 +5978,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -5987,7 +5987,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5996,7 +5996,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -6005,7 +6005,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -6025,7 +6025,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6034,7 +6034,7 @@ export interface operations {
                     "application/json": components["schemas"]["CycleCandidatePage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6043,7 +6043,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden or origin/CSRF check failed. */
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6052,7 +6052,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6061,7 +6061,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6070,7 +6070,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -6079,7 +6079,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -6094,7 +6094,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Must match the application origin. */
+                /** @description Nilainya harus sama dengan origin aplikasi. */
                 Origin: components["parameters"]["Origin"];
             };
             path: {
@@ -6108,7 +6108,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6117,7 +6117,7 @@ export interface operations {
                     "application/json": components["schemas"]["Task"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6126,7 +6126,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6135,7 +6135,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6144,7 +6144,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6153,7 +6153,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -6162,7 +6162,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -6184,7 +6184,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success. */
+            /** @description Permintaan berhasil. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6193,7 +6193,7 @@ export interface operations {
                     "application/json": components["schemas"]["PlacementHistoryPage"];
                 };
             };
-            /** @description Unauthenticated. */
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6202,7 +6202,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Forbidden. */
+            /** @description Akun tidak memiliki izin. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6211,7 +6211,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not found. */
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6220,7 +6220,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Conflict. */
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6229,7 +6229,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation error. */
+            /** @description Isian atau pilihan perlu diperbaiki. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -6238,7 +6238,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Unexpected error. */
+            /** @description Layanan mengalami gangguan. */
             500: {
                 headers: {
                     [name: string]: unknown;

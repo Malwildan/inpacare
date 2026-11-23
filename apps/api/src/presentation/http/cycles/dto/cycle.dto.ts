@@ -24,8 +24,8 @@ import type {
 import type { CycleListFilters } from "../../../../application/cycles/cycle-store.port";
 export class CycleListQueryDto implements CycleListFilters {
   @IsOptional()
-  @IsString()
-  @MaxLength(36)
+  @IsString({ message: "Pilih pasien." })
+  @MaxLength(36, { message: "Pilih pasien." })
   patientId?: string;
   @IsOptional()
   @IsString()
@@ -51,21 +51,21 @@ export class CyclePlacementDto {
   @MinLength(1)
   @MaxLength(36)
   roomId!: string;
-  @Matches(/^\d{4}-\d{2}-\d{2}$/)
-  @IsDateString({ strict: true })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: "Tanggal masuk tidak valid. Pilih tanggal pada kalender." })
+  @IsDateString({ strict: true }, { message: "Tanggal masuk tidak valid. Pilih tanggal pada kalender." })
   startsOn!: string;
-  @Matches(/^\d{4}-\d{2}-\d{2}$/)
-  @IsDateString({ strict: true })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: "Tanggal selesai tidak valid. Pilih tanggal pada kalender." })
+  @IsDateString({ strict: true }, { message: "Tanggal selesai tidak valid. Pilih tanggal pada kalender." })
   endsOn!: string;
 }
 export class CreateCycleDto implements CreateCycleInput {
-  @IsString()
-  @MinLength(1)
-  @MaxLength(36)
+  @IsString({ message: "Pilih pasien." })
+  @MinLength(1, { message: "Pilih pasien." })
+  @MaxLength(36, { message: "Pilih pasien." })
   patientId!: string;
-  @IsString()
-  @MinLength(1)
-  @MaxLength(36)
+  @IsString({ message: "Pilih dokter penanggung jawab." })
+  @MinLength(1, { message: "Pilih dokter penanggung jawab." })
+  @MaxLength(36, { message: "Pilih dokter penanggung jawab." })
   doctorId!: string;
   @IsOptional()
   @IsString()
@@ -96,19 +96,19 @@ export class CycleRequestDto implements CycleRequestInput {
   @IsIn(["extend", "release"])
   kind!: "extend" | "release";
   @IsOptional()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/)
-  @IsDateString({ strict: true })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: "Tanggal selesai baru tidak valid. Pilih tanggal pada kalender." })
+  @IsDateString({ strict: true }, { message: "Tanggal selesai baru tidak valid. Pilih tanggal pada kalender." })
   requestedEnd?: string | null;
-  @IsString()
-  @MinLength(1)
-  @MaxLength(500)
+  @IsString({ message: "Isi Alasan dengan maksimal 500 karakter." })
+  @MinLength(1, { message: "Isi Alasan dengan maksimal 500 karakter." })
+  @MaxLength(500, { message: "Isi Alasan dengan maksimal 500 karakter." })
   reason!: string;
 }
 export class DecideCycleRequestDto implements DecideCycleRequestInput {
-  @IsIn(["approve", "reject"])
+  @IsIn(["approve", "reject"], { message: "Pilih keputusan Setujui atau Tolak." })
   decision!: "approve" | "reject";
-  @IsString()
-  @MaxLength(500)
+  @IsString({ message: "Isi Catatan keputusan dengan maksimal 500 karakter." })
+  @MaxLength(500, { message: "Isi Catatan keputusan dengan maksimal 500 karakter." })
   note!: string;
   @IsInt()
   @Min(1)
@@ -118,8 +118,8 @@ export class DeleteCycleDto implements DeleteCycleInput {
   @IsInt()
   @Min(1)
   expectedVersion!: number;
-  @IsString()
-  @MinLength(1)
-  @MaxLength(500)
+  @IsString({ message: "Isi Alasan dengan maksimal 500 karakter." })
+  @MinLength(1, { message: "Isi Alasan dengan maksimal 500 karakter." })
+  @MaxLength(500, { message: "Isi Alasan dengan maksimal 500 karakter." })
   reason!: string;
 }

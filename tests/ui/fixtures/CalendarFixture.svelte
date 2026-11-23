@@ -2,7 +2,7 @@
 import CalendarPage from '$lib/features/placements/presentation/CalendarPage.svelte';
 
 const data = $state({
-    user: { id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT', coordinator: false },
+    user: { id: 'nurse', name: 'Koordinator Uji', role: 'PERAWAT', coordinator: true },
     from: '2026-11-02', to: '2026-11-08',
     patients: [{ id: 'patient', name: 'Pasien Uji', medicalRecordNo: 'RM-TEST' }],
     rooms: [
@@ -20,6 +20,7 @@ window.calendarCancellations = cancellations;
 const placementService = {
     create: async input => { window.calendarCreate = input; throw new Error('Kapasitas telah berubah.'); },
     update: async (id, input) => { window.calendarUpdate = { id, ...input }; throw new Error('Jadwal telah berubah.'); },
+    history: async () => [],
     cancel: async (id, input) => {
         cancellations.push({ id, ...input });
         if (cancellations.length === 1) {

@@ -1,6 +1,6 @@
-# Backend architecture
+# Arsitektur API
 
-The NestJS backend uses a layer-first layout. Each layer groups its files by business module. Public routes, payloads, database tables and migration identities remain the same as the NestJS rebuild baseline.
+NestJS mengelompokkan kode berdasarkan lapisan. Di dalam tiap lapisan, berkas dikelompokkan menurut modul. Rute publik, payload, tabel, dan identitas migrasi mengikuti kontrak API.
 
 ```text
 apps/api/src/
@@ -14,52 +14,52 @@ apps/api/src/
   app.module.ts       application composition root
 ```
 
-## Follow one operation
+## Alur pembaruan tugas
 
-For a task update, start with `presentation/http/tasks/tugas.controller.ts`, then `application/tasks/tugas.use-cases.ts`. The use case obtains the locked task and placement through a transaction-scoped store, checks version and active PIC, delegates field/status changes to `domain/tasks/tugas-perawatan.ts`, and stores both the change and its history before returning the authoritative result.
+Mulai dari `presentation/http/tasks/tugas.controller.ts`, lalu buka `application/tasks/tugas.use-cases.ts`. Kasus penggunaan mengambil tugas dan penempatan yang terkunci, memeriksa versi serta penanggung jawab aktif, lalu memakai `domain/tasks/tugas-perawatan.ts` untuk mengubah kolom dan status. Kasus penggunaan menyimpan perubahan bersama riwayat sebelum mengembalikan hasil.
 
-`infrastructure/database/repositories/tasks/typeorm-tugas.store.ts` owns its SQL. `application/tasks/tugas-store.port.ts` describes the operations the use case needs without exposing `EntityManager`, SQL strings or HTTP DTOs. No repository starts a transaction.
+Query SQL ada di `infrastructure/database/repositories/tasks/typeorm-tugas.store.ts`. Kontrak `application/tasks/tugas-store.port.ts` mendefinisikan operasi tanpa `EntityManager`, SQL, atau DTO HTTP. Unit kerja memulai transaksi.
 
-The task model is a behavior model with a private state snapshot and public revision methods. Its ORM counterpart is `infrastructure/database/entities/tasks/tugas-perawatan.orm-entity.ts`. Other domain files hold focused rules such as invoice arithmetic or inclusive placement dates. Reference and audit tables do not receive duplicate domain classes without behavior to justify them.
+Model tugas menyimpan keadaan secara privat dan menyediakan metode perubahan. Entitas ORM ada di `infrastructure/database/entities/tasks/tugas-perawatan.orm-entity.ts`. Modul domain juga menangani aturan seperti perhitungan tagihan dan tanggal penempatan. Tambahkan model domain jika data referensi atau riwayat memiliki perilaku yang perlu dimodelkan.
 
-## Domain models and ORM entities
+## Model domain dan entitas ORM
 
-Paths below are relative to `src/domain/` and `src/infrastructure/database/entities/` respectively. ORM entities preserve the existing columns and relationships; the domain files express behavior independently of those mappings.
+Jalur relatif terhadap `src/domain/` dan `src/infrastructure/database/entities/`. Entitas ORM memetakan kolom dan relasi. Berkas domain berisi aturan kerja yang dapat diuji terpisah.
 
-| Business concern | Domain model or rule | Persistence entities |
+| Cakupan | Model atau aturan domain | Entitas penyimpanan |
 | --- | --- | --- |
-| Actor and permissions | `auth/actor.ts`, `auth/permissions.ts` | `auth/pengguna.orm-entity.ts`, `dokter`, `perawat`, `sesi` |
-| Care tasks | `tasks/tugas-perawatan.ts`, `tasks/tugas.policy.ts` | `tasks/tugas-perawatan.orm-entity.ts`, `riwayat-tugas` |
-| Room costs | `rooms/room-cost.ts` | `rooms/ruang-inap.orm-entity.ts`, `item-ruangan` |
-| Placement dates | `placements/placement-period.ts` | `placements/penempatan-pasien.orm-entity.ts` |
-| Care-cycle transitions | `cycles/cycle-transition.ts` | `cycles/rekap-pasien.orm-entity.ts`, `permintaan-siklus`, `audit-siklus` |
-| Vital signs | `medical-records/vital-signs.ts` | `medical-records/rekam-medis.orm-entity.ts`, `kondisi-pasien`, `tanda-vital`, `audit-medis` |
-| Invoice arithmetic | `billing/invoice-total.ts` | `billing/tagihan.orm-entity.ts`, `detail-tagihan`, `riwayat-tagihan` |
-| Patient/reference projections | Application types and patient-access port | `patients/pasien.orm-entity.ts` and reference projections over the entities above |
-| Notifications | Application types and notification-store port | `notifications/notifikasi.orm-entity.ts` |
+| Petugas dan izin | `auth/actor.ts`, `auth/permissions.ts` | `auth/pengguna.orm-entity.ts`, `dokter`, `perawat`, `sesi` |
+| Tugas perawatan | `tasks/tugas-perawatan.ts`, `tasks/tugas.policy.ts` | `tasks/tugas-perawatan.orm-entity.ts`, `riwayat-tugas` |
+| Biaya ruang | `rooms/room-cost.ts` | `rooms/ruang-inap.orm-entity.ts`, `item-ruangan` |
+| Tanggal penempatan | `placements/placement-period.ts` | `placements/penempatan-pasien.orm-entity.ts` |
+| Status rekap | `cycles/cycle-transition.ts` | `cycles/rekap-pasien.orm-entity.ts`, `permintaan-siklus`, `audit-siklus` |
+| Tanda vital | `medical-records/vital-signs.ts` | `medical-records/rekam-medis.orm-entity.ts`, `kondisi-pasien`, `tanda-vital`, `audit-medis` |
+| Penghitungan tagihan | `billing/invoice-total.ts` | `billing/tagihan.orm-entity.ts`, `detail-tagihan`, `riwayat-tagihan` |
+| Data pasien dan referensi | Tipe aplikasi dan kontrak akses pasien | `patients/pasien.orm-entity.ts` dan query atas entitas terkait |
+| Notifikasi | Tipe aplikasi dan kontrak penyimpanan notifikasi | `notifications/notifikasi.orm-entity.ts` |
 
-Short persistence names in the table share their row's directory and `.orm-entity.ts` suffix. Reference projections are queries, not additional tables or domain entities.
+Nama entitas singkat berada di direktori pada baris yang sama dan memakai akhiran `.orm-entity.ts`. Proyeksi referensi berasal dari query atas tabel yang ada.
 
-## Dependency direction
+## Arah dependensi
 
-- Domain imports domain code and its existing arithmetic dependency; it imports no NestJS, TypeORM or HTTP code.
-- Application imports domain and application contracts. Inputs and outputs are plain TypeScript data. Standard-library helpers generate opaque IDs and facility dates.
-- Infrastructure implements application ports using TypeORM, PostgreSQL, Argon2 and opaque sessions. It imports no presentation code.
-- Presentation imports application/domain code and HTTP libraries. It performs transport validation and adaptation, with no database access or SQL.
-- Composition imports the concrete adapters and use cases, constructs them with factory providers, and binds controllers/guards to the appropriate instances. Application classes have no Nest decorators.
+- Domain memakai kode domain dan pustaka aritmetika yang ada. NestJS, TypeORM, dan HTTP berada di lapisan luar.
+- Application memakai domain dan kontrak aplikasi. Masukan dan keluaran memakai data TypeScript biasa. Pustaka standar membuat ID opak dan tanggal lokal fasilitas.
+- Infrastructure menerapkan kontrak aplikasi dengan TypeORM, PostgreSQL, Argon2, dan sesi opak.
+- Presentation memakai kontrak aplikasi dan pustaka HTTP untuk validasi serta adaptasi permintaan. Infrastruktur menangani akses basis data.
+- Composition membuat adaptor dan kasus penggunaan, lalu menghubungkannya dengan controller dan guard melalui factory provider. Dekorator NestJS berada di lapisan luar aplikasi.
 
-Architecture tests inspect imports, dynamic imports, legacy implementation directories and misplaced SQL. They run with the API unit suite.
+Uji arsitektur memeriksa impor langsung dan dinamis, direktori lama, serta lokasi SQL. Uji ini berjalan bersama uji unit API.
 
-## Transactions and errors
+## Transaksi dan kesalahan
 
-`TypeOrmUnitOfWork.run()` creates a transaction context whose stores all receive the same transactional EntityManager. Mutation, audit and mandatory notification writes therefore commit or roll back together. The established patient → sorted rooms → placement → cycle → request → task lock ordering remains in the purpose-named locking operations. Expected versions are compared after acquiring locks.
+`TypeOrmUnitOfWork.run()` memberikan EntityManager yang sama ke seluruh penyimpanan dalam satu transaksi. Perubahan, riwayat, dan notifikasi yang diwajibkan disimpan atau dibatalkan bersama. Urutan penguncian ialah pasien → ruang yang telah diurutkan → penempatan → rekap → permintaan → tugas. Bandingkan versi setelah memperoleh kunci.
 
-Domain failures carry an error code and message. The HTTP exception filter translates these into the existing status codes and `{error:{code,message}}` response. PostgreSQL error interpretation stays outside domain/application. Session, origin, CSRF and role checks remain enforced on the server.
+Kesalahan domain membawa kode dan pesan. Filter HTTP mempertahankan status dan bentuk `{error:{code,message}}`. DTO memberi pesan kolom yang dikurasi. Filter menangani kesalahan PostgreSQL di lapisan luar dan menjaga agar pesan teknis tidak muncul dalam respons. Server memeriksa sesi, origin, CSRF, dan peran.
 
-## Operations and verification
+## Pengoperasian dan pemeriksaan
 
-The supported entry points remain `dist/main.js` and `dist/database/cli.js`. Migration implementations, seed and SQL assets live under `infrastructure/database`; the build copies SQL to the matching compiled directory. Builds clear only the API's generated `dist` directory so removed implementations cannot survive in release artifacts. Startup does not run migrations or seed.
+Gunakan `dist/main.js` dan `dist/database/cli.js`. Migrasi, pengisian data, dan aset SQL ada di `infrastructure/database`. Build membersihkan direktori hasil `dist` API lalu menyalin aset SQL. Jalankan migrasi dan pengisian data secara terpisah dari startup.
 
-Tests are grouped under `test/architecture`, `test/domain`, `test/application`, `test/contract` and `test/integration`. Domain/application tests need no database or Nest container; locking, rollback and schema/adoption checks use real disposable PostgreSQL. HTTP workflows and Playwright remain the external behavior gates.
+Uji berada di `test/architecture`, `test/domain`, `test/application`, `test/contract`, serta `test/integration`. Domain dan aplikasi dapat diuji tanpa PostgreSQL atau NestJS. Penguncian, pembatalan transaksi, skema, dan adopsi memakai basis data sementara. Perilaku eksternal diperiksa melalui HTTP dan Playwright.
 
-`NESTJS_TRACEABILITY.json` records ORM persistence targets separately from business-rule targets. Its counts remain 17 source entities, 122 attributes, 53 controller methods and 30 relationships. A complete mapping is not a claim that every source row has independent behavior coverage.
+`NESTJS_TRACEABILITY.json` mencatat tujuan pemetaan ORM dan aturan kerja secara terpisah. Pemetaan mencakup 17 entitas sumber, 122 atribut, 53 metode controller, dan 30 relasi. Cakupan pengujian perilaku diperiksa terpisah.

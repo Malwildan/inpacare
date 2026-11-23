@@ -41,11 +41,11 @@ test('login rejects bad credentials, signs in, and revokes the session on logout
 	await page.getByLabel('ID petugas').fill('rina');
 	await page.getByLabel('Kata sandi', { exact: true }).fill('wrong');
 	await page.getByRole('button', { name: 'Masuk' }).click();
-	await expect(toastMessage(page, /tidak sesuai/i)).toContainText(/tidak sesuai/i);
+	await expect(page.getByRole('alert')).toHaveText('ID petugas atau kata sandi tidak sesuai. Periksa keduanya, lalu coba masuk kembali.');
 	await page.getByLabel('Kata sandi', { exact: true }).fill(password);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);
-	await expect(page.getByRole('heading', { name: 'Ringkasan Siklus Rawat Inap' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Rekap rawat inap' })).toBeVisible();
 	await page.getByRole('button', { name: /Keluar/ }).click();
 	await expect(page).toHaveURL(/\/login$/);
 	const protectedPage = await page.request.get('/tasks', { maxRedirects: 0 });
@@ -87,11 +87,11 @@ for (const [username, destination] of [['rina', '/dashboard'], ['admisi', '/invo
 test('a signed-in coordinator can open the six core module routes', async ({ page }) => {
 	await signIn(page, 'rina');
 	for (const [route, heading] of [
-		['/dashboard', 'Ringkasan Siklus Rawat Inap'],
-		['/rooms', 'Manajemen Ruangan'],
-		['/calendar', 'Kalender Ruangan'],
-		['/tasks', 'Tugas Perawatan'],
-		['/medical-records', 'Daftar Rekam Medis']
+		['/dashboard', 'Rekap rawat inap'],
+		['/rooms', 'Ruang rawat inap'],
+		['/calendar', 'Kalender penempatan'],
+		['/tasks', 'Tugas perawatan'],
+		['/medical-records', 'Daftar rekam medis']
 	] as const) {
 		await page.goto(route);
 		await expect(page.getByRole('heading', { name: heading })).toBeVisible();
@@ -100,7 +100,7 @@ test('a signed-in coordinator can open the six core module routes', async ({ pag
 	const nurse=await nurseContext.newPage();
 	await signIn(nurse,'dina');
 	await nurse.goto('/dashboard');
-	await expect(nurse.getByRole('heading',{name:'Ringkasan Siklus Rawat Inap'})).toBeVisible();
+	await expect(nurse.getByRole('heading',{name:'Rekap rawat inap'})).toBeVisible();
 	await mkdir(evidence,{recursive:true});
 	await nurse.screenshot({path:path.join(evidence,'dashboard-dina-desktop.png'),fullPage:true,animations:'disabled'});
 	await nurseContext.close();
@@ -111,7 +111,7 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	const title = `E2E Observasi ${Date.now()}`;
 	await signIn(coordinator, 'rina');
 	await coordinator.goto('/tasks');
-	await expect(coordinator.getByRole('heading', { name: 'Tugas Perawatan' })).toBeVisible();
+	await expect(coordinator.getByRole('heading', { name: 'Tugas perawatan' })).toBeVisible();
 	await coordinator.getByRole('button', { name: /Buat tugas/ }).click();
 	const starts = new Date(Date.now() + 5 * 60_000);
 	const ends = new Date(starts.getTime() + 45 * 60_000);
@@ -119,7 +119,7 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	const placement = taskPlacement(reference.placements, starts, ends);
 	await selectOption(coordinator.getByLabel('Penempatan pasien'), placement.id);
 	await selectOption(coordinator.getByLabel('Perawat penanggung jawab'), { label: 'Dina Putri' });
-	await coordinator.getByLabel('Judul', { exact: true }).fill(title);
+	await coordinator.getByLabel('Judul tugas', { exact: true }).fill(title);
 	await selectOption(coordinator.getByRole('dialog', {name:'Buat tugas perawatan',exact:true}).getByLabel('Prioritas'), 'normal');
 	const local = (value: Date) => {const date=new Date(value.getTime()-value.getTimezoneOffset()*60_000);return date.toISOString().slice(0,16);};
 	await selectDate(coordinator.getByLabel('Waktu mulai'), local(starts));
@@ -165,7 +165,7 @@ test('coordinator creates a nursing task that its PIC can progress and view with
 	await expect(pic.getByRole('dialog')).toHaveCount(0);
 	await pic.reload();
 	const persistedColumn=pic.locator('.task-column').filter({hasText:title});
-	await expect(persistedColumn.getByText('Sedang Dikerjakan',{exact:true})).toBeVisible();
+	await expect(persistedColumn.getByText('Sedang dikerjakan',{exact:true})).toBeVisible();
 	await persistedColumn.getByRole('button',{name:new RegExp(title)}).click();
 	await expect(pic.getByRole('dialog')).toContainText('Pemeriksaan diselesaikan melalui alur E2E.');
 	await expect(pic.getByRole('dialog').locator('.history-list')).toContainText('Detail atau status diperbarui');
@@ -181,10 +181,10 @@ test('role navigation only exposes the signed-in role’s screens and small scre
 	await signIn(admission,'admisi');
 	await expect(admission).toHaveURL(/\/invoices$/);
 	const navigation=admission.getByRole('navigation',{name:'Navigasi utama',exact:true});
-	await expect(navigation.getByRole('link',{name:'Tagihan'})).toBeVisible();
-	await expect(navigation.getByRole('link',{name:'Tugas Perawatan'})).toHaveCount(0);
+	await expect(navigation.getByRole('link',{name:'Tagihan',exact:true})).toBeVisible();
+	await expect(navigation.getByRole('link',{name:'Tugas perawatan'})).toHaveCount(0);
 	await admission.goto('/invoices');
-	await expect(admission.getByRole('heading',{name:'Manajemen Tagihan'})).toBeVisible();
+	await expect(admission.getByRole('heading',{name:'Tagihan',exact:true})).toBeVisible();
 	let createdInvoiceId='';
 	admission.on('response',async(response)=>{if(response.request().method()==='POST'&&new URL(response.url()).pathname==='/api/v1/invoices'&&response.status()===201){createdInvoiceId=(await response.json()).id;}});
 	await admission.getByRole('button',{name:/Buat tagihan/}).click();
@@ -193,7 +193,7 @@ test('role navigation only exposes the signed-in role’s screens and small scre
 	await form.getByLabel('Layanan').fill(`E2E layanan ${Date.now()}`);
 	await form.getByLabel('Jumlah', { exact: true }).fill('2');
 	await form.getByLabel('Harga satuan (Rp)').fill('1.250,25');
-	await form.getByLabel('Jumlah jaminan BPJS (Rp)').fill('500');
+	await form.getByLabel('Nilai jaminan BPJS (Rp)').fill('500');
 	await form.getByRole('button',{name:'Simpan tagihan'}).click();
 	await expect(toastMessage(admission, 'Perubahan berhasil disimpan.', 'success')).toBeVisible();
 	await admission.reload();
@@ -222,4 +222,28 @@ test('role navigation only exposes the signed-in role’s screens and small scre
 	await expect(admission.getByRole('navigation',{name:'Navigasi utama'})).toBeVisible();
 	expectNoBrowserErrors(admission);
 	await admission.close();
+});
+
+test('login explains required fields, the retry window and expired sessions on a narrow screen', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/login');
+    const submit = page.getByRole('button', { name: 'Masuk', exact: true });
+    await expect(submit.locator('xpath=ancestor::form')).toHaveAttribute('method', 'post');
+    await submit.click();
+    await expect(page.getByRole('alert')).toHaveText('Masukkan ID petugas.');
+    await expect(page.getByRole('textbox', { name: 'ID petugas' })).toBeFocused();
+    await page.getByLabel('ID petugas').fill('dina');
+    await submit.click();
+    await expect(page.getByRole('alert')).toHaveText('Masukkan kata sandi.');
+    await page.getByLabel('Kata sandi', { exact: true }).fill('contoh');
+    await expect(page.getByRole('button', { name: 'Tampilkan kata sandi' })).toBeVisible();
+    await page.route('**/api/v1/session', route => route.fulfill({
+        status: 429, json: { error: { code: 'RATE_LIMITED', message: 'Terlalu banyak percobaan masuk. Coba lagi dalam 3 menit.' } }
+    }), { times: 1 });
+    await submit.click();
+    await expect(page.getByRole('alert')).toHaveText('Terlalu banyak percobaan masuk. Coba lagi dalam 3 menit.');
+    await page.context().addCookies([{ name: 'session', value: 'sesi-sintetis-kedaluwarsa', url: page.url() }]);
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/login\?status=sesi-berakhir$/);
+    await expect(page.getByRole('status')).toHaveText('Sesi Anda berakhir. Masuk kembali untuk melanjutkan.');
 });

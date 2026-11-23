@@ -8,7 +8,7 @@ const data = $state({
     user: { id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT', coordinator: false },
     filters: { search: '', status: '', roomId: '', patientId: '' },
     cycles: [cycle, readableCycle], creationCandidates: [candidate],
-    reference: { patients: [candidate], rooms: [], placements: [], staff: [{ id: 'doctor', name: 'Dokter Uji', role: 'DOKTER', active: true }] }
+    reference: { patients: [candidate], rooms: [], placements: [{ id: 'cycle-placement', patientId: 'patient', roomName: 'Ruang uji', startsOn: '2026-11-02', endsOn: '2026-11-10', status: 'active' }], staff: [{ id: 'doctor', name: 'Dokter Uji', role: 'DOKTER', active: true }] }
 });
 window.cycleActions = [];
 window.setCycleState = (status, role = 'PERAWAT') => { data.cycles[0].status = status; data.user.role = role; data.user.id = role === 'DOKTER' ? 'doctor' : 'nurse'; };

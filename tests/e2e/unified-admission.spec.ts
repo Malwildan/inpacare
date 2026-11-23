@@ -80,7 +80,7 @@ test('new placement survives a lost response, safely retries, opens details, and
     await page.keyboard.press('Escape');
     await expect(form).toBeVisible();
     release();
-    await expect(form.getByRole('alert')).toContainText('Koneksi terputus. Coba simpan lagi dengan data yang sama.');
+    await expect(form.getByRole('alert')).toContainText('Rekap belum dapat dipastikan tersimpan. Periksa daftar rekap terbaru. Jika perlu mencoba lagi, kirim isian yang sama.');
     await expect(form.getByRole('combobox', { name: 'Pasien terdaftar', exact: true })).toHaveAttribute('data-value', person.id);
     await expect(form.getByRole('combobox', { name: 'Dokter penanggung jawab', exact: true })).toHaveAttribute('data-value', doctorId);
     await expect(form.getByRole('combobox', { name: 'Ruangan', exact: true })).toHaveAttribute('data-value', assignedRoom.id);
@@ -92,7 +92,7 @@ test('new placement survives a lost response, safely retries, opens details, and
         await page.screenshot({ path: path.join(evidence, `issue-60-admission-${width}.png`), animations: 'disabled', style: '[data-sonner-toaster] { visibility: hidden; }' });
     }
     await form.getByRole('button', { name: 'Simpan dan tempatkan', exact: true }).click();
-    const detail = page.getByRole('dialog', { name: 'Detail siklus rawat inap', exact: true });
+    const detail = page.getByRole('dialog', { name: 'Detail rekap rawat inap', exact: true });
     await expect(detail).toContainText(person.name);
     await expect(detail).toContainText('Sudah ditempatkan');
     expect(attempts).toHaveLength(2);
@@ -138,7 +138,7 @@ test('only the selected patient placements are offered, auto-selection is visibl
     await expect(placementPicker).toHaveAttribute('data-value', placement.id);
     await selectOption(form.getByRole('combobox', { name: 'Dokter penanggung jawab', exact: true }), doctorId);
     await form.getByRole('button', { name: 'Simpan dan tempatkan', exact: true }).click();
-    const detail = page.getByRole('dialog', { name: 'Detail siklus rawat inap', exact: true });
+    const detail = page.getByRole('dialog', { name: 'Detail rekap rawat inap', exact: true });
     await expect(detail).toContainText(single.name);
     await expect(detail).toContainText('Sudah ditempatkan');
     const context = await (await clients.dina.http.get(`/api/v1/patients/${single.id}/context`)).json();
@@ -156,7 +156,7 @@ test('waiting can be saved without a room and doctors and admissions cannot crea
     await selectOption(form.getByRole('combobox', { name: 'Pasien terdaftar', exact: true }), person.id);
     await selectOption(form.getByRole('combobox', { name: 'Dokter penanggung jawab', exact: true }), doctorId);
     await form.getByRole('button', { name: 'Simpan sebagai Menunggu', exact: true }).click();
-    const detail = page.getByRole('dialog', { name: 'Detail siklus rawat inap', exact: true });
+    const detail = page.getByRole('dialog', { name: 'Detail rekap rawat inap', exact: true });
     await expect(detail).toContainText(person.name);
     await expect(detail).toContainText('Belum ditempatkan');
     await expect(detail.getByRole('button', { name: 'Mulai perawatan', exact: true })).toHaveCount(0);

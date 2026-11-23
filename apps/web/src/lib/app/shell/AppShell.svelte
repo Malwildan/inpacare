@@ -24,23 +24,23 @@ let mobileOpen = $state(false);
 let notificationsOpen = $state(false);
 let allNotificationsOpen = $state(false);
 let notifications = $state<Notification[]>([]);
-let notificationsFailed = $state(false);
+let notificationsFailure = $state('');
 let notificationsLoading = $state(false);
 let notificationButton = $state<HTMLButtonElement | null>(null);
 let menuButton = $state<HTMLButtonElement | null>(null);
 let navigationBrand = $state<HTMLAnchorElement | null>(null);
 let loggingOut = $state(false);
 const navigation = [
-    { path: '/dashboard', label: 'Ringkasan Siklus', icon: LayoutDashboard, roles: ['DOKTER', 'PERAWAT'] },
-    { path: '/patients', label: 'Data Pasien', icon: Users, roles: ['ADMISI'] },
-    { path: '/rooms', label: 'Manajemen Ruangan', icon: BedDouble, roles: ['PERAWAT', 'ADMISI'] },
-    { path: '/calendar', label: 'Kalender Ruangan', icon: CalendarDays, roles: ['PERAWAT', 'DOKTER', 'ADMISI'] },
-    { path: '/medical-records', label: 'Rekam Medis', icon: FileHeart, roles: ['DOKTER', 'PERAWAT', 'ADMISI'] },
-    { path: '/tasks', label: 'Tugas Perawatan', icon: ClipboardList, roles: ['PERAWAT'] },
+    { path: '/dashboard', label: 'Rekap rawat inap', icon: LayoutDashboard, roles: ['DOKTER', 'PERAWAT'] },
+    { path: '/patients', label: 'Data pasien', icon: Users, roles: ['ADMISI'] },
+    { path: '/rooms', label: 'Ruang rawat inap', icon: BedDouble, roles: ['PERAWAT', 'ADMISI'] },
+    { path: '/calendar', label: 'Kalender penempatan', icon: CalendarDays, roles: ['PERAWAT', 'DOKTER', 'ADMISI'] },
+    { path: '/medical-records', label: 'Rekam medis', icon: FileHeart, roles: ['DOKTER', 'PERAWAT', 'ADMISI'] },
+    { path: '/tasks', label: 'Tugas perawatan', icon: ClipboardList, roles: ['PERAWAT'] },
     { path: '/invoices', label: 'Tagihan', icon: ReceiptText, roles: ['ADMISI'] }
 ];
-let current = $derived(navigation.find((item) => page.url.pathname.startsWith(item.path))?.label ?? 'Ringkasan Pasien');
-let role = $derived(data.user.coordinator ? 'Koordinator Perawat' : ({ DOKTER: 'Dokter', PERAWAT: 'Perawat', ADMISI: 'Admisi' }[data.user.role]));
+let current = $derived(navigation.find((item) => page.url.pathname.startsWith(item.path))?.label ?? 'Ringkasan pasien');
+let role = $derived(data.user.coordinator ? 'Koordinator perawat' : ({ DOKTER: 'Dokter', PERAWAT: 'Perawat', ADMISI: 'Admisi' }[data.user.role]));
 async function logout() {
     if (loggingOut) return;
     loggingOut = true;
@@ -50,7 +50,7 @@ async function logout() {
         toast.success('Berhasil keluar.');
     }
     catch (failure) {
-        toast.error(sessionFailure(failure));
+        toast.error(sessionFailure(failure, 'save', 'status sesi'));
         loggingOut = false;
     }
 }
@@ -58,14 +58,12 @@ async function showNotifications() {
     if (notificationsLoading)
         return;
     notificationsLoading = true;
-    notificationsFailed = false;
+    notificationsFailure = '';
     try {
         notifications = await notificationService.list();
-        toast.dismiss('notifications-load');
     }
     catch (error) {
-        notificationsFailed = true;
-        toast.error(sessionFailure(error), { id: 'notifications-load' });
+        notificationsFailure = sessionFailure(error, 'load', 'Notifikasi');
     }
     finally {
         notificationsLoading = false;
@@ -83,10 +81,10 @@ async function readNotification(id: string) {
     try {
         await notificationService.markRead(id);
         notifications = notifications.map((notice) => notice.id === id ? { ...notice, readAt: new Date().toISOString() } : notice);
-        toast.success('Notifikasi ditandai sudah dibaca.');
+        toast.success('Notifikasi ditandai sebagai sudah dibaca.');
     }
     catch (error) {
-        toast.error(sessionFailure(error));
+        toast.error(sessionFailure(error, 'save', 'status baca notifikasi'));
     }
 }
 const home = $derived(data.user.role === 'ADMISI' ? '/invoices' : '/dashboard');
@@ -177,7 +175,8 @@ const home = $derived(data.user.role === 'ADMISI' ? '/invoices' : '/dashboard');
                     <div class="space-y-2 p-3">
                         {#if notificationsLoading}
                             <p role="status" class="p-3 text-sm text-muted-foreground">Memuat notifikasi…</p>
-                        {:else if notificationsFailed}
+                        {:else if notificationsFailure}
+                            <p role="alert" class="text-sm text-destructive">{notificationsFailure}</p>
                             <Button variant="outline" class="h-11 w-full" onclick={showNotifications}><RefreshCw aria-hidden="true" /> Coba lagi</Button>
                         {:else if notifications.length === 0}
                             <p class="p-3 text-sm text-muted-foreground">Belum ada notifikasi.</p>

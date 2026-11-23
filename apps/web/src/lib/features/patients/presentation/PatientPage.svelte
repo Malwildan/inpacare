@@ -34,7 +34,7 @@ import { ArrowLeft, CalendarDays } from 'lucide-svelte';
 	};
 
 	function label(value: string): string {
-		return labels[value] ?? value;
+		return labels[value] ?? 'Status belum dikenali';
 	}
 
 	function tone(value: string): BadgeVariant {
@@ -42,13 +42,13 @@ import { ArrowLeft, CalendarDays } from 'lucide-svelte';
 	}
 </script>
 
-<svelte:head><title>Ringkasan Pasien | InpaCare</title></svelte:head>
+<svelte:head><title>Ringkasan pasien | InpaCare</title></svelte:head>
 
 <div class="flex flex-col gap-6">
 	<header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
 		<div class="min-w-0">
-			<h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Ringkasan Pasien</h1>
-			<p class="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed text-muted-foreground">Informasi pasien dan keterkaitan rawat inap.</p>
+			<h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Ringkasan pasien</h1>
+			<p class="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed text-muted-foreground">Lihat identitas, riwayat penempatan, dan tim perawatan sesuai akses Anda.</p>
 		</div>
 		<Button variant="outline" class="h-11 shrink-0 px-4" href={data.user.role === 'ADMISI' ? '/patients' : '/dashboard'}><ArrowLeft aria-hidden="true" /> Kembali</Button>
 	</header>
@@ -85,7 +85,7 @@ import { ArrowLeft, CalendarDays } from 'lucide-svelte';
 
 	<Card class="gap-0 py-0">
 		<CardHeader class="flex-row flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-5">
-			<CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Riwayat Penempatan</CardTitle>
+			<CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Riwayat penempatan</CardTitle>
 			<Button variant="outline" class="h-11" href="/calendar"><CalendarDays aria-hidden="true" /> Lihat kalender</Button>
 		</CardHeader>
 		<CardContent class="px-0">
@@ -119,7 +119,7 @@ import { ArrowLeft, CalendarDays } from 'lucide-svelte';
 	{#if data.user.role !== 'ADMISI'}
 		<Card>
 			<CardHeader>
-				<CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Tim Perawatan</CardTitle>
+				<CardTitle role="heading" aria-level={2} class="text-[17px] font-semibold">Tim perawatan</CardTitle>
 			</CardHeader>
 			<CardContent class="flex flex-col gap-5">
 				{#each data.context.cycles as cycle}
@@ -133,7 +133,7 @@ import { ArrowLeft, CalendarDays } from 'lucide-svelte';
 							<dd class="text-sm font-semibold">{cycle.nurseName}</dd>
 						</div>
 						<div class="flex min-w-0 flex-col gap-1">
-							<dt class="text-[13px] text-muted-foreground">Status siklus</dt>
+							<dt class="text-[13px] text-muted-foreground">Status rekap</dt>
 							<dd><Badge variant={tone(cycle.status)}>{label(cycle.status)}</Badge></dd>
 						</div>
 					</dl>

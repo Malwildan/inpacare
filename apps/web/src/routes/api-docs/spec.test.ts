@@ -4,7 +4,7 @@ import { apiDocsSpec } from './spec';
 
 describe('API docs specification', () => {
     it('reuses the contract with a relative same-origin server URL', async () => {
-        const spec = await apiDocsSpec(async () => Response.json({ user: { id: 'user-1' } }));
+        const spec = await apiDocsSpec(async () => Response.json({ user: { id: 'user-1', role: 'DOKTER' } }));
         expect(spec.paths).toEqual(contract.paths);
         expect(spec.servers).toEqual([{ url: '/' }]);
         expect(spec.components.parameters.Origin.required).toBe(false);

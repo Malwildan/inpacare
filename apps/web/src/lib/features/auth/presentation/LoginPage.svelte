@@ -10,25 +10,40 @@
 	import { Input } from '$lib/shared/ui/input/index.js';
 	import { trimPastedWhitespace } from './trim-pasted-whitespace';
 
-	let { auth, landingPage }: {
+	let { auth, landingPage, expired = false }: {
 		auth: Auth;
+		expired?: boolean;
 		landingPage: (user: User) => string;
 	} = $props();
 
 	let username = $state('');
+	let usernameInput = $state<HTMLInputElement | null>(null);
+	let passwordInput = $state<HTMLInputElement | null>(null);
 	let password = $state('');
 	let visible = $state(false);
 	let pending = $state(false);
+	let loginError = $state('');
 
 	async function login(event: SubmitEvent) {
 		event.preventDefault();
-		pending = true;
+        if (pending) return;
+        if (!username.trim() || !password) {
+            loginError = !username.trim() ? 'Masukkan ID petugas.' : 'Masukkan kata sandi.';
+            (!username.trim() ? usernameInput : passwordInput)?.focus();
+            return;
+        }
+        pending = true;
+		loginError = '';
 		try {
 			const user = await auth.login({ username, password });
-			await goto(landingPage(user), { invalidateAll: true });
-			toast.success('Berhasil masuk.');
+			try {
+                await goto(landingPage(user), { invalidateAll: true });
+                toast.success('Anda berhasil masuk.');
+            } catch {
+                loginError = 'Anda sudah masuk. Muat ulang halaman untuk membuka InpaCare.';
+            }
 		} catch (error) {
-			toast.error(sessionFailure(error));
+			loginError = sessionFailure(error, 'login', 'Sesi');
 		} finally {
 			pending = false;
 		}
@@ -52,11 +67,10 @@
 
 		<div class="my-auto max-w-[490px] py-[72px] max-[700px]:hidden">
 			<h1 class="max-w-[20ch] text-4xl font-[650] leading-[1.24] tracking-[-0.03em] max-[900px]:text-[31px]">
-				Perawatan lebih tertata,<br />keputusan lebih tepat.
+				Pengelolaan rawat inap
 			</h1>
 			<p class="mt-[22px] max-w-[43ch] text-base leading-[1.7] text-[#e2e7f8]">
-				Pantau siklus rawat inap, kelola rekap pasien, dan tindak lanjuti keputusan medis melalui satu
-				sistem terpadu.
+				Kelola penempatan, tugas perawatan, rekap rawat inap, rekam medis, dan tagihan.
 			</p>
 		</div>
 	</section>
@@ -65,21 +79,25 @@
 		<Card class="w-full max-w-[440px] gap-0 border-border/70 py-0 shadow-sm">
 			<CardHeader class="gap-2 px-6 pt-6">
 				<CardTitle role="heading" aria-level={2} class="text-[27px] leading-tight tracking-[-0.025em] max-[700px]:text-[25px]">
-					Selamat datang kembali
+					Masuk ke InpaCare
 				</CardTitle>
 				<CardDescription class="text-[15px] leading-relaxed">
-					Masuk menggunakan akun petugas yang terdaftar pada sistem rawat inap.
+					Masukkan ID petugas dan kata sandi akun InpaCare Anda.
 				</CardDescription>
 			</CardHeader>
 
 			<CardContent class="px-6 pb-6">
-				<form class="flex flex-col gap-5" onsubmit={login}>
+				{#if expired && !loginError}<p class="mb-4 text-sm" role="status">Sesi Anda berakhir. Masuk kembali untuk melanjutkan.</p>{/if}
+                <noscript><p class="mb-4 text-sm">Aktifkan JavaScript di peramban agar dapat masuk.</p></noscript>
+                <form class="flex flex-col gap-5" method="post" aria-busy={pending} onsubmit={login} novalidate>
+                    {#if loginError}<p class="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{loginError}</p>{/if}
 
 					<FieldGroup>
 						<Field>
 							<FieldLabel for="username">ID petugas</FieldLabel>
 							<Input
 								id="username"
+                                bind:ref={usernameInput}
 								name="username"
 								autocomplete="username"
 								placeholder="Masukkan ID petugas"
@@ -96,6 +114,7 @@
 							<div class="relative">
 								<Input
 									id="password"
+                                    bind:ref={passwordInput}
 									name="password"
 									type={visible ? 'text' : 'password'}
 									autocomplete="current-password"
@@ -141,7 +160,7 @@
 					<p class="mt-2 text-[13px] leading-[1.7]">
 						Kata sandi: <code class="font-[650] text-primary">InpaCareDemo!2026</code>
 					</p>
-					<p class="mt-3 text-[13px] leading-[1.7]">Seluruh data di lingkungan ini adalah data sintetis.</p>
+					<p class="mt-3 text-[13px] leading-[1.7]">Gunakan data sintetis pada demo.</p>
 				</aside>
 			</CardContent>
 		</Card>

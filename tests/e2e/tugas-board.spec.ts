@@ -112,7 +112,7 @@ async function moveVia(page: Page, title: string, statusLabel: string, options: 
 	await selectOption(dialog.getByLabel('Status tujuan'), { label: statusLabel });
 	if (options.before) await selectOption(dialog.getByLabel('Posisi'), { label: `Sebelum ${options.before}` });
 	if (options.reason) await dialog.getByLabel('Alasan pembatalan').fill(options.reason);
-	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
+	await dialog.getByRole('button', { name: statusLabel === 'Dibatalkan' ? 'Batalkan tugas' : 'Konfirmasi pindahkan' }).click();
 	return dialog;
 }
 
@@ -127,18 +127,18 @@ test('a filtered card stays pending and a filter change receives the committed m
 	const gate = new Promise<void>(resolve => (release = resolve));
 	await page.route('**/api/v1/tasks/*/move', async route => { await gate; await route.continue(); });
 	try {
-		await moveVia(page, title, 'Sedang Dikerjakan');
-		await expect(column(page, 'Belum Dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
+		await moveVia(page, title, 'Sedang dikerjakan');
+		await expect(column(page, 'Belum dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
 		await expect(card(page, title).getByRole('status')).toContainText('Menyimpan');
-		await page.getByRole('dialog').getByRole('button', { name: 'Batal' }).click();
-		await page.getByRole('button', { name: 'Status: Belum Dikerjakan - Hapus' }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Batal', exact: true }).click();
+		await page.getByRole('button', { name: 'Status: Belum dikerjakan - Hapus' }).click();
 		await expect(page).not.toHaveURL(/status=todo/);
-		await expect(column(page, 'Belum Dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
+		await expect(column(page, 'Belum dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
 		release();
-		await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
-		await expect(column(page, 'Belum Dikerjakan').locator('.task-card').filter({ hasText: title })).toHaveCount(0);
-		await expect(toastMessage(page, '', 'success')).toContainText('dipindahkan ke Sedang Dikerjakan');
-		expect(await headingCounts(page, 'Sedang Dikerjakan')).toEqual({ loaded: 1, total: 1 });
+		await expect(column(page, 'Sedang dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
+		await expect(column(page, 'Belum dikerjakan').locator('.task-card').filter({ hasText: title })).toHaveCount(0);
+		await expect(toastMessage(page, '', 'success')).toContainText('dipindahkan ke Sedang dikerjakan');
+		expect(await headingCounts(page, 'Sedang dikerjakan')).toEqual({ loaded: 1, total: 1 });
 	} finally { release(); await page.close(); }
 });
 
@@ -153,17 +153,17 @@ test('retry after a rejected move and failed refresh replaces stale cards', asyn
 	const dialog = await openMove(page, title);
 	await moveApi(page, task, 'in_progress');
 	await page.route('**/api/v1/tasks?**', route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Daftar gagal dimuat.' } }) }));
-	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang dikerjakan' });
 	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
-	await expect(toastMessage(page, 'Tugas berubah')).toContainText('Tugas berubah');
-	await dialog.getByRole('button', { name: 'Batal' }).click();
+	await expect(toastMessage(page, 'Data sudah berubah')).toContainText('Data sudah berubah');
+	await dialog.getByRole('button', { name: 'Batal', exact: true }).click();
 	await page.keyboard.press('Escape');
-	await expect(toastMessage(page, 'Daftar Belum Dikerjakan gagal dimuat.')).toBeVisible();
+	await expect(toastMessage(page, 'Daftar Belum dikerjakan gagal dimuat.')).toBeVisible();
 	await page.unroute('**/api/v1/tasks?**');
-	await column(page, 'Belum Dikerjakan').getByRole('button', { name: 'Coba lagi' }).click();
-	await expect(column(page, 'Belum Dikerjakan').locator('.task-card')).toHaveCount(0);
-	await column(page, 'Sedang Dikerjakan').getByRole('button', { name: 'Coba lagi' }).click();
-	await expect(column(page, 'Sedang Dikerjakan').locator('.task-card')).toContainText(title);
+	await column(page, 'Belum dikerjakan').getByRole('button', { name: 'Coba lagi' }).click();
+	await expect(column(page, 'Belum dikerjakan').locator('.task-card')).toHaveCount(0);
+	await column(page, 'Sedang dikerjakan').getByRole('button', { name: 'Coba lagi' }).click();
+	await expect(column(page, 'Sedang dikerjakan').locator('.task-card')).toContainText(title);
 	await moveVia(page, title, 'Selesai');
 	await expect(toastMessage(page, '', 'success')).toContainText('dipindahkan ke Selesai');
 	await page.close();
@@ -176,7 +176,7 @@ test('a delayed pagination response cannot restore a moved card', async ({ brows
 	const prefix = unique('Halaman tertunda');
 	for (let i = 0; i < 51; i++) await createTask(page, ref, `${prefix} ${i}`);
 	await page.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
-	const title = await column(page, 'Belum Dikerjakan').locator('.card-title').first().innerText();
+	const title = await column(page, 'Belum dikerjakan').locator('.card-title').first().innerText();
 	let release!: () => void;
 	let captured!: () => void;
 	const gate = new Promise<void>(resolve => (release = resolve));
@@ -188,16 +188,16 @@ test('a delayed pagination response cannot restore a moved card', async ({ brows
 		await route.fulfill({ response });
 	});
 	try {
-		await column(page, 'Belum Dikerjakan').getByRole('button', { name: 'Muat lebih banyak' }).click();
+		await column(page, 'Belum dikerjakan').getByRole('button', { name: 'Muat lebih banyak' }).click();
 		await ready;
-		await moveVia(page, title, 'Sedang Dikerjakan');
-		await expect(toastMessage(page, '', 'success')).toContainText('dipindahkan ke Sedang Dikerjakan');
+		await moveVia(page, title, 'Sedang dikerjakan');
+		await expect(toastMessage(page, '', 'success')).toContainText('dipindahkan ke Sedang dikerjakan');
 		const paginationResponse = page.waitForResponse(response => response.url().includes('offset=50'));
 		release();
 		await paginationResponse;
-		await expect(column(page, 'Belum Dikerjakan').locator('.task-card').filter({ hasText: title })).toHaveCount(0);
-		expect(await headingCounts(page, 'Belum Dikerjakan')).toEqual({ loaded: 50, total: 50 });
-		await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
+		await expect(column(page, 'Belum dikerjakan').locator('.task-card').filter({ hasText: title })).toHaveCount(0);
+		expect(await headingCounts(page, 'Belum dikerjakan')).toEqual({ loaded: 50, total: 50 });
+		await expect(column(page, 'Sedang dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
 	} finally { release(); await page.close(); }
 });
 
@@ -289,15 +289,15 @@ test('same-column drag cancels and explicit ordering persists across sessions', 
 	await signIn(pic, 'dina');
 	await pic.goto('/tasks');
 	await expect(pic.locator('.task-board')).toBeVisible();
-	expect(await titles(pic, 'Sedang Dikerjakan', prefix)).toEqual(titlesSeeded);
+	expect(await titles(pic, 'Sedang dikerjakan', prefix)).toEqual(titlesSeeded);
 
 	await card(pic, titlesSeeded[0]).dragTo(card(pic, titlesSeeded[2]));
-	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual(titlesSeeded);
+	await expect.poll(() => titles(pic, 'Sedang dikerjakan', prefix)).toEqual(titlesSeeded);
 	expect((await api<Task>(pic, 'GET', `/tasks/${a.id}`)).version).toBe(inProgressTasks[0].version);
 	await expect(pic.getByRole('dialog')).toHaveCount(0);
-	const reorderDialog = await moveVia(pic, titlesSeeded[0], 'Sedang Dikerjakan');
+	const reorderDialog = await moveVia(pic, titlesSeeded[0], 'Sedang dikerjakan');
 	await expect(reorderDialog).toHaveCount(0);
-	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([titlesSeeded[1], titlesSeeded[2], titlesSeeded[0]]);
+	await expect.poll(() => titles(pic, 'Sedang dikerjakan', prefix)).toEqual([titlesSeeded[1], titlesSeeded[2], titlesSeeded[0]]);
 	await expect(pic.getByRole('dialog')).toHaveCount(0);
 
 	await card(pic, titlesSeeded[1]).dragTo(column(pic, 'Selesai').locator('.column-heading'));
@@ -315,13 +315,13 @@ test('same-column drag cancels and explicit ordering persists across sessions', 
 
 	await pic.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
 	await expect(pic.locator('.task-board')).toBeVisible();
-	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([titlesSeeded[2], titlesSeeded[0]]);
+	await expect.poll(() => titles(pic, 'Sedang dikerjakan', prefix)).toEqual([titlesSeeded[2], titlesSeeded[0]]);
 	await expect(column(pic, 'Selesai').locator('.task-card').filter({ hasText: titlesSeeded[1] })).toBeVisible();
 
 	const second = await browser.newPage();
 	await signIn(second, 'rina');
 	await second.goto(`/tasks?search=${encodeURIComponent(prefix)}`);
-	await expect.poll(() => titles(second, 'Sedang Dikerjakan', prefix)).toEqual([titlesSeeded[2], titlesSeeded[0]]);
+	await expect.poll(() => titles(second, 'Sedang dikerjakan', prefix)).toEqual([titlesSeeded[2], titlesSeeded[0]]);
 	await expect(column(second, 'Selesai').locator('.task-card').filter({ hasText: titlesSeeded[1] })).toBeVisible();
 
 	await pic.close();
@@ -349,7 +349,7 @@ test('native drag lifts cards, appends destination drops and cancels in the sour
 	await signIn(pic, 'dina');
 	await pic.goto('/tasks');
 	const sourceCard = card(pic, source.title);
-	const targetColumn = column(pic, 'Sedang Dikerjakan');
+	const targetColumn = column(pic, 'Sedang dikerjakan');
 	const firstCard = card(pic, second.title);
 	const secondCard = card(pic, first.title);
 	await expect(firstCard).toBeVisible();
@@ -387,7 +387,7 @@ test('native drag lifts cards, appends destination drops and cancels in the sour
 	const lockedColumn = column(pic, 'Selesai');
 	const lockedOverlay = lockedColumn.locator('.column-drop-overlay');
 	await expect(lockedOverlay).toHaveAttribute('data-drop-state', 'locked');
-	await expect(lockedOverlay).toContainText('Pindahkan ke Sedang Dikerjakan terlebih dahulu.');
+	await expect(lockedOverlay).toContainText('Pindahkan ke Sedang dikerjakan terlebih dahulu.');
 	await expect(lockedOverlay.locator('svg')).toHaveCount(1);
 	await expect(lockedOverlay).toHaveCSS('border-top-style', 'dashed');
 	await expect(lockedOverlay).toHaveCSS('box-shadow', 'none');
@@ -411,7 +411,7 @@ test('native drag lifts cards, appends destination drops and cancels in the sour
 	const savedDrop = pic.waitForRequest(request => request.method() === 'POST' && request.url().includes(`/tasks/${source.id}/move`));
 	await pic.mouse.up();
 	expect((await savedDrop).postDataJSON()).toMatchObject({ status: 'in_progress', beforeTaskId: null });
-	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([
+	await expect.poll(() => titles(pic, 'Sedang dikerjakan', prefix)).toEqual([
 		second.title,
 		first.title,
 		source.title
@@ -422,10 +422,10 @@ test('native drag lifts cards, appends destination drops and cancels in the sour
 	const lastProgress = await api<{ items: Task[] }>(pic, 'GET', `/tasks?status=in_progress&order=board&limit=1&offset=${progress.total - 1}`);
 	expect(lastProgress.items.map(task => task.id)).toEqual([source.id]);
 	await expect(targetColumn.locator('.task-card').filter({ hasText: source.title })).toBeVisible();
-	await expect(toastMessage(pic, '', 'success')).toHaveText(`${source.title} dipindahkan ke Sedang Dikerjakan.`);
+	await expect(toastMessage(pic, '', 'success')).toHaveText(`${source.title} dipindahkan ke Sedang dikerjakan.`);
 	const transfer = await pic.evaluateHandle(() => new DataTransfer());
 	await sourceCard.dispatchEvent('dragstart', { dataTransfer: transfer });
-	await expect(column(pic, 'Belum Dikerjakan').locator('.column-drop-overlay')).toContainText('Tugas tidak dapat kembali ke Belum Dikerjakan.');
+	await expect(column(pic, 'Belum dikerjakan').locator('.column-drop-overlay')).toContainText('Tugas tidak dapat kembali ke Belum dikerjakan.');
 	await sourceCard.dispatchEvent('dragend', { dataTransfer: transfer });
 	await expect(pic.locator('.column-drop-overlay')).toHaveCount(0);
 
@@ -463,9 +463,9 @@ test('native drag lifts cards, appends destination drops and cancels in the sour
 	await pic.mouse.down();
 	await pic.mouse.move(ownBox!.x + ownBox!.width / 2 + 24, ownBox!.y + ownBox!.height / 2, { steps: 4 });
 	await expect(ownCard).toHaveClass(/card-dragging/);
-	const cancelOverlay = column(pic, 'Sedang Dikerjakan').locator('.column-drop-overlay');
+	const cancelOverlay = column(pic, 'Sedang dikerjakan').locator('.column-drop-overlay');
 	await expect(cancelOverlay).toHaveAttribute('data-drop-state', 'cancel');
-	await expect(cancelOverlay).toContainText('Cancel');
+	await expect(cancelOverlay).toContainText('Batal pindah');
 	await expect(cancelOverlay).not.toContainText('Move here');
 	await expect(cancelOverlay).toHaveClass(/active/);
 	await pic.mouse.move(ownBox!.x + ownBox!.width / 2, ownBox!.y + ownBox!.height / 2, { steps: 4 });
@@ -474,7 +474,7 @@ test('native drag lifts cards, appends destination drops and cancels in the sour
 	await expect(pic.locator('.column-drop-overlay, .task-drag-preview')).toHaveCount(0);
 	expect((await api<Task>(pic, 'GET', `/tasks/${second.id}`)).version).toBe(beforeMove.version);
 	expect(ownMoveRequests).toBe(0);
-	await expect.poll(() => titles(pic, 'Sedang Dikerjakan', prefix)).toEqual([
+	await expect.poll(() => titles(pic, 'Sedang dikerjakan', prefix)).toEqual([
 		second.title,
 		first.title,
 		source.title
@@ -503,11 +503,11 @@ test('allowed transitions and terminal restrictions hold for PIC and coordinator
 	await expect(mineCard.getByRole('button', { name: 'Pindahkan' })).toHaveCount(0);
 	await openMove(dinaPage, mine);
 	let dialog = dinaPage.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(mine)}`) });
-	expect(await optionLabels(dialog.getByLabel('Status tujuan'))).toEqual(['Sedang Dikerjakan']);
-	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
+	expect(await optionLabels(dialog.getByLabel('Status tujuan'))).toEqual(['Sedang dikerjakan']);
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang dikerjakan' });
 	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
 	await expect(toastMessage(dinaPage, '', 'success')).toContainText(/dipindahkan/i);
-	await expect(column(dinaPage, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: mine })).toBeVisible();
+	await expect(column(dinaPage, 'Sedang dikerjakan').locator('.task-card').filter({ hasText: mine })).toBeVisible();
 
 	await openMove(dinaPage, mine);
 	dialog = dinaPage.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(mine)}`) });
@@ -525,8 +525,8 @@ test('allowed transitions and terminal restrictions hold for PIC and coordinator
 	await expect(coordinatorOther).toBeVisible();
 	await expect(coordinatorOther.getByRole('button')).toHaveCount(1);
 	await expect(coordinatorOther.getByRole('button', { name: 'Pindahkan' })).toHaveCount(0);
-	await moveVia(coordinatorPage, other, 'Sedang Dikerjakan');
-	await expect(column(coordinatorPage, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: other })).toBeVisible();
+	await moveVia(coordinatorPage, other, 'Sedang dikerjakan');
+	await expect(column(coordinatorPage, 'Sedang dikerjakan').locator('.task-card').filter({ hasText: other })).toBeVisible();
 
 	const apiOther = await api<Task>(coordinatorPage, 'GET', `/tasks/${others.id}`);
 	expect(apiOther.status).toBe('in_progress');
@@ -571,7 +571,7 @@ test('Pindahkan dialog moves cards by keyboard and touch without dragging', asyn
 	const touchPage = await touchContext.newPage();
 	await signIn(touchPage, 'dina');
 	await touchPage.goto(`/tasks?search=${encodeURIComponent(touchTitle)}`);
-	await expect(touchPage.getByRole('heading', { name: 'Tugas Perawatan' })).toBeVisible();
+	await expect(touchPage.getByRole('heading', { name: 'Tugas perawatan' })).toBeVisible();
 	const touchCard = touchPage.locator('.task-card').filter({ hasText: touchTitle });
 	await touchCard.getByRole('button').tap({ position: { x: 8, y: 8 } });
 	await touchPage.getByRole('dialog', { name: touchTitle, exact: true }).getByRole('button', { name: 'Pindahkan', exact: true }).tap();
@@ -603,12 +603,12 @@ test('cancellation requires an explicit reason and preserves it on failure', asy
 	let dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
 	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Dibatalkan' });
 	await expect(dialog.getByLabel('Alasan pembatalan')).toBeVisible();
-	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
+	await dialog.getByRole('button', { name: 'Batalkan tugas' }).click();
 	await expect(dialog).toBeVisible();
 	await expect(card(page, title)).toBeVisible();
 	await expect(column(page, 'Dibatalkan').locator('.task-card').filter({ hasText: title })).toHaveCount(0);
 
-	await dialog.getByRole('button', { name: 'Batal' }).click();
+	await dialog.getByRole('button', { name: 'Batal', exact: true }).click();
 	await expect(dialog).toBeHidden();
 	await expect(card(page, title)).toBeVisible();
 
@@ -622,15 +622,15 @@ test('cancellation requires an explicit reason and preserves it on failure', asy
 		attempts++;
 		await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'SERVER', message: 'Penyimpanan gagal.' } }) });
 	});
-	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
-	await expect(toastMessage(page)).toContainText(/gagal/i);
+	await dialog.getByRole('button', { name: 'Batalkan tugas' }).click();
+	await expect(toastMessage(page)).toContainText('belum diketahui');
 	await expect(dialog.getByLabel('Alasan pembatalan')).toHaveValue('Alasan uji pembatalan.');
 	await expect(dialog).toBeVisible();
 	await expect(column(page, 'Dibatalkan').locator('.task-card').filter({ hasText: title })).toHaveCount(0);
 	await page.unroute('**/api/v1/tasks/*/move');
 	expect(attempts).toBe(1);
 
-	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
+	await dialog.getByRole('button', { name: 'Batalkan tugas' }).click();
 	await expect(toastMessage(page, '', 'success')).toContainText(/dipindahkan/i);
 	await expect(column(page, 'Dibatalkan').locator('.task-card').filter({ hasText: title })).toBeVisible();
 	await openButton(page, title).click();
@@ -652,7 +652,7 @@ test('failed saves restore the confirmed card and prevent duplicate pending move
 	const failures: { label: string; handler: (route: import('@playwright/test').Route) => Promise<void> }[] = [
 		{
 			label: 'konflik',
-			handler: route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: { code: 'CONFLICT', message: 'Tugas berubah. Muat ulang sebelum menyimpan.' } }) })
+			handler: route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: { code: 'CONFLICT', message: 'Data sudah berubah. Muat ulang untuk melihat data terbaru, lalu periksa perubahan Anda sebelum menyimpan kembali.' } }) })
 		},
 		{ label: 'jaringan', handler: route => route.abort('failed') },
 		{
@@ -665,14 +665,14 @@ test('failed saves restore the confirmed card and prevent duplicate pending move
 		await page.route('**/api/v1/tasks/*/move', failure.handler);
 		await openMove(page, title);
 		const dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
-		await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
+		await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang dikerjakan' });
 		await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
 		await expect(toastMessage(page)).toBeVisible();
 		await expect(dialog).toBeVisible();
 		await expect(card(page, title)).toBeVisible();
-		await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: title })).toHaveCount(0);
+		await expect(column(page, 'Sedang dikerjakan').locator('.task-card').filter({ hasText: title })).toHaveCount(0);
 		await expect(toastMessage(page, '', 'success')).toHaveCount(0);
-		await dialog.getByRole('button', { name: 'Batal' }).click();
+		await dialog.getByRole('button', { name: 'Batal', exact: true }).click();
 		await page.unroute('**/api/v1/tasks/*/move');
 	}
 
@@ -686,14 +686,14 @@ test('failed saves restore the confirmed card and prevent duplicate pending move
 	});
 	await openMove(page, title);
 	const pendingDialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(title)}`) });
-	await selectOption(pendingDialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
+	await selectOption(pendingDialog.getByLabel('Status tujuan'), { label: 'Sedang dikerjakan' });
 	await pendingDialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
-	await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: title }).getByRole('status')).toContainText('Menyimpan');
-	await expect(pendingDialog.getByRole('button', { name: 'Konfirmasi pindahkan' })).toBeDisabled();
+	await expect(column(page, 'Sedang dikerjakan').locator('.task-card').filter({ hasText: title }).getByRole('status')).toContainText('Menyimpan');
+	await expect(pendingDialog.getByRole('button', { name: 'Menyimpan…' })).toBeDisabled();
 	expect(moveRequests).toBe(1);
 	release();
 	await expect(toastMessage(page, '', 'success')).toContainText(/dipindahkan/i);
-	await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
+	await expect(column(page, 'Sedang dikerjakan').locator('.task-card').filter({ hasText: title })).toBeVisible();
 	await page.unroute('**/api/v1/tasks/*/move');
 	expect(moveRequests).toBe(1);
 	expect(task.version).toBe(1);
@@ -718,10 +718,10 @@ test('drag cancellation and invalid destinations make no saved change', async ({
 
 	const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
 	await source.dispatchEvent('dragstart', { dataTransfer });
-	const cancelOverlay = column(page, 'Belum Dikerjakan').locator('.column-drop-overlay');
+	const cancelOverlay = column(page, 'Belum dikerjakan').locator('.column-drop-overlay');
 	await expect(cancelOverlay).toHaveAttribute('data-drop-state', 'cancel');
-	await expect(cancelOverlay).toContainText('Cancel');
-	await column(page, 'Belum Dikerjakan').dispatchEvent('drop', { dataTransfer });
+	await expect(cancelOverlay).toContainText('Batal pindah');
+	await column(page, 'Belum dikerjakan').dispatchEvent('drop', { dataTransfer });
 	await expect(page.locator('.column-drop-overlay, .task-drag-preview')).toHaveCount(0);
 	expect((await api<Task>(page, 'GET', `/tasks/${created.id}`)).version).toBe(created.version);
 	await source.dispatchEvent('dragstart', { dataTransfer });
@@ -766,32 +766,32 @@ test('filters disable position controls, append status moves, and explain filter
 	await expect(dialog.getByLabel('Posisi')).toHaveCount(0);
 	await expect(dialog).toContainText('Hapus filter untuk mengatur posisi.');
 	const firstOptions = await optionLabels(dialog.getByLabel('Status tujuan'));
-	expect(firstOptions).toContain('Sedang Dikerjakan');
+	expect(firstOptions).toContain('Sedang dikerjakan');
 	expect(firstOptions).not.toContain('Selesai');
 	await expect(page.locator('p.muted').filter({ hasText: 'Urutan dinonaktifkan saat filter aktif.' })).toBeVisible();
-	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang dikerjakan' });
 	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
-	await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: highTitle })).toBeVisible();
+	await expect(column(page, 'Sedang dikerjakan').locator('.task-card').filter({ hasText: highTitle })).toBeVisible();
 
 	await page.goto(`/tasks?search=${encodeURIComponent(prefix)}&status=todo`);
 	await expect(card(page, normalTitle)).toBeVisible();
 	await openMove(page, normalTitle);
 	dialog = page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(normalTitle)}`) });
 	const secondOptions = await optionLabels(dialog.getByLabel('Status tujuan'));
-	expect(secondOptions).toContain('Sedang Dikerjakan');
+	expect(secondOptions).toContain('Sedang dikerjakan');
 	expect(secondOptions).not.toContain('Selesai');
 	await expect(dialog.getByLabel('Posisi')).toHaveCount(0);
-	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang Dikerjakan' });
+	await selectOption(dialog.getByLabel('Status tujuan'), { label: 'Sedang dikerjakan' });
 	await dialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
 	await expect(toastMessage(page, '', 'success')).toContainText(/filter status/i);
 	await expect(card(page, normalTitle)).toHaveCount(0);
 	await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe('heading-todo');
 
 	await page.goto(`/tasks?search=${encodeURIComponent(prefix)}&status=todo`);
-	await expect(page.getByRole('button', { name: /Status: Belum Dikerjakan - Hapus/ })).toBeVisible();
-	await page.getByRole('button', { name: /Status: Belum Dikerjakan - Hapus/ }).click();
+	await expect(page.getByRole('button', { name: /Status: Belum dikerjakan - Hapus/ })).toBeVisible();
+	await page.getByRole('button', { name: /Status: Belum dikerjakan - Hapus/ }).click();
 	await expect(page).not.toHaveURL(/status=todo/);
-	await expect(column(page, 'Sedang Dikerjakan').locator('.task-card').filter({ hasText: normalTitle })).toBeVisible();
+	await expect(column(page, 'Sedang dikerjakan').locator('.task-card').filter({ hasText: normalTitle })).toBeVisible();
 	await page.close();
 });
 
@@ -803,7 +803,7 @@ test('each list reports truthful totals and loads additional cards independently
 	for (let i = existing.total; i < 51; i++) await createTask(page, ref, unique('Halaman'));
 	await page.goto('/tasks');
 	await expect(page.locator('.task-board')).toBeVisible();
-	const labels: Record<string, string> = { todo: 'Belum Dikerjakan', in_progress: 'Sedang Dikerjakan', done: 'Selesai', cancelled: 'Dibatalkan' };
+	const labels: Record<string, string> = { todo: 'Belum dikerjakan', in_progress: 'Sedang dikerjakan', done: 'Selesai', cancelled: 'Dibatalkan' };
 	const statuses = Object.keys(labels);
 	const totals: Record<string, number> = {};
 	const initial: Record<string, { loaded: number; total: number }> = {};
@@ -857,17 +857,17 @@ test('list failure, empty, and filtered states are distinct and retryable', asyn
 	const todoTotal = (await api<{ total: number }>(page, 'GET', '/tasks?status=todo&limit=1')).total;
 	expect(todoTotal).toBeGreaterThan(50);
 	await page.route(/\/api\/v1\/tasks\?.*status=todo.*offset=50/, route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'SERVER', message: 'Daftar gagal dimuat.' } }) }));
-	await column(page, 'Belum Dikerjakan').getByRole('button', { name: 'Muat lebih banyak' }).click();
-	await expect(column(page, 'Belum Dikerjakan').locator('.column-heading [data-slot="badge"]')).toHaveText('Gagal dimuat');
-	await expect(toastMessage(page, 'Daftar Belum Dikerjakan gagal dimuat.')).toContainText('Daftar gagal dimuat');
+	await column(page, 'Belum dikerjakan').getByRole('button', { name: 'Muat lebih banyak' }).click();
+	await expect(column(page, 'Belum dikerjakan').locator('.column-heading [data-slot="badge"]')).toHaveText('Gagal dimuat');
+	await expect(toastMessage(page, 'Daftar Belum dikerjakan gagal dimuat.')).toBeVisible();
 	await page.unroute(/\/api\/v1\/tasks\?.*status=todo.*offset=50/);
-	await column(page, 'Belum Dikerjakan').getByRole('button', { name: 'Coba lagi' }).click();
-	await expect.poll(async () => (await headingCounts(page, 'Belum Dikerjakan')).loaded).toBe(Math.min(100, todoTotal));
-	await expect(column(page, 'Belum Dikerjakan').getByRole('button', { name: 'Coba lagi' })).toHaveCount(0);
+	await column(page, 'Belum dikerjakan').getByRole('button', { name: 'Coba lagi' }).click();
+	await expect.poll(async () => (await headingCounts(page, 'Belum dikerjakan')).loaded).toBe(Math.min(100, todoTotal));
+	await expect(column(page, 'Belum dikerjakan').getByRole('button', { name: 'Coba lagi' })).toHaveCount(0);
 
 	await page.goto(`/tasks?search=${encodeURIComponent(`Kosong ${Date.now()}`)}`);
-	await expect(page.locator('.task-column .empty').filter({ hasText: 'Tidak ada tugas.' })).toHaveCount(4);
-	for (const label of ['Belum Dikerjakan', 'Sedang Dikerjakan', 'Selesai', 'Dibatalkan']) expect(await headingCounts(page, label)).toEqual({ loaded: 0, total: 0 });
+	await expect(page.locator('.task-column .empty').filter({ hasText: 'Tidak ada tugas yang cocok.' })).toHaveCount(4);
+	for (const label of ['Belum dikerjakan', 'Sedang dikerjakan', 'Selesai', 'Dibatalkan']) expect(await headingCounts(page, label)).toEqual({ loaded: 0, total: 0 });
 
 	await page.goto('/tasks?status=done');
 	await expect(page.locator('.task-column .empty').filter({ hasText: 'Disembunyikan oleh filter status.' })).toHaveCount(3);
@@ -925,7 +925,7 @@ test('card details restore focus and retain management forms', async ({ browser 
 	await detail.getByRole('button', { name: 'Batalkan dengan alasan' }).click();
 	const cancelDialog = coordinatorPage.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(cancelTitle)}`) });
 	await cancelDialog.getByLabel('Alasan pembatalan').fill('Alasan batal dari detail.');
-	await cancelDialog.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
+	await cancelDialog.getByRole('button', { name: 'Batalkan tugas' }).click();
 	await expect(toastMessage(coordinatorPage, '', 'success')).toContainText(/dipindahkan/i);
 	await expect(column(coordinatorPage, 'Dibatalkan').locator('.task-card').filter({ hasText: cancelTitle })).toBeVisible();
 	await openButton(coordinatorPage, cancelTitle).click();
@@ -940,7 +940,7 @@ test('card details restore focus and retain management forms', async ({ browser 
 	await coordinatorPage.getByRole('dialog', { name: new RegExp(escape(deleteTitle)) }).getByRole('button', { name: 'Hapus tugas dengan alasan' }).click();
 	const removal = coordinatorPage.getByRole('dialog', { name: 'Hapus tugas?', exact: true });
 	await removal.getByLabel('Alasan penghapusan').fill('Alasan hapus dari detail.');
-	await removal.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();
+	await removal.getByRole('button', { name: 'Hapus tugas', exact: true }).click();
 	await expect(removal).toHaveCount(0);
 	await expect(toastMessage(coordinatorPage, '', 'success')).toContainText(/berhasil/i);
 	await expect(coordinatorPage.locator('.task-card').filter({ hasText: deleteTitle })).toHaveCount(0);
@@ -997,7 +997,7 @@ test('board geometry, long content, mobile overflow, and evidence screenshots', 
 	await page.screenshot({ path: path.join(evidence, 'tugas-board-desktop.png'), fullPage: true, animations: 'disabled' });
 	const transfer = await page.evaluateHandle(() => new DataTransfer());
 	await longCard.dispatchEvent('dragstart', { dataTransfer: transfer });
-	const todoColumn = column(page, 'Belum Dikerjakan');
+	const todoColumn = column(page, 'Belum dikerjakan');
 	const overlay = todoColumn.locator('.column-drop-overlay');
 	const overlayBeforeScroll = await overlay.boundingBox();
 	await todoColumn.locator('.column-scroll').evaluate(element => { element.scrollTop = 200; });
@@ -1009,7 +1009,7 @@ test('board geometry, long content, mobile overflow, and evidence screenshots', 
 	await openMove(page, longTitle);
 	await expect(page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(token)}`) })).toBeVisible();
 	await page.screenshot({ path: path.join(evidence, 'tugas-board-move-dialog.png'), animations: 'disabled' });
-	await page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(token)}`) }).getByRole('button', { name: 'Batal' }).click();
+	await page.getByRole('dialog', { name: new RegExp(`Pindahkan ${escape(token)}`) }).getByRole('button', { name: 'Batal', exact: true }).click();
 	await expect(page.getByRole('dialog')).toContainText(token);
 	await page.screenshot({ path: path.join(evidence, 'tugas-board-detail.png'), animations: 'disabled' });
 	await page.getByRole('dialog').getByRole('button', { name: 'Tutup', exact: true }).click();
@@ -1040,7 +1040,7 @@ test('board geometry, long content, mobile overflow, and evidence screenshots', 
 	expect(mobile.boardScroll).toBeGreaterThan(mobile.boardClient);
 	expect(mobile.secondX).toBeGreaterThan(mobile.firstX);
 	expect(Math.abs(mobile.secondY - mobile.firstY)).toBeLessThan(2);
-	await expect(page.getByRole('heading', { name: 'Tugas Perawatan' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Tugas perawatan' })).toBeVisible();
 	await page.screenshot({ path: path.join(evidence, 'tugas-board-mobile.png'), fullPage: true, animations: 'disabled' });
 
 	const board = page.locator('.task-board');

@@ -3,12 +3,12 @@ import { ApiError } from '$lib/shared/errors';
 import { requireApiDocsSession } from './session';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ fetch, setHeaders }) => {
+export const load: PageServerLoad = async ({ fetch, setHeaders, cookies }) => {
     setHeaders({ 'cache-control': 'private, no-store' });
     try {
         await requireApiDocsSession(fetch);
     } catch (failure) {
-        if ((failure instanceof ApiError && failure.status === 401) || (isHttpError(failure) && failure.status === 401)) redirect(303, '/login');
+        if ((failure instanceof ApiError && failure.status === 401) || (isHttpError(failure) && failure.status === 401)) redirect(303, cookies.get('session') ? '/login?status=sesi-berakhir' : '/login');
         throw failure;
     }
     return {};

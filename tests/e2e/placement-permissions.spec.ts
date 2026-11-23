@@ -33,7 +33,7 @@ test('nurse places a patient; coordinator moves, reviews history and cancels wit
         }
         await signIn(nurse, 'dina', origin);
         await nurse.goto('/calendar?from=2030-01-01');
-        await expect(nurse.getByRole('heading', { name: 'Kalender Ruangan', exact: true })).toBeVisible();
+        await expect(nurse.getByRole('heading', { name: 'Kalender penempatan', exact: true })).toBeVisible();
         await expect(nurse.getByRole('heading', { name: 'Kelola penempatan', exact: true })).toHaveCount(0);
         await expect(nurse.getByText('Hubungi koordinator', { exact: false })).toBeVisible();
         await nurse.getByRole('button', { name: 'Tempatkan pasien' }).click();
@@ -41,7 +41,14 @@ test('nurse places a patient; coordinator moves, reviews history and cancels wit
         await selectOption(initial.getByRole('combobox', { name: /^Pasien/ }), patient.id);
         await selectOption(initial.getByRole('combobox', { name: /^Ruangan/ }), rooms[0].id);
         await expect(initial.getByLabel('Tanggal masuk')).toHaveAttribute('data-value', '2030-01-01');
-        await selectDate(initial.getByLabel('Tanggal keluar'), '2030-01-05');
+        await selectDate(initial.getByLabel('Tanggal selesai'), '2030-01-05');
+        await nurse.route('**/api/v1/placements', route => route.fulfill({
+            status: 409,
+            json: { error: { code: 'CONFLICT', message: 'Ruang penuh pada sebagian rentang tanggal. Pilih ruang lain atau sesuaikan tanggal.' } }
+        }), { times: 1 });
+        await initial.getByRole('button', { name: 'Simpan penempatan' }).click();
+        await expect(toastMessage(nurse, 'Ruang penuh pada sebagian rentang tanggal.')).toContainText('Pilih ruang lain atau sesuaikan tanggal.');
+        await expect(initial.getByLabel('Tanggal selesai')).toHaveAttribute('data-value', '2030-01-05');
         await initial.getByRole('button', { name: 'Simpan penempatan' }).click();
         await expect(toastMessage(nurse, 'Penempatan berhasil', 'success')).toBeVisible();
         await expect(nurse.getByRole('button', { name: 'Ubah penempatan', exact: true })).toHaveCount(0);
@@ -61,11 +68,11 @@ test('nurse places a patient; coordinator moves, reviews history and cancels wit
         await editor.getByLabel('Alasan perubahan').fill('Transfer to available room');
         // A conflict keeps the entered room and reason so the coordinator can recover.
         await coordinator.route(`**/api/v1/placements/${placement.id}`, async route => {
-            if (route.request().method() === 'PATCH') await route.fulfill({ status: 409, json: { error: { code: 'CONFLICT', message: 'Data penempatan telah berubah.' } } });
+            if (route.request().method() === 'PATCH') await route.fulfill({ status: 409, json: { error: { code: 'CONFLICT', message: 'Data sudah berubah. Muat ulang untuk melihat data terbaru, lalu periksa perubahan Anda sebelum menyimpan kembali.' } } });
             else await route.continue();
         });
         await editor.getByRole('button', { name: 'Simpan penempatan' }).click();
-        await expect(toastMessage(coordinator, 'Data penempatan telah berubah.')).toBeVisible();
+        await expect(toastMessage(coordinator, 'Data sudah berubah. Muat ulang untuk melihat data terbaru, lalu periksa perubahan Anda sebelum menyimpan kembali.')).toBeVisible();
         await expect(editor.getByLabel('Alasan perubahan')).toHaveValue('Transfer to available room');
         await expect(editor.getByRole('combobox', { name: /^Ruangan/ })).toHaveAttribute('data-value', rooms[1].id);
         await coordinator.unroute(`**/api/v1/placements/${placement.id}`);
@@ -87,7 +94,7 @@ test('nurse places a patient; coordinator moves, reviews history and cancels wit
         await row.getByRole('button', { name: 'Batalkan', exact: true }).click();
         const cancellation = coordinator.getByRole('alertdialog', { name: 'Batalkan penempatan?', exact: true });
         await cancellation.getByLabel('Alasan pembatalan').fill('Admission cancelled');
-        await cancellation.getByRole('button', { name: 'Konfirmasi pembatalan' }).click();
+        await cancellation.getByRole('button', { name: 'Batalkan penempatan' }).click();
         await expect(history).toContainText('Admission cancelled');
         await expect(history).toContainText('Dibatalkan');
         await expect(row).toContainText('Dibatalkan');

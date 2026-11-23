@@ -43,7 +43,7 @@ test('medical record archive requires confirmation and keeps its reason after a 
 		}
 		archiveRequests += 1;
 		archivePayload = route.request().postDataJSON() as Record<string, unknown>;
-		await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: { code: 'CONFLICT', message: 'Versi rekam medis berubah.' } }) });
+		await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: { code: 'CONFLICT', message: 'Data sudah berubah. Muat ulang untuk melihat data terbaru, lalu periksa perubahan Anda sebelum menyimpan kembali.' } }) });
 	});
 
 	await page.goto('/medical-records/MR-001');
@@ -59,7 +59,7 @@ test('medical record archive requires confirmation and keeps its reason after a 
 	const reason = dialog.getByLabel('Alasan pengarsipan');
 	await reason.fill('   ');
 	await dialog.getByRole('button', { name: 'Konfirmasi arsip' }).click();
-	await expect(toastMessage(page, 'Alasan pengarsipan wajib diisi.')).toContainText('Alasan pengarsipan wajib diisi.');
+	await expect(toastMessage(page, 'Isi Alasan pengarsipan rekam medis.')).toContainText('Isi Alasan pengarsipan rekam medis.');
 	expect(archiveRequests).toBe(0);
 
 	await reason.fill('Periksa konflik versi rekam medis');
@@ -68,7 +68,7 @@ test('medical record archive requires confirmation and keeps its reason after a 
 	await archived;
 	await expect(dialog).toBeVisible();
 	await expect(reason).toHaveValue('Periksa konflik versi rekam medis');
-	await expect(toastMessage(page, 'Versi rekam medis berubah.')).toContainText('Versi rekam medis berubah.');
+	await expect(toastMessage(page, 'Data sudah berubah. Muat ulang untuk melihat data terbaru, lalu periksa perubahan Anda sebelum menyimpan kembali.')).toContainText('Data sudah berubah. Muat ulang untuk melihat data terbaru, lalu periksa perubahan Anda sebelum menyimpan kembali.');
 	expect(archiveRequests).toBe(1);
 	expect(archivePayload).toMatchObject({ reason: 'Periksa konflik versi rekam medis' });
 	expect(typeof archivePayload?.expectedVersion).toBe('number');
@@ -82,7 +82,7 @@ test('dashboard cycle filters are restored from and submitted to the server', as
 	await expect(page).toHaveURL(/\/dashboard$/);
 
 	await page.goto('/dashboard?search=filter-e2e&status=pending_approval');
-	await expect(page.getByRole('heading', { name: 'Ringkasan Siklus Rawat Inap' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Rekap rawat inap' })).toBeVisible();
 	await expect(page.getByLabel('Cari nama atau nomor rekam medis')).toHaveValue('filter-e2e');
 	await page.getByRole('button', { name: /^Filter rekap/ }).click();
 	await expect(page.getByRole('dialog').getByRole('combobox', { name: /^Status/ })).toHaveAttribute('data-value', 'pending_approval');
@@ -134,7 +134,7 @@ test('Admisi can correct a bill line and verify a claim with changes retained af
 	await expect(editor.getByLabel('Deskripsi')).toHaveValue(updatedDescription);
 	await editor.getByLabel('Jumlah', { exact: true }).fill('2');
 	await editor.getByLabel('Harga satuan', { exact: true }).fill('1.250,25');
-	await editor.getByLabel('Jumlah jaminan BPJS (Rp)').fill('300,25');
+	await editor.getByLabel('Nilai jaminan BPJS (Rp)').fill('300,25');
 	await expect(editor.getByLabel('Harga satuan', { exact: true })).toHaveValue('1.250,25');
 	await editor.getByLabel('Alasan perubahan').fill('Koreksi rincian dan jaminan bersama.');
 	const edited = page.waitForResponse(response => response.request().method() === 'PATCH' && new URL(response.url()).pathname === `/api/v1/invoices/${invoiceId}`);
@@ -181,10 +181,10 @@ test('a coordinator can edit and remove a room item and archive the empty room',
 	await page.getByRole('button', { name: 'Tambah ruangan' }).click();
 	const roomDialog = page.getByRole('dialog', { name: 'Tambah ruangan' });
 	await expect(roomDialog).toBeVisible();
-	await roomDialog.getByLabel('Nama ruangan').fill(roomName);
+	await roomDialog.getByLabel('Nama ruang').fill(roomName);
 	await roomDialog.getByLabel('Tipe').fill('E2E');
 	await roomDialog.getByLabel('Kapasitas').fill('1');
-	await roomDialog.getByLabel('Tarif harian (Rp)').fill('0');
+	await roomDialog.getByLabel('Tarif per hari (Rp)').fill('0');
 	await roomDialog.getByRole('button', { name: 'Simpan ruangan' }).click();
 	await expect(roomDialog).toHaveCount(0);
 	await expect(toastMessage(page, 'Perubahan berhasil disimpan.', 'success')).toBeVisible();
@@ -195,7 +195,7 @@ test('a coordinator can edit and remove a room item and archive the empty room',
 	await roomRow.getByRole('button', { name: 'Item', exact: true }).click();
 	const addItemDialog = page.getByRole('dialog', { name: 'Tambah perlengkapan' });
 	await expect(addItemDialog).toBeVisible();
-	await addItemDialog.getByLabel('Nama perlengkapan').fill(itemName);
+	await addItemDialog.getByLabel('Nama fasilitas').fill(itemName);
 	await addItemDialog.getByLabel('Kategori').fill('Perlengkapan');
 	await addItemDialog.getByLabel('Jumlah').fill('1');
 	await addItemDialog.getByLabel('Harga satuan').fill('100');
@@ -243,8 +243,8 @@ test('Admisi can follow the restricted medical record projection without clinica
 	await page.getByLabel('Kata sandi', { exact: true }).fill(password);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/invoices$/);
-	await page.getByRole('link', { name: 'Rekam Medis' }).click();
-	await expect(page.getByRole('heading', { name: 'Daftar Rekam Medis' })).toBeVisible();
+	await page.getByRole('link', { name: 'Rekam medis' }).click();
+	await expect(page.getByRole('heading', { name: 'Daftar rekam medis' })).toBeVisible();
 	await expect(page.getByText('Proyeksi administrasi baca saja')).toBeVisible();
 	const firstRecord = page.locator('.data-table tbody tr').first();
 	if (await firstRecord.getByText('Tidak ada rekam medis dalam cakupan Anda.').count()) test.skip();

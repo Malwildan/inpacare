@@ -40,7 +40,7 @@ export class AuthUseCases {
     maxAge: number;
   }> {
     const username = input.username.trim().toLowerCase();
-    if (!username) throw DomainError.validation("ID petugas wajib diisi.");
+    if (!username) throw DomainError.validation("Masukkan ID petugas.");
     this.attempts.consume(input.source, username);
     const user = await this.store.findLoginUser(username);
     const valid = await this.passwordHasher
@@ -49,7 +49,7 @@ export class AuthUseCases {
     if (!valid || !user)
       throw new DomainError(
         "INVALID_CREDENTIALS",
-        "ID petugas atau kata sandi tidak sesuai.",
+        "ID petugas atau kata sandi tidak sesuai. Periksa keduanya, lalu coba masuk kembali.",
       );
     this.attempts.success(input.source, username);
     const { token, csrfToken } = this.tokens.create();

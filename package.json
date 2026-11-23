@@ -23,7 +23,7 @@
     "test:api:http-contract": "node --test apps/api/test/contract/http-contract.cjs",
     "check:traceability": "node scripts/check-nestjs-traceability.mjs",
     "check:web:architecture": "node scripts/check-web-architecture.mjs",
-    "test:web": "npm run test --workspace apps/web && node --test tests/web/*.test.mjs",
+    "test:web": "node scripts/generate-public-errors.mjs --check && npm run test --workspace apps/web && node --test tests/web/*.test.mjs",
     "test:web:ux": "node tests/ui/ux-interactions.mjs"
   },
   "devDependencies": {

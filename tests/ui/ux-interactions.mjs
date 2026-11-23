@@ -46,10 +46,7 @@ try {
     await trigger.click();
     assert.equal(await page.evaluate(() => window.callCount()), 1);
     await page.evaluate(() => window.releaseNotification());
-    await expect(toastMessage(page, 'Gagal sintetis')).toHaveText('Gagal sintetis');
-    await expect(toastMessage(page, 'Gagal sintetis')).toHaveAttribute('aria-live', 'polite');
-    await expect(page.locator('[data-sonner-toaster]')).toHaveAttribute('data-y-position', 'top');
-    await expect(page.locator('[data-sonner-toaster]')).toHaveCSS('transition-duration', '0s');
+    await expect(page.getByRole('alert')).toHaveText('Notifikasi gagal dimuat. Periksa koneksi Anda, lalu muat ulang.');
     await page.keyboard.press('Escape');
     await expect(trigger).toBeFocused();
     await trigger.click();
@@ -96,12 +93,12 @@ try {
         await page.screenshot({ path: path.join(projectRoot, '.local/evidence', `shadcn-shell-${width}.png`), fullPage: true, animations: 'disabled' });
     }
     const navigation = page.getByRole('navigation', { name: 'Navigasi utama', exact: true });
-    await expect(navigation.getByRole('link', { name: 'Tugas Perawatan', exact: true })).toBeVisible();
+    await expect(navigation.getByRole('link', { name: 'Tugas perawatan', exact: true })).toBeVisible();
     await expect(navigation.getByRole('link', { name: 'Tagihan', exact: true })).toHaveCount(0);
     await page.evaluate(() => window.setRole('ADMISI'));
     await expect(navigation.getByRole('link', { name: 'Tagihan', exact: true })).toBeVisible();
-    await expect(navigation.getByRole('link', { name: 'Tugas Perawatan', exact: true })).toHaveCount(0);
-    await expect(navigation.getByRole('link', { name: 'Ringkasan Siklus', exact: true })).toHaveCount(0);
+    await expect(navigation.getByRole('link', { name: 'Tugas perawatan', exact: true })).toHaveCount(0);
+    await expect(navigation.getByRole('link', { name: 'Rekap rawat inap', exact: true })).toHaveCount(0);
     assert.deepEqual(pageErrors, []);
 
     await page.setViewportSize({ width: 390, height: 1000 });
@@ -120,11 +117,11 @@ try {
     await selectOption(placementForm.getByRole('combobox', { name: 'Pasien', exact: true }), 'patient');
     await selectOption(placementForm.getByRole('combobox', { name: 'Ruangan', exact: true }), 'room');
     await selectDate(placementForm.getByLabel('Tanggal masuk'), '2026-11-03');
-    await selectDate(placementForm.getByLabel('Tanggal keluar'), '2026-11-04');
+    await selectDate(placementForm.getByLabel('Tanggal selesai'), '2026-11-04');
     await placementForm.getByRole('button', { name: 'Simpan penempatan', exact: true }).click();
-    await expect(toastMessage(page, 'Kapasitas telah berubah.')).toContainText('Kapasitas telah berubah.');
+    await expect(toastMessage(page, 'Hasil penyimpanan penempatan belum diketahui.')).toContainText('Hasil penyimpanan penempatan belum diketahui.');
     await expect(placementForm.getByLabel('Tanggal masuk')).toHaveAttribute('data-value', '2026-11-03');
-    await expect(placementForm.getByLabel('Tanggal keluar')).toHaveAttribute('data-value', '2026-11-04');
+    await expect(placementForm.getByLabel('Tanggal selesai')).toHaveAttribute('data-value', '2026-11-04');
     assert.deepEqual(await page.evaluate(() => window.calendarCreate), { patientId: 'patient', roomId: 'room', startsOn: '2026-11-03', endsOn: '2026-11-04' });
     await placementForm.getByRole('button', { name: 'Batal', exact: true }).click();
     await page.getByRole('button', { name: 'Abaikan perubahan', exact: true }).click();
@@ -161,13 +158,14 @@ try {
         await scheduleScroller.evaluate(element => { element.scrollLeft = 0; });
         await page.screenshot({ path: path.join(projectRoot, '.local/evidence', 'shadcn-calendar-' + width + '.png'), fullPage: true, animations: 'disabled' });
     }
-    await page.getByRole('row').filter({ hasText: 'RM-TEST' }).getByRole('button', { name: 'Ubah tanggal', exact: true }).click();
-    const reschedule = page.getByRole('dialog', { name: 'Ubah tanggal penempatan', exact: true });
-    await selectDate(reschedule.getByLabel('Tanggal keluar'), '2026-11-05');
-    await reschedule.getByRole('button', { name: 'Simpan jadwal', exact: true }).click();
-    await expect(toastMessage(page, 'Jadwal telah berubah.')).toBeVisible();
-    assert.deepEqual(await page.evaluate(() => window.calendarUpdate), { id: 'placement', patientId: 'patient', roomId: 'room', startsOn: '2026-11-02', endsOn: '2026-11-05', expectedVersion: 7 });
-    await expect(reschedule.getByLabel('Tanggal keluar')).toHaveAttribute('data-value', '2026-11-05');
+    await page.getByRole('row').filter({ hasText: 'RM-TEST' }).getByRole('button', { name: 'Ubah penempatan', exact: true }).click();
+    const reschedule = page.getByRole('dialog', { name: 'Ubah penempatan', exact: true });
+    await selectDate(reschedule.getByLabel('Tanggal selesai'), '2026-11-05');
+    await reschedule.getByLabel('Alasan perubahan').fill('Sesuaikan jadwal pasien');
+    await reschedule.getByRole('button', { name: 'Simpan penempatan', exact: true }).click();
+    await expect(toastMessage(page, 'Hasil penyimpanan perubahan penempatan belum diketahui.')).toBeVisible();
+    assert.deepEqual(await page.evaluate(() => window.calendarUpdate), { id: 'placement', patientId: 'patient', roomId: 'room', startsOn: '2026-11-02', endsOn: '2026-11-05', expectedVersion: 7, reason: 'Sesuaikan jadwal pasien' });
+    await expect(reschedule.getByLabel('Tanggal selesai')).toHaveAttribute('data-value', '2026-11-05');
     await reschedule.getByRole('button', { name: 'Batal', exact: true }).click();
     await page.getByRole('button', { name: 'Abaikan perubahan', exact: true }).click();
     const placementActionWidths = await page.getByRole('row').filter({ hasText: 'RM-TEST' }).locator('.action-buttons button').evaluateAll(buttons => buttons.map(button => button.getBoundingClientRect().width));
@@ -180,28 +178,29 @@ try {
     assert.equal(await page.evaluate(() => window.calendarCancellations.length), 0);
     await expect(cancelTrigger).toBeFocused();
     await cancelTrigger.click();
-    await cancellation.getByRole('button', { name: 'Konfirmasi pembatalan', exact: true }).click();
+    await cancellation.getByLabel('Alasan pembatalan').fill('Pasien meminta perubahan');
+    await cancellation.getByRole('button', { name: 'Batalkan penempatan', exact: true }).click();
     await page.keyboard.press('Escape');
     await expect(cancellation).toBeVisible();
     await page.evaluate(() => window.rejectCancellation());
-    await expect(toastMessage(page, 'Versi penempatan telah berubah.')).toContainText('Versi penempatan telah berubah.');
-    const closeBounds = await toastMessage(page, 'Versi penempatan telah berubah.').getByRole('button', { name: 'Tutup notifikasi', exact: true }).boundingBox();
+    await expect(toastMessage(page, 'Hasil penyimpanan perubahan penempatan belum diketahui.')).toContainText('Hasil penyimpanan perubahan penempatan belum diketahui.');
+    const closeBounds = await toastMessage(page, 'Hasil penyimpanan perubahan penempatan belum diketahui.').getByRole('button', { name: 'Tutup notifikasi', exact: true }).boundingBox();
     assert.ok(closeBounds && closeBounds.width >= 44 && closeBounds.height >= 44, 'Toast dismiss target must be at least 44px');
     for (const width of [390, 1440]) {
         await page.setViewportSize({ width, height: 1000 });
-        const bounds = await toastMessage(page, 'Versi penempatan telah berubah.').boundingBox();
+        const bounds = await toastMessage(page, 'Hasil penyimpanan perubahan penempatan belum diketahui.').boundingBox();
         assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= width, `Toast must fit at ${width}px`);
         await page.screenshot({ path: path.join(projectRoot, '.local/evidence', `toast-dialog-error-${width}.png`), animations: 'disabled' });
     }
-    const cancellationToast = toastMessage(page, 'Versi penempatan telah berubah.');
+    const cancellationToast = toastMessage(page, 'Hasil penyimpanan perubahan penempatan belum diketahui.');
     await cancellationToast.getByRole('button', { name: 'Tutup notifikasi', exact: true }).click();
     await expect(cancellationToast).toHaveCount(0);
     await expect(cancellation).toBeVisible();
-    assert.deepEqual(await page.evaluate(() => window.calendarCancellations), [{ id: 'placement', expectedVersion: 7 }]);
-    await cancellation.getByRole('button', { name: 'Konfirmasi pembatalan', exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => window.calendarCancellations), [{ id: 'placement', expectedVersion: 7, reason: 'Pasien meminta perubahan' }]);
+    await cancellation.getByRole('button', { name: 'Batalkan penempatan', exact: true }).click();
     await expect(cancellation).toHaveCount(0);
     await expect(page.getByRole('row').filter({ hasText: 'RM-TEST' })).toHaveCount(0);
-    assert.deepEqual(await page.evaluate(() => window.calendarCancellations), [{ id: 'placement', expectedVersion: 7 }, { id: 'placement', expectedVersion: 7 }]);
+    assert.deepEqual(await page.evaluate(() => window.calendarCancellations), [{ id: 'placement', expectedVersion: 7, reason: 'Pasien meminta perubahan' }, { id: 'placement', expectedVersion: 7, reason: 'Pasien meminta perubahan' }]);
     assert.deepEqual(pageErrors, []);
 
     await page.goto(server.resolvedUrls.local[0] + '?surface=dashboard', { waitUntil: 'domcontentloaded' });
@@ -242,7 +241,7 @@ try {
     const dashboardNotifications = page.getByRole('button', { name: 'Lihat notifikasi', exact: true });
     await dashboardNotifications.click();
     const allNotices = page.getByRole('dialog', { name: 'Semua notifikasi', exact: true });
-    await expect(toastMessage(page, 'Notifikasi gagal dimuat.')).toBeVisible();
+    await expect(allNotices.getByRole('alert')).toContainText('Notifikasi gagal dimuat.');
     await allNotices.getByRole('button', { name: 'Coba lagi', exact: true }).click();
     await expect(allNotices).toContainText('Notifikasi Uji');
     await page.screenshot({ path: path.join(projectRoot, '.local/evidence/dialog-dashboard-notifications.png'), animations: 'disabled' });
@@ -258,7 +257,7 @@ try {
     await selectOption(createCycle.getByRole('combobox', { name: 'Pasien terdaftar', exact: true }), 'new-patient');
     await selectOption(createCycle.getByRole('combobox', { name: 'Dokter penanggung jawab', exact: true }), 'doctor');
     await createCycle.getByRole('button', { name: 'Simpan sebagai Menunggu', exact: true }).click();
-    await expect(toastMessage(page, 'Rekap gagal tersimpan.')).toContainText('Rekap gagal tersimpan.');
+    await expect(toastMessage(page, 'Rekap belum dapat dipastikan tersimpan.')).toContainText('Rekap belum dapat dipastikan tersimpan.');
     await expect(createCycle.getByRole('combobox', { name: 'Pasien terdaftar', exact: true })).toHaveAttribute('data-value', 'new-patient');
     const pendingCreate = await page.evaluate(() => window.cycleCreate);
     assert.match(pendingCreate.requestId, /^[a-f0-9-]{36}$/);
@@ -271,15 +270,15 @@ try {
     await expect(addCycle).toBeFocused();
 
     await legacyCycleRow.getByRole('button', { name: 'Lihat detail', exact: true }).click();
-    const detailCycle = page.getByRole('dialog', { name: 'Detail siklus rawat inap', exact: true });
+    const detailCycle = page.getByRole('dialog', { name: 'Detail rekap rawat inap', exact: true });
     await expect(detailCycle.locator('form')).toHaveCount(0);
     await detailCycle.getByRole('button', { name: 'Ubah penempatan', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(1);
+    await selectOption(page.getByRole('dialog').getByRole('combobox', { name: /^Penempatan/ }), 'cycle-placement');
     await page.getByRole('dialog').getByRole('button', { name: 'Simpan penempatan', exact: true }).click();
     await expect(detailCycle).toBeVisible();
-    assert.deepEqual(await page.evaluate(() => window.cycleActions.at(-1)), { action: 'change', id: '00000000-0000-4000-8000-000000000001', expectedVersion: 11, placementId: null });
-    await detailCycle.getByRole('button', { name: 'Perbarui status', exact: true }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Simpan status', exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => window.cycleActions.at(-1)), { action: 'change', id: '00000000-0000-4000-8000-000000000001', expectedVersion: 11, placementId: 'cycle-placement' });
+    await detailCycle.getByRole('button', { name: 'Konfirmasi sudah ditempatkan', exact: true }).click();
     await expect(detailCycle).toContainText('Sudah ditempatkan');
     await page.evaluate(() => window.setCycleState('in_care'));
     await detailCycle.getByRole('button', { name: 'Ajukan perpanjangan / pelepasan', exact: true }).click();
@@ -309,8 +308,8 @@ try {
     const cycleReason = removeCycle.getByLabel('Alasan penghapusan');
     await cycleReason.fill('   ');
     await removeCycle.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();
-    await expect(toastMessage(page, 'Alasan penghapusan wajib diisi.')).toContainText('Alasan penghapusan wajib diisi.');
-    await toastMessage(page, 'Alasan penghapusan wajib diisi.').getByRole('button', { name: 'Tutup notifikasi', exact: true }).click();
+    await expect(toastMessage(page, 'Isi Alasan penghapusan rekap rawat inap.')).toContainText('Isi Alasan penghapusan rekap rawat inap.');
+    await toastMessage(page, 'Isi Alasan penghapusan rekap rawat inap.').getByRole('button', { name: 'Tutup notifikasi', exact: true }).click();
     await expect(removeCycle).toBeVisible();
     assert.equal(await page.evaluate(() => window.cycleRemovals.length), 0);
     await cycleReason.fill('Koreksi data ganda');
@@ -318,7 +317,7 @@ try {
     await page.keyboard.press('Escape');
     await expect(removeCycle).toBeVisible();
     await page.evaluate(() => window.rejectCycleRemoval());
-    await expect(toastMessage(page, 'Versi rekap berubah.')).toContainText('Versi rekap berubah.');
+    await expect(toastMessage(page, 'Hasil penyimpanan rekap rawat inap belum diketahui.')).toContainText('Hasil penyimpanan rekap rawat inap belum diketahui.');
     await expect(cycleReason).toHaveValue('Koreksi data ganda');
     await removeCycle.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();
     await expect(removeCycle).toHaveCount(0);
@@ -331,34 +330,34 @@ try {
     await page.goto(server.resolvedUrls.local[0] + '?surface=billing', { waitUntil: 'domcontentloaded' });
     const invoiceList = page.getByRole('region', { name: 'Daftar tagihan', exact: true });
     await invoiceList.getByLabel('Cari pasien / nomor tagihan').fill('tidak cocok');
-    await expect(invoiceList.getByText('Belum ada tagihan yang cocok.')).toBeVisible();
+    await expect(invoiceList.getByText('Tidak ada tagihan yang cocok.')).toBeVisible();
     await invoiceList.getByLabel('Cari pasien / nomor tagihan').fill('RM-TEST');
     await expect(invoiceList.getByRole('row').filter({ hasText: 'RM-TEST' })).toHaveCount(1);
     await selectOption(invoiceList.getByRole('combobox', { name: 'Status', exact: true }), 'paid');
-    await expect(invoiceList.getByText('Belum ada tagihan yang cocok.')).toBeVisible();
+    await expect(invoiceList.getByText('Tidak ada tagihan yang cocok.')).toBeVisible();
     await selectOption(invoiceList.getByRole('combobox', { name: 'Status', exact: true }), '');
     await page.getByRole('button', { name: 'Buat tagihan', exact: true }).click();
     const invoiceForm = page.getByRole('form', { name: 'Buat tagihan baru', exact: true });
     await selectOption(invoiceForm.getByRole('combobox', { name: 'Pasien', exact: true }), 'patient');
     await selectOption(invoiceForm.getByRole('combobox', { name: 'Penempatan', exact: true }), 'placement');
-    await invoiceForm.getByLabel('Layanan', { exact: true }).fill('Layanan Uji');
+    await invoiceForm.getByLabel('Nama layanan', { exact: true }).fill('Layanan Uji');
     await invoiceForm.getByLabel('Jumlah', { exact: true }).fill('2');
     await invoiceForm.getByLabel('Harga satuan (Rp)', { exact: true }).fill('1.234,56');
-    await invoiceForm.getByLabel('Jumlah jaminan BPJS (Rp)').fill('100,25');
+    await invoiceForm.getByLabel('Nilai jaminan BPJS (Rp)').fill('100,25');
     for (const width of [390, 768, 1440]) {
         await page.setViewportSize({ width, height: 1000 });
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Invoice creation overflow at ' + width + 'px');
         await page.screenshot({ path: path.join(projectRoot, '.local/evidence', 'shadcn-billing-create-' + width + '.png'), fullPage: true, animations: 'disabled' });
     }
     await invoiceForm.getByRole('button', { name: 'Simpan tagihan', exact: true }).click();
-    await expect(toastMessage(page, 'Tagihan gagal tersimpan.')).toContainText('Tagihan gagal tersimpan.');
+    await expect(toastMessage(page, 'Hasil penyimpanan tagihan belum diketahui.')).toContainText('Hasil penyimpanan tagihan belum diketahui.');
     await expect(invoiceForm.getByLabel('Harga satuan (Rp)', { exact: true })).toHaveValue('1.234,56');
-    await expect(invoiceForm.getByLabel('Layanan', { exact: true })).toHaveValue('Layanan Uji');
+    await expect(invoiceForm.getByLabel('Nama layanan', { exact: true })).toHaveValue('Layanan Uji');
     assert.deepEqual(await page.evaluate(() => window.invoiceCreate), { patientId: 'patient', placementId: 'placement', coveredAmount: '100.25', lines: [{ description: 'Layanan Uji', quantity: 2, unitPrice: '1234.56' }] });
     await invoiceForm.getByRole('button', { name: 'Batal', exact: true }).click();
     await expect(page.getByRole('dialog', { name: 'Abaikan perubahan?', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Lanjutkan mengisi', exact: true }).click();
-    await expect(invoiceForm.getByLabel('Layanan', { exact: true })).toHaveValue('Layanan Uji');
+    await expect(invoiceForm.getByLabel('Nama layanan', { exact: true })).toHaveValue('Layanan Uji');
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Abaikan perubahan', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Buat tagihan', exact: true })).toBeFocused();
@@ -369,7 +368,7 @@ try {
     await invoiceDetail.getByRole('button', { name: 'Riwayat', exact: true }).click();
     await expect(invoiceDetail.getByText('Tagihan dibuat · Admisi Uji')).toBeVisible();
     await invoiceDetail.getByRole('button', { name: 'Ringkasan', exact: true }).click();
-    await expect(invoiceDetail.getByText('Dibayar pasien:', { exact: false })).toContainText('200.000,25');
+    await expect(invoiceDetail.getByText('Bagian pasien:', { exact: false })).toContainText('200.000,25');
     for (const width of [390, 768, 1440]) {
         await page.setViewportSize({ width, height: 1000 });
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Invoice detail overflow at ' + width + 'px');
@@ -390,14 +389,14 @@ try {
     await expect(removeLine.getByLabel('Alasan penghapusan')).toHaveValue('Koreksi duplikasi');
     await removeLine.getByLabel('Alasan penghapusan').fill('   ');
     await removeLine.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();
-    await expect(toastMessage(page, 'Alasan penghapusan wajib diisi.')).toContainText('Alasan penghapusan wajib diisi.');
+    await expect(toastMessage(page, 'Isi Alasan penghapusan rincian layanan.')).toContainText('Isi Alasan penghapusan rincian layanan.');
     assert.deepEqual(await page.evaluate(() => window.billingWrites), []);
     await removeLine.getByLabel('Alasan penghapusan').fill('Koreksi duplikasi');
     await removeLine.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();
     await page.keyboard.press('Escape');
     await expect(removeLine).toBeVisible();
     await page.evaluate(() => window.rejectLineRemoval());
-    await expect(toastMessage(page, 'Versi rincian berubah.')).toContainText('Versi rincian berubah.');
+    await expect(toastMessage(page, 'Hasil penyimpanan tagihan belum diketahui.')).toContainText('Hasil penyimpanan tagihan belum diketahui.');
     await expect(removeLine.getByLabel('Alasan penghapusan')).toHaveValue('Koreksi duplikasi');
     await removeLine.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();
     await expect(removeLine).toHaveCount(0);
@@ -412,7 +411,7 @@ try {
     await remainingLine.getByLabel('Harga satuan', { exact: true }).fill('123,45');
     await remainingLine.getByLabel('Alasan', { exact: true }).fill('Koreksi harga');
     await remainingLine.getByRole('button', { name: 'Simpan', exact: true }).click();
-    await expect(toastMessage(page, 'Rincian gagal tersimpan.')).toContainText('Rincian gagal tersimpan.');
+    await expect(toastMessage(page, 'Hasil penyimpanan tagihan belum diketahui.')).toContainText('Hasil penyimpanan tagihan belum diketahui.');
     await expect(remainingLine.getByLabel('Harga satuan', { exact: true })).toHaveValue('123,45');
     assert.deepEqual(await page.evaluate(() => window.billingWrites.at(-1)), { action: 'editLine', id: 'invoice', lineId: 'other-line', expectedVersion: 13, reason: 'Koreksi harga', kind: 'item', roomItemId: null, description: 'Perlengkapan', quantity: 1, unitPrice: '123.45' });
     await remainingLine.getByRole('button', { name: 'Batal', exact: true }).click();
@@ -420,10 +419,10 @@ try {
     await invoiceDetail.getByRole('button', { name: 'Ubah tagihan', exact: true }).click();
     const invoiceEditor = invoiceDetail.locator('form').filter({ has: page.getByRole('button', { name: 'Simpan perubahan', exact: true }) });
     await invoiceEditor.getByLabel('Harga satuan', { exact: true }).fill('1.234,56');
-    await invoiceEditor.getByLabel('Jumlah jaminan BPJS (Rp)').fill('100,25');
+    await invoiceEditor.getByLabel('Nilai jaminan BPJS (Rp)').fill('100,25');
     await invoiceEditor.getByLabel('Alasan perubahan').fill('Koreksi biaya');
     await invoiceEditor.getByRole('button', { name: 'Simpan perubahan', exact: true }).click();
-    await expect(toastMessage(page, 'Versi tagihan berubah.')).toContainText('Versi tagihan berubah.');
+    await expect(toastMessage(page, 'Hasil penyimpanan tagihan belum diketahui.')).toContainText('Hasil penyimpanan tagihan belum diketahui.');
     await expect(invoiceEditor.getByLabel('Alasan perubahan')).toHaveValue('Koreksi biaya');
     assert.deepEqual(await page.evaluate(() => window.billingWrites.at(-1)), { action: 'payment', id: 'invoice', expectedVersion: 13, reason: 'Koreksi biaya', coveredAmount: '100.25', lines: [{ roomItemId: null, kind: 'item', description: 'Perlengkapan', quantity: 1, unitPrice: '1234.56' }] });
     await invoiceEditor.getByRole('button', { name: 'Batal', exact: true }).click();
@@ -435,7 +434,7 @@ try {
     await invoiceDetail.getByLabel('Hasil verifikasi klaim').fill('Ditolak');
     await invoiceDetail.getByLabel('Alasan verifikasi').fill('Berkas sintetis');
     await invoiceDetail.getByRole('button', { name: 'Simpan verifikasi klaim', exact: true }).click();
-    await expect(toastMessage(page, 'Klaim gagal tersimpan.')).toContainText('Klaim gagal tersimpan.');
+    await expect(toastMessage(page, 'Hasil penyimpanan tagihan belum diketahui.')).toContainText('Hasil penyimpanan tagihan belum diketahui.');
     assert.deepEqual(await page.evaluate(() => window.billingWrites.at(-1)), { action: 'claim', id: 'invoice', expectedVersion: 13, reason: 'Berkas sintetis', result: 'Ditolak', verified: false });
     await invoiceDetail.getByRole('button', { name: 'Batal', exact: true }).click();
     await page.getByRole('button', { name: 'Abaikan perubahan', exact: true }).click();
@@ -450,7 +449,7 @@ try {
     await paymentTrigger.click();
     await expect(paymentDialog.getByLabel('Alasan perubahan')).toHaveValue('Pembayaran tercatat');
     await paymentDialog.getByRole('button', { name: 'Simpan status', exact: true }).click();
-    await expect(toastMessage(page, 'Versi tagihan berubah.')).toContainText('Versi tagihan berubah.');
+    await expect(toastMessage(page, 'Hasil penyimpanan tagihan belum diketahui.')).toContainText('Hasil penyimpanan tagihan belum diketahui.');
     await expect(paymentDialog.getByLabel('Alasan perubahan')).toHaveValue('Pembayaran tercatat');
     assert.equal(await page.evaluate(() => window.billingWrites.length), writesBeforePayment + 1);
     assert.deepEqual(await page.evaluate(() => window.billingWrites.at(-1)), { action: 'payment', id: 'invoice', expectedVersion: 13, reason: 'Pembayaran tercatat', status: 'paid' });
@@ -537,12 +536,12 @@ try {
         await expect(progressColumn.locator('.column-drop-overlay')).toHaveCSS('border-top-color', 'rgb(91, 51, 153)');
         await dropPage.evaluate(() => document.documentElement.style.removeProperty('--primary'));
         await expect(doneColumn.locator('.column-drop-overlay')).toHaveAttribute('data-drop-state', 'locked');
-        await expect(doneColumn.locator('.column-drop-overlay')).toContainText('Pindahkan ke Sedang Dikerjakan terlebih dahulu.');
+        await expect(doneColumn.locator('.column-drop-overlay')).toContainText('Pindahkan ke Sedang dikerjakan terlebih dahulu.');
         await expect(cancelledColumn.locator('.column-drop-overlay')).toContainText('Hanya koordinator yang dapat membatalkan tugas.');
         await source.dispatchEvent('dragover', { dataTransfer: transfer });
         await expect(todoColumn.locator('.column-drop-overlay')).toHaveClass(/active/);
         await expect(todoColumn.locator('.column-drop-overlay')).toHaveAttribute('data-drop-state', 'cancel');
-        await expect(todoColumn.locator('.column-drop-overlay')).toContainText('Cancel');
+        await expect(todoColumn.locator('.column-drop-overlay')).toContainText('Batal pindah');
         await dropPage.screenshot({ path: path.join(projectRoot, '.local/evidence/task-column-cancel.png'), animations: 'disabled' });
         await progressColumn.dispatchEvent('dragenter', { dataTransfer: transfer });
         await expect(progressColumn.locator('.column-drop-overlay')).toHaveClass(/active/);
@@ -577,12 +576,12 @@ try {
         assert.equal(await source.getAttribute('draggable'), 'false');
         assert.equal(await dropPage.evaluate(() => window.taskWrites[0].beforeTaskId), null);
         await dropPage.evaluate(() => window.rejectTaskMove());
-        await expect(toastMessage(dropPage, 'Tugas berubah.')).toBeVisible();
+        await expect(toastMessage(dropPage, 'Hasil penyimpanan status tugas belum diketahui.')).toBeVisible();
         await expect(todoColumn.locator('.task-card').first()).toHaveAttribute('data-task-id', 'task');
         await source.dispatchEvent('dragstart', { dataTransfer: transfer });
         await progressColumn.dispatchEvent('drop', { dataTransfer: transfer });
         await expect(progressColumn.locator('.task-card').last()).toHaveAttribute('data-task-id', 'task');
-        await expect(toastMessage(dropPage, 'Tugas Uji dipindahkan ke Sedang Dikerjakan.', 'success')).toBeVisible();
+        await expect(toastMessage(dropPage, 'Tugas Uji dipindahkan ke Sedang dikerjakan.', 'success')).toBeVisible();
         assert.equal(await dropPage.evaluate(() => window.taskWrites[1].beforeTaskId), null);
         await dropPage.evaluate(() => window.setTaskCoordinator(true));
         await source.dispatchEvent('dragstart', { dataTransfer: transfer });
@@ -593,7 +592,7 @@ try {
         await expect(overlays).toHaveCount(0);
         assert.equal(await dropPage.evaluate(() => window.taskWrites.length), 2);
         await cancellation.getByLabel('Alasan pembatalan').fill('Pembatalan lewat drop sintetis');
-        await cancellation.getByRole('button', { name: 'Konfirmasi pindahkan' }).click();
+        await cancellation.getByRole('button', { name: 'Batalkan tugas' }).click();
         await expect(cancellation).toHaveCount(0);
         await expect(dropPage.locator('#task-task')).toBeFocused();
         assert.deepEqual(await dropPage.evaluate(() => window.taskWrites[2]), { action: 'move', id: 'task', expectedVersion: 18, status: 'cancelled', beforeTaskId: null, reason: 'Pembatalan lewat drop sintetis' });
@@ -666,15 +665,15 @@ try {
     assert.deepEqual(await page.evaluate(() => window.taskWrites), []);
     await taskDetail.getByRole('button', { name: 'Hapus tugas dengan alasan', exact: true }).click();
     await expect(removeTask.getByLabel('Alasan penghapusan')).toHaveValue('Koreksi tugas ganda');
-    await removeTask.getByRole('button', { name: 'Konfirmasi hapus', exact: true }).click();
-    await expect(toastMessage(page, 'Penghapusan gagal tersimpan.')).toContainText('Penghapusan gagal tersimpan.');
+    await removeTask.getByRole('button', { name: 'Hapus tugas', exact: true }).click();
+    await expect(toastMessage(page, 'Hasil penyimpanan tugas perawatan belum diketahui.')).toContainText('Hasil penyimpanan tugas perawatan belum diketahui.');
     await expect(removeTask.getByLabel('Alasan penghapusan')).toHaveValue('Koreksi tugas ganda');
     assert.deepEqual(await page.evaluate(() => window.taskWrites), [{ action: 'remove', id: 'task', expectedVersion: 17, reason: 'Koreksi tugas ganda' }]);
     await removeTask.getByRole('button', { name: 'Batal', exact: true }).click();
     await page.keyboard.press('Escape');
     await expect(page.locator('#task-task')).toBeFocused();
     const taskBoard = page.getByRole('region', { name: 'Papan tugas perawatan', exact: true });
-    const todo = taskBoard.getByRole('region', { name: 'Belum Dikerjakan', exact: true });
+    const todo = taskBoard.getByRole('region', { name: 'Belum dikerjakan', exact: true });
     await expect(todo.locator('.column-heading .sr-only')).toHaveText('2 dari 3 tugas dimuat');
     await todo.getByRole('button', { name: 'Muat lebih banyak', exact: true }).click();
     await expect(todo.locator('.column-heading .sr-only')).toHaveText('3 dari 3 tugas dimuat');
@@ -683,17 +682,17 @@ try {
     const taskForm = page.locator('form').filter({ has: page.getByRole('button', { name: 'Simpan tugas', exact: true }) });
     await selectOption(taskForm.getByLabel('Penempatan pasien'), 'placement');
     await selectOption(taskForm.getByLabel('Perawat penanggung jawab'), 'nurse');
-    await taskForm.getByLabel('Judul', { exact: true }).fill('Tugas Baru');
+    await taskForm.getByLabel('Judul tugas', { exact: true }).fill('Tugas Baru');
     await taskForm.getByRole('button', { name: 'Simpan tugas', exact: true }).click();
     await expect(taskForm.getByLabel('Waktu mulai')).toBeFocused();
-    await expect(toastMessage(page, 'Pilih tanggal dan waktu.')).toBeVisible();
+    await expect(toastMessage(page, 'Pilih tanggal dan jam')).toBeVisible();
     await expect(taskForm.getByRole('alert')).toHaveCount(0);
     assert.equal(await page.evaluate(() => window.taskCreate), undefined);
     await selectDate(taskForm.getByLabel('Waktu mulai'), '2026-11-02T08:30');
     await selectDate(taskForm.getByLabel('Waktu selesai'), '2026-11-02T09:30');
     await taskForm.getByRole('button', { name: 'Simpan tugas', exact: true }).click();
-    await expect(toastMessage(page, 'Tugas gagal tersimpan.')).toContainText('Tugas gagal tersimpan.');
-    await expect(taskForm.getByLabel('Judul', { exact: true })).toHaveValue('Tugas Baru');
+    await expect(toastMessage(page, 'Hasil penyimpanan tugas perawatan belum diketahui.')).toContainText('Hasil penyimpanan tugas perawatan belum diketahui.');
+    await expect(taskForm.getByLabel('Judul tugas', { exact: true })).toHaveValue('Tugas Baru');
     assert.deepEqual(await page.evaluate(() => window.taskCreate), { patientId: 'patient', placementId: 'placement', picId: 'nurse', title: 'Tugas Baru', description: '', notes: '', priority: 'normal', startsAt: '2026-11-02T01:30:00.000Z', endsAt: '2026-11-02T02:30:00.000Z' });
     await taskForm.getByRole('button', { name: 'Batal', exact: true }).click();
     await page.getByRole('button', { name: 'Abaikan perubahan', exact: true }).click();
@@ -705,12 +704,12 @@ try {
     await moveTask.getByRole('button', { name: 'Konfirmasi pindahkan', exact: true }).click();
     await expect(taskCard.getByRole('status')).toHaveText('Menyimpan...');
     await expect(page.locator('[data-sonner-toast][data-type="loading"]')).toHaveCount(1);
-    await expect(moveTask.getByRole('button', { name: 'Konfirmasi pindahkan', exact: true })).toBeDisabled();
+    await expect(moveTask.getByRole('button', { name: 'Menyimpan…', exact: true })).toBeDisabled();
     await page.keyboard.press('Escape');
     await expect(moveTask).toHaveCount(0);
     await expect(taskCard.getByRole('status')).toHaveText('Menyimpan...');
     await page.evaluate(() => window.rejectTaskMove());
-    await expect(toastMessage(page, 'Tugas berubah.')).toContainText('Tugas berubah.');
+    await expect(toastMessage(page, 'Hasil penyimpanan status tugas belum diketahui.')).toContainText('Hasil penyimpanan status tugas belum diketahui.');
     await expect(page.locator('[data-sonner-toast][data-type="loading"]')).toHaveCount(0);
     await expect(page.locator('[data-sonner-toast][data-type="success"]')).toHaveCount(0);
     await expect(todo.getByRole('article').filter({ hasText: 'Tugas Uji' })).toBeVisible();
@@ -719,10 +718,10 @@ try {
     await selectOption(moveTask.getByLabel('Status tujuan'), 'in_progress');
     await moveTask.getByRole('button', { name: 'Konfirmasi pindahkan', exact: true }).click();
     await expect(moveTask).toHaveCount(0);
-    await expect(toastMessage(page, 'Tugas Uji dipindahkan ke Sedang Dikerjakan.', 'success')).toBeVisible();
+    await expect(toastMessage(page, 'Tugas Uji dipindahkan ke Sedang dikerjakan.', 'success')).toBeVisible();
     await expect(page.locator('[data-sonner-toast][data-type="loading"]')).toHaveCount(0);
     await expect(page.locator('#task-task')).toBeFocused();
-    await expect(taskBoard.getByRole('region', { name: 'Sedang Dikerjakan', exact: true }).getByRole('article').filter({ hasText: 'Tugas Uji' })).toBeVisible();
+    await expect(taskBoard.getByRole('region', { name: 'Sedang dikerjakan', exact: true }).getByRole('article').filter({ hasText: 'Tugas Uji' })).toBeVisible();
     assert.deepEqual(await page.evaluate(() => window.taskWrites.filter(write => write.action === 'move')), [
         { action: 'move', id: 'task', expectedVersion: 17, status: 'in_progress', beforeTaskId: null },
         { action: 'move', id: 'task', expectedVersion: 17, status: 'in_progress', beforeTaskId: null }
@@ -734,7 +733,7 @@ try {
     await expect(taskDetail.getByRole('button', { name: 'Batalkan dengan alasan', exact: true })).toBeFocused();
     await taskDetail.getByRole('button', { name: 'Batalkan dengan alasan', exact: true }).click();
     await expect(moveTask.getByLabel('Alasan pembatalan')).toHaveValue('Pembatalan sintetis');
-    await moveTask.getByRole('button', { name: 'Konfirmasi pindahkan', exact: true }).click();
+    await moveTask.getByRole('button', { name: 'Batalkan tugas', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     assert.deepEqual(await page.evaluate(() => window.taskWrites.at(-1)), { action: 'move', id: 'task', expectedVersion: 18, status: 'cancelled', beforeTaskId: null, reason: 'Pembatalan sintetis' });
     await page.evaluate(() => window.setTaskCoordinator(false));
@@ -781,7 +780,7 @@ try {
     await medicalCreate.getByLabel('Diagnosis', { exact: true }).fill('Diagnosis baru');
     await medicalCreate.getByLabel('Tindakan', { exact: true }).fill('Tindakan baru');
     await medicalCreate.getByRole('button', { name: 'Simpan rekam medis', exact: true }).click();
-    await expect(toastMessage(page, 'Versi catatan berubah.')).toBeVisible();
+    await expect(toastMessage(page, 'Hasil penyimpanan rekam medis belum diketahui.')).toBeVisible();
     await expect(medicalCreate.getByLabel('Keluhan', { exact: true })).toHaveValue('Keluhan baru');
     await page.evaluate(() => window.acceptMedical());
     await medicalCreate.getByRole('button', { name: 'Simpan rekam medis', exact: true }).click();
@@ -795,7 +794,7 @@ try {
     await doctorEdit.getByLabel('Diagnosis', { exact: true }).fill('Diagnosis dikoreksi');
     await doctorEdit.getByLabel('Alasan koreksi').fill('Pemeriksaan ulang');
     await doctorEdit.getByRole('button', { name: 'Simpan perubahan', exact: true }).click();
-    await expect(toastMessage(page, 'Versi catatan berubah.')).toBeVisible();
+    await expect(toastMessage(page, 'Hasil penyimpanan rekam medis belum diketahui.')).toBeVisible();
     assert.equal(await page.evaluate(() => window.medicalWrites.at(-1).expectedVersion), 3);
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Lanjutkan mengisi', exact: true }).click();
@@ -818,7 +817,7 @@ try {
     await observationCreate.getByLabel('Gejala/kondisi').fill('Kondisi baru');
     await observationCreate.getByLabel('Suhu (°C)').fill('37.5');
     await observationCreate.getByRole('button', { name: 'Simpan observasi', exact: true }).click();
-    await expect(toastMessage(page, 'Versi catatan berubah.')).toBeVisible();
+    await expect(toastMessage(page, 'Hasil penyimpanan rekam medis belum diketahui.')).toBeVisible();
     await expect(observationCreate.getByLabel('Suhu (°C)')).toHaveValue('37.5');
     assert.equal(await page.evaluate(() => window.medicalWrites.at(-1).temperature), 37.5);
     await page.evaluate(() => window.acceptMedical());
@@ -830,7 +829,7 @@ try {
     await correction.getByLabel('Alasan koreksi').fill('Koreksi pengukuran');
     await page.evaluate(() => window.rejectMedical());
     await correction.getByRole('button', { name: 'Simpan koreksi', exact: true }).click();
-    await expect(toastMessage(page, 'Versi catatan berubah.')).toBeVisible();
+    await expect(toastMessage(page, 'Hasil penyimpanan rekam medis belum diketahui.')).toBeVisible();
     const correctionPayload = await page.evaluate(() => window.medicalWrites.at(-1));
     assert.equal(correctionPayload.expectedVersion, 7);
     assert.equal(correctionPayload.observedAt, '2026-11-02T01:30:00.000Z');
@@ -846,14 +845,14 @@ try {
     await roomAddTrigger.click();
     const roomAdd = page.getByRole('dialog', { name: 'Tambah perlengkapan', exact: true });
     await expect(page.getByRole('dialog')).toHaveCount(1);
-    await roomAdd.getByLabel('Nama perlengkapan').fill('Item Baru');
+    await roomAdd.getByLabel('Nama fasilitas').fill('Item Baru');
     await roomAdd.getByLabel('Kategori').fill('Alat');
     await roomAdd.getByLabel('Harga satuan').fill('1.234,50');
     await roomAdd.getByRole('button', { name: 'Batal', exact: true }).click();
     await page.getByRole('button', { name: 'Lanjutkan mengisi', exact: true }).click();
-    await expect(roomAdd.getByLabel('Nama perlengkapan')).toHaveValue('Item Baru');
+    await expect(roomAdd.getByLabel('Nama fasilitas')).toHaveValue('Item Baru');
     await roomAdd.getByRole('button', { name: 'Tambah perlengkapan', exact: true }).click();
-    await expect(toastMessage(page, 'Versi ruangan berubah.')).toBeVisible();
+    await expect(toastMessage(page, 'Hasil penyimpanan data ruang dan fasilitas belum diketahui.')).toBeVisible();
     await expect(roomAdd.getByLabel('Harga satuan')).toHaveValue('1.234,50');
     await page.evaluate(() => window.acceptRoomWrite());
     await roomAdd.getByRole('button', { name: 'Tambah perlengkapan', exact: true }).click();
@@ -870,7 +869,7 @@ try {
     await expect(roomItemEdit).toBeVisible();
     await expect(roomItemEdit.getByRole('button', { name: 'Menyimpan…', exact: true })).toBeDisabled();
     await page.evaluate(() => window.releaseRoomWrite());
-    await expect(toastMessage(page, 'Versi ruangan berubah.')).toBeVisible();
+    await expect(toastMessage(page, 'Hasil penyimpanan data ruang dan fasilitas belum diketahui.')).toBeVisible();
     await expect(roomItemEdit.getByLabel('Jumlah', { exact: true })).toHaveValue('2');
     assert.equal(await page.evaluate(() => window.roomWrites.at(-1).expectedVersion), 5);
     for (const width of [390, 768, 1440]) {
@@ -895,7 +894,7 @@ try {
     const roomRow = page.getByRole('row').filter({ hasText: 'Ruangan Uji' });
     await roomRow.getByRole('button', { name: 'Ubah', exact: true }).click();
     const roomEdit = page.getByRole('dialog', { name: 'Ubah ruangan', exact: true });
-    await roomEdit.getByLabel('Nama', { exact: true }).fill('Ruangan diperbarui');
+    await roomEdit.getByLabel('Nama ruang', { exact: true }).fill('Ruangan diperbarui');
     await roomEdit.getByRole('button', { name: 'Simpan', exact: true }).click();
     await expect(roomEdit).toHaveCount(0);
     await page.getByRole('row').filter({ hasText: 'Ruangan diperbarui' }).getByRole('button', { name: 'Hapus', exact: true }).click();

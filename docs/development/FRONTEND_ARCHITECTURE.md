@@ -1,47 +1,47 @@
-# Frontend architecture
+# Arsitektur aplikasi web
 
-InpaCare uses feature-first Clean Architecture inside `apps/web/src/lib`. SvelteKit routes adapt framework inputs; business-facing operations live with their feature. The Rust-era design documents are historical: the current API application is NestJS, and this frontend refactor changes neither backend rules nor wire contracts.
+InpaCare memakai Clean Architecture yang dikelompokkan menurut fitur di `apps/web/src/lib`. Rute SvelteKit menyesuaikan masukan dari kerangka kerja. Operasi berada di modul fitur masing-masing. API aktif menggunakan NestJS. Dokumen desain Rust mencatat riwayat.
 
-## Ownership and dependencies
+## Tanggung jawab dan dependensi
 
-| Location | Responsibility | Allowed dependencies |
+| Lokasi | Tanggung jawab | Dependensi yang diizinkan |
 | --- | --- | --- |
-| `features/<name>/domain` | Framework-independent models and pure rules | Own domain and pure shared code |
-| `features/<name>/application` | Operation ports, queries and orchestration | Own domain/application, public feature types, pure shared code |
-| `features/<name>/infrastructure` | HTTP paths, DTOs and serialization | Own application/domain, shared HTTP, generated OpenAPI types |
-| `features/<name>/presentation` | Svelte pages, forms, transient state, navigation and invalidation | Own public interface, shared UI/format/presentation helpers |
-| `app/composition` | Per-request/per-page adapter construction and cross-feature integration | Feature ports/use cases and concrete adapters |
-| `app/shell` | Application navigation, shell and framework error presentation | Public feature interfaces and shared code |
-| `shared` | Transport, errors, formatters, generic UI | No app or feature imports |
+| `features/<name>/domain` | Model dan aturan yang bebas dari kerangka kerja | Domain sendiri dan kode bersama murni |
+| `features/<name>/application` | Kontrak operasi, query, dan alur kasus penggunaan | Domain dan aplikasi sendiri, tipe publik fitur, kode bersama murni |
+| `features/<name>/infrastructure` | Rute HTTP, DTO, dan serialisasi | Aplikasi dan domain sendiri, transport HTTP bersama, tipe hasil OpenAPI |
+| `features/<name>/presentation` | Halaman Svelte, formulir, keadaan sementara, navigasi, dan pemuatan ulang | Antarmuka publik sendiri, komponen dan pemformat bersama |
+| `app/composition` | Pembuatan adaptor per permintaan atau halaman dan integrasi antarfitur | Kontrak fitur, kasus penggunaan, dan adaptor |
+| `app/shell` | Navigasi, kerangka halaman, dan tampilan kesalahan | Antarmuka publik fitur dan kode bersama |
+| `shared` | Transport, kesalahan, pemformat, dan komponen umum | Kode bersama |
 
-Features are auth, reference-data, notifications, tasks, rooms, placements, patients, medical-records, care-cycles and billing. Dashboard belongs to care-cycles; calendar belongs to placements; invoice routes belong to billing. `index.ts` exposes each feature's public operations and models. Presentation entry components are imported directly by route adapters; infrastructure is constructed only inside composition.
+Fitur mencakup auth, reference-data, notifications, tasks, rooms, placements, patients, medical-records, care-cycles, dan billing. Layar rekap berada di care-cycles, kalender di placements, dan tagihan di billing. `index.ts` menyediakan operasi dan model publik. Rute mengimpor tampilan dan komposisi membuat adaptor infrastruktur.
 
-The dependency checker resolves relative imports and `$lib` aliases, parses TypeScript imports/reexports/import types/literal dynamic imports and Svelte scripts, rejects forbidden layer/private imports and direct fetch calls, and detects import cycles. It checks source-level dependencies; it is not a network sandbox or a runtime authorization mechanism.
+Pemeriksa dependensi mengikuti impor relatif dan alias `$lib`. Pemeriksa membaca skrip TypeScript dan Svelte, mendeteksi impor privat, pemanggilan fetch langsung, pelanggaran lapisan, dan siklus impor. Server memeriksa akses saat aplikasi berjalan.
 
-## Data flow and state
+## Alur data dan keadaan aplikasi
 
-1. A server load reads URL/params, creates operations with SvelteKit's request-scoped `event.fetch`, and returns serializable page data. Redirects and framework errors remain at the route edge.
-2. A route component creates browser operations per component instance and passes them with page data into feature presentation. Services are never serialized or kept in process-global user state.
-3. Presentation reads form values and calls named operations. HTTP adapters own endpoint paths and request serialization. Client transport sends same-origin credentials and obtains the current CSRF cookie for every operation.
-4. Failed operations throw their API status/code/message. Presentation owns session-expiry navigation and error/loading/success feedback. Forms close only after a successful operation. Existing `invalidateAll()` refreshes remain intact.
+1. Pemuatan di server membaca URL dan parameter, membuat operasi dengan `event.fetch` per permintaan, lalu mengembalikan data yang dapat diserialkan. Rute menangani pengalihan dan kesalahan halaman.
+2. Komponen rute membuat operasi untuk instans peramban dan memberikan operasi serta data ke tampilan. Layanan tetap berada di lingkup permintaan atau komponen.
+3. Tampilan membaca kolom formulir dan memanggil operasi. Adaptor menentukan rute dan serialisasi. Transport mengirim kredensial origin sama dan membaca kuki CSRF saat mengirim.
+4. Transport mempertahankan status dan kode API. Pesan hanya diteruskan jika cocok dengan daftar teks yang dikurasi. Lapisan tampilan memberi petunjuk sesuai tindakan saat respons kosong, tidak dikenal, atau koneksi terputus. Tampilan juga mengarahkan petugas untuk masuk kembali jika sesi berakhir. Pertahankan draf saat pengiriman gagal dan bedakan hasil simpan yang sudah dikonfirmasi dari kegagalan pemuatan ulang.
 
-The `/api/v1` proxy is unchanged: private API origin stays server-only, response cookies pass through, and responses remain `no-store`. The API remains authoritative for roles, record scope, transactions, optimistic versions and totals. UI visibility is not authorization.
+Proksi `/api/v1` menjaga origin API privat di server, meneruskan kuki, dan memakai `no-store`. API memeriksa peran, cakupan data, versi, transaksi, dan total.
 
-The domain models deliberately do not import generated DTOs. Infrastructure types response shapes with `generated/api.d.ts` and checks compatible command inputs. List, detail and mutation results remain distinct. Read `version` is sent as `expectedVersion`; canonical money remains decimal strings. Existing display-only previews are retained; the API computes committed invoice/inventory totals. Calendar dates remain date-only strings; task instants retain timezone-bearing ISO values and browser-local form conversion. Facility calendar defaults use Asia/Jakarta.
+Model domain berdiri sendiri. Adaptor memakai `generated/api.d.ts` untuk respons dan memeriksa kompatibilitas masukan. Daftar, detail, dan hasil perubahan memiliki tipe masing-masing. Kirim `version` sebagai `expectedVersion`. Nominal tetap berupa teks desimal. API menghitung total tagihan dan inventaris yang disimpan. Tanggal kalender memakai format tanggal saja, sedangkan waktu tugas memakai ISO dengan zona waktu. Nilai awal kalender mengikuti Asia/Jakarta.
 
-Medical page data is a discriminated union using `admisiProjection`. Admission views explicitly pick only administrative fields and patient display identifiers; clinical text is never added to those views. Current OpenAPI already describes the restricted projection. One existing discrepancy remains: invoice line edits accept `kind: null` to clear a legacy kind, but OpenAPI describes only optional strings. A narrow `EditLineWire` documents that compatibility exception in the billing adapter; no API/schema change is introduced.
+Data halaman medis dibedakan dengan `admisiProjection`. Tampilan Admisi memakai identitas dan kolom administratif sesuai OpenAPI. Adaptor tagihan menggunakan `EditLineWire` untuk kasus lama `kind: null` saat mengosongkan jenis layanan, meskipun OpenAPI mendeskripsikan kolom teks opsional.
 
-## Adding or changing a feature
+## Menambah atau mengubah fitur
 
-General controls use the editable shadcn-svelte registry source in `shared/ui`. [UI components](UI_COMPONENTS.md) documents ownership, local variants, composition and upstream updates. Shared typography and layout styles remain in `app.css`; competing handwritten primitives and the temporary compatibility stylesheet have been removed.
+Gunakan komponen shadcn-svelte di `shared/ui`. Tema dan tipografi bersama berada di `app.css`. [Panduan komponen antarmuka](UI_COMPONENTS.md)
 
-Start with the public operation and input/output types in application and the necessary pure model/rule in domain. Implement the port in infrastructure, wire it in `app/composition`, then inject it into presentation. Add no layer directory until it has real behavior, and no generic repository or dependency-injection container.
+Mulai dari operasi publik dan jenis masukan atau keluaran di application serta aturan murni di domain. Terapkan kontrak di infrastructure, hubungkan di `app/composition`, lalu gunakan pada tampilan. Tambahkan direktori lapisan jika ada tanggung jawab yang diperlukan.
 
-For example, a tasks UI calls `tasks.update(id, { expectedVersion, notes })`; only its HTTP adapter knows that this is a PATCH request. A fake repository can exercise `createTasksUseCases(repository).loadPage(filters, page)` without Svelte, a browser, or a database. Cross-feature operations such as dashboard notifications and invoice room lookups are assembled by app composition, not by private imports between features.
+Papan tugas memanggil `tasks.update(id, { expectedVersion, notes })`. Adaptor HTTP menentukan PATCH. Uji `createTasksUseCases(repository).loadPage(filters, page)` dengan repositori sintetis. Atur hubungan antarfitur seperti notifikasi dan pencarian ruang tagihan di komposisi.
 
-After a backend contract change, regenerate `generated/api.d.ts` using the existing `npm run types:api`, then update any affected domain model and adapter. Never edit generated types manually. Keep UI labels, accessibility, route/query behavior and failure feedback covered by focused tests.
+Setelah kontrak API berubah, jalankan `npm run types:api`. Perbarui model dan adaptor terkait. Uji label, aksesibilitas, navigasi, parameter pencarian, dan pesan pemulihan.
 
-## Validation and migration baseline
+## Pemeriksaan dan riwayat migrasi
 
 ```sh
 npm run check --workspace apps/web
@@ -51,9 +51,9 @@ npm run build --workspace apps/web
 npm run test:e2e -- --workers=1
 ```
 
-For a staged feature gate, `node scripts/check-web-architecture.mjs --feature tasks` checks the selected feature plus app/shared; the default command checks the whole frontend. Vitest exercises ports/adapters/pure rules. Node fixture tests exercise the dependency checker, including relative-import bypasses and cycles. Playwright covers the production frontend against an isolated synthetic API/database, including simulated 409 responses for form preservation. Never use the shared demo database for mutation tests.
+`node scripts/check-web-architecture.mjs --feature tasks` memeriksa fitur tugas bersama app dan shared. Perintah tanpa opsi memeriksa seluruh web. Vitest memeriksa adaptor dan aturan murni. Uji Node memeriksa pemeriksa dependensi. Playwright menggunakan aplikasi dan basis data sintetis terpisah, termasuk simulasi 409 untuk menguji draf.
 
-The CI frontend gate requires typechecks, architecture checks, unit tests, production builds, generated-type drift checks when applicable, and the full browser suite against disposable PostgreSQL. Existing API gates stay intact.
+CI memeriksa tipe, arsitektur, uji unit, build, kecocokan tipe hasil generasi, dan alur peramban pada PostgreSQL sementara.
 
 Baseline source: commit `f6463539d1fbf4bf9d17061e92e78cc22a2cdccd`. OpenAPI SHA-256: `c8ce146488d3ed27b0d1ea7a3bf7905fd717cd5aa9eb5c84444a50b31fb31dca`. The local backend was independently being refactored, so local browser validation uses an isolated compiled API snapshot rather than rebuilding/changing that work. CI validates against its own checked-out backend source.
 

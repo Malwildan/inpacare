@@ -50,7 +50,7 @@ export class TagihanUseCases {
   async list(actor: Actor, search = "", status?: string, limit = 50) {
     this.role(actor);
     if (status && !["paid", "unpaid"].includes(status))
-      throw DomainError.validation("Status pembayaran tidak valid.");
+      throw DomainError.validation("Pilih status pembayaran Belum lunas atau Lunas.");
     return this.store.list({
       search: search.trim(),
       status,
@@ -79,17 +79,17 @@ export class TagihanUseCases {
       input.placementId &&
       !(await this.store.placementMatches(input.placementId, input.patientId))
     )
-      throw DomainError.validation("Penempatan pasien tidak cocok.");
+      throw DomainError.validation("Penempatan ini milik pasien lain. Pilih penempatan untuk pasien yang dipilih.");
     const lines = calculateInvoiceLines(input.lines, id),
       total = totalInvoiceLines(lines),
       covered = parseInvoiceMoney(input.coveredAmount, "Nilai jaminan");
     if (invoiceAmountGreaterThan(covered, total))
       throw DomainError.validation(
-        "Jumlah jaminan tidak boleh melebihi total tagihan.",
+        "Nilai jaminan melebihi total tagihan. Masukkan nilai jaminan yang sama dengan atau kurang dari total tagihan.",
       );
     if (!patient.bpjs && invoiceAmountIsPositive(covered))
       throw DomainError.validation(
-        "Pasien tanpa BPJS tidak dapat menggunakan nilai jaminan.",
+        "Pasien bukan peserta BPJS. Isi Nilai jaminan dengan nol.",
       );
     const payable = subtractInvoiceAmounts(total, covered);
     const invoiceId = await this.uow.run(async (tx) => {
@@ -148,23 +148,21 @@ export class TagihanUseCases {
   async changePayment(actor: Actor, invoiceId: string, input: PaymentInput) {
     this.role(actor);
     if (!input.reason.trim())
-      throw DomainError.validation("Alasan wajib diisi.");
+      throw DomainError.validation("Isi Alasan untuk perubahan tagihan atau status pembayaran.");
     if (input.status && !["paid", "unpaid"].includes(input.status))
-      throw DomainError.validation("Status pembayaran tidak valid.");
+      throw DomainError.validation("Pilih status pembayaran Belum lunas atau Lunas.");
     if (!input.status && input.coveredAmount === undefined && !input.lines)
-      throw DomainError.validation("Tidak ada perubahan yang dikirim.");
+      throw DomainError.validation("Belum ada perubahan. Ubah status pembayaran, nilai jaminan, atau rincian layanan sebelum menyimpan.");
     const editingMoney = input.coveredAmount !== undefined || input.lines !== undefined;
     return this.uow.run(async (tx) => {
       const row = await tx.billing.lockInvoice(invoiceId);
       if (!row) throw DomainError.notFound();
       if (Number(row.version) !== input.expectedVersion)
-        throw DomainError.conflict(
-          "Tagihan telah berubah. Muat ulang lalu coba lagi.",
-        );
+        throw DomainError.conflict();
       if (input.status && row.status === input.status && !editingMoney)
-        throw DomainError.validation("Tagihan sudah memiliki status tersebut.");
+        throw DomainError.validation("Tagihan sudah memakai status pembayaran ini. Pilih status lain jika perlu mengubahnya.");
       if (editingMoney && row.status === "paid")
-        throw DomainError.conflict("Tagihan lunas tidak dapat mengubah rincian keuangan.");
+        throw DomainError.conflict("Tagihan sudah lunas. Rincian keuangan terkunci.");
       const oldLines = editingMoney ? await tx.billing.invoiceLines(invoiceId) : [];
       const lines = input.lines?.map((line, index) => ({
         ...line,
@@ -177,9 +175,9 @@ export class TagihanUseCases {
         ? String(row.covered_amount)
         : parseInvoiceMoney(input.coveredAmount, "Nilai jaminan");
       if (invoiceAmountGreaterThan(covered, total))
-        throw DomainError.validation("Jumlah jaminan tidak boleh melebihi total tagihan.");
+        throw DomainError.validation("Nilai jaminan melebihi total tagihan. Masukkan nilai jaminan yang sama dengan atau kurang dari total tagihan.");
       if (!row.bpjs_snapshot && invoiceAmountIsPositive(covered))
-        throw DomainError.validation("Pasien tanpa BPJS tidak dapat menggunakan nilai jaminan.");
+        throw DomainError.validation("Pasien bukan peserta BPJS. Isi Nilai jaminan dengan nol.");
       const payable = subtractInvoiceAmounts(total, covered);
       const before = {
         status: row.status,
@@ -221,14 +219,14 @@ export class TagihanUseCases {
   ) {
     this.role(actor);
     if (!input.reason.trim())
-      throw DomainError.validation("Alasan wajib diisi.");
+      throw DomainError.validation("Isi Alasan untuk perubahan rincian layanan.");
     const line = calculateInvoiceLines([input], id)[0];
     return this.uow.run(async (tx) => {
       const invoice = await tx.billing.lockInvoice(invoiceId);
       if (!invoice) throw DomainError.notFound();
       if (invoice.status === "paid")
         throw DomainError.conflict(
-          "Tagihan lunas tidak dapat mengubah rincian keuangan.",
+          "Tagihan sudah lunas. Rincian keuangan terkunci.",
         );
       if (Number(invoice.version) !== input.expectedVersion)
         throw DomainError.conflict();
@@ -258,7 +256,7 @@ export class TagihanUseCases {
         covered = String(invoice.covered_amount);
       if (invoiceAmountGreaterThan(covered, total))
         throw DomainError.validation(
-          "Jumlah jaminan tidak boleh melebihi total tagihan.",
+          "Nilai jaminan melebihi total tagihan. Masukkan nilai jaminan yang sama dengan atau kurang dari total tagihan.",
         );
       const payable = subtractInvoiceAmounts(total, covered);
       await tx.billing.updateFinancialTotals(invoiceId, total, payable);
@@ -294,13 +292,13 @@ export class TagihanUseCases {
   ) {
     this.role(actor);
     if (!input.reason.trim())
-      throw DomainError.validation("Alasan wajib diisi.");
+      throw DomainError.validation("Isi Alasan untuk penghapusan rincian layanan.");
     return this.uow.run(async (tx) => {
       const invoice = await tx.billing.lockInvoice(invoiceId);
       if (!invoice) throw DomainError.notFound();
       if (invoice.status === "paid")
         throw DomainError.conflict(
-          "Tagihan lunas tidak dapat mengubah rincian keuangan.",
+          "Tagihan sudah lunas. Rincian keuangan terkunci.",
         );
       if (Number(invoice.version) !== input.expectedVersion)
         throw DomainError.conflict();
@@ -308,7 +306,7 @@ export class TagihanUseCases {
       if (!line) throw DomainError.notFound();
       if ((await tx.billing.countLines(invoiceId)) <= 1)
         throw DomainError.validation(
-          "Tagihan harus memiliki setidaknya satu rincian.",
+          "Rincian terakhir tidak dapat dihapus. Tagihan harus memuat minimal satu rincian layanan.",
         );
       const before = {
         line: {
@@ -325,7 +323,7 @@ export class TagihanUseCases {
         covered = String(invoice.covered_amount);
       if (invoiceAmountGreaterThan(covered, total))
         throw DomainError.validation(
-          "Jumlah jaminan tidak boleh melebihi total tagihan.",
+          "Nilai jaminan melebihi total tagihan. Masukkan nilai jaminan yang sama dengan atau kurang dari total tagihan.",
         );
       const payable = subtractInvoiceAmounts(total, covered);
       await tx.billing.updateFinancialTotals(invoiceId, total, payable);
@@ -350,15 +348,15 @@ export class TagihanUseCases {
   async verifyClaim(actor: Actor, invoiceId: string, input: VerifyClaimInput) {
     this.role(actor);
     if (!input.result.trim())
-      throw DomainError.validation("Hasil verifikasi wajib diisi.");
+      throw DomainError.validation("Isi Hasil verifikasi sebelum menyimpan klaim BPJS.");
     if (!input.reason.trim())
-      throw DomainError.validation("Alasan wajib diisi.");
+      throw DomainError.validation("Isi Alasan untuk verifikasi klaim BPJS.");
     return this.uow.run(async (tx) => {
       const invoice = await tx.billing.lockInvoice(invoiceId);
       if (!invoice) throw DomainError.notFound();
       if (!invoice.bpjs_snapshot)
         throw DomainError.validation(
-          "Tagihan ini tidak memiliki snapshot BPJS.",
+          "Tagihan ini tidak memuat data BPJS saat dibuat sehingga klaim tidak dapat diverifikasi.",
         );
       if (Number(invoice.version) !== input.expectedVersion)
         throw DomainError.conflict();
@@ -393,7 +391,7 @@ export class TagihanUseCases {
   async remove(actor: Actor, invoiceId: string, input: DeleteInvoiceInput) {
     this.role(actor);
     if (!input.reason.trim())
-      throw DomainError.validation("Alasan wajib diisi.");
+      throw DomainError.validation("Isi Alasan untuk penghapusan tagihan.");
     return this.uow.run(async (tx) => {
       const invoice = await tx.billing.lockInvoice(invoiceId);
       if (!invoice) throw DomainError.notFound();

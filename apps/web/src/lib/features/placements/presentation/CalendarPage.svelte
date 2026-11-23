@@ -1,4 +1,5 @@
 <script lang="ts">
+import { date } from '$lib/shared/format';
 import { toast } from '$lib/shared/ui/sonner/index.js';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
 import * as AlertDialog from '$lib/shared/ui/alert-dialog/index.js';
@@ -51,29 +52,33 @@ async function place(event: SubmitEvent) {
     const form = new FormData(event.currentTarget as HTMLFormElement);
     try {
         await placementService.create({ patientId: formText(form, 'patientId'), roomId: formText(form, 'roomId'), startsOn: formText(form, 'startsOn'), endsOn: formText(form, 'endsOn') });
-        await invalidateAll();
         placing = false;
-        toast.success('Penempatan berhasil disimpan.', { id: toastId });
+        await invalidateAll().then(
+            () => toast.success('Penempatan berhasil disimpan.', { id: toastId }),
+            () => toast.warning('Penempatan tersimpan. Muat ulang kalender untuk melihat jadwal terbaru.', { id: toastId })
+        );
     }
     catch (e) {
-        toast.error(sessionFailure(e), { id: toastId });
+        toast.error(sessionFailure(e, 'save', 'penempatan'), { id: toastId });
     }
     finally {
         busy = false;
     }
 }
-async function mutatePlacement(operation: () => Promise<unknown>) {
+async function mutatePlacement(operation: () => Promise<unknown>, message: string) {
     if (busy) return false;
     busy = true;
     const toastId = toast.loading('Menyimpan perubahan penempatan…');
     try {
         await operation();
-        await invalidateAll();
         editingPlacement = null;
-        toast.success('Perubahan penempatan berhasil disimpan.', { id: toastId });
+        await invalidateAll().then(
+            () => toast.success(message, { id: toastId }),
+            () => toast.warning(`${message} Muat ulang kalender untuk melihat jadwal terbaru.`, { id: toastId })
+        );
         return true;
     } catch (e) {
-        toast.error(sessionFailure(e), { id: toastId });
+        toast.error(sessionFailure(e, 'save', 'perubahan penempatan'), { id: toastId });
         return false;
     } finally {
         busy = false;
@@ -81,7 +86,7 @@ async function mutatePlacement(operation: () => Promise<unknown>) {
 }
 async function cancelPlacement(p: Placement) {
     if (busy) return;
-    if (await mutatePlacement(() => placementService.cancel(p.id, { expectedVersion: p.version, reason: cancelReason }))) {
+    if (await mutatePlacement(() => placementService.cancel(p.id, { expectedVersion: p.version, reason: cancelReason }), 'Penempatan dibatalkan.')) {
         cancelling = null;
         await showHistory(p);
     }
@@ -89,23 +94,23 @@ async function cancelPlacement(p: Placement) {
 async function reschedule(event: SubmitEvent, p: Placement) {
     event.preventDefault();
     const f = new FormData(event.currentTarget as HTMLFormElement);
-    await mutatePlacement(() => placementService.update(p.id, { patientId: p.patientId, roomId: formText(f, 'roomId'), startsOn: formText(f, 'startsOn'), endsOn: formText(f, 'endsOn'), expectedVersion: p.version, reason: formText(f, 'reason') }));
+    await mutatePlacement(() => placementService.update(p.id, { patientId: p.patientId, roomId: formText(f, 'roomId'), startsOn: formText(f, 'startsOn'), endsOn: formText(f, 'endsOn'), expectedVersion: p.version, reason: formText(f, 'reason') }), 'Perubahan penempatan berhasil disimpan.');
 }
 async function showHistory(p: Placement) {
     if (busy) return;
     busy = true;
     try { history = await placementService.history(p.id); historyPlacement = p; }
-    catch (e) { toast.error(sessionFailure(e)); }
+    catch (e) { toast.error(sessionFailure(e, 'load', 'Riwayat penempatan')); }
     finally { busy = false; }
 }
 const roomLabel = (id: string) => data.rooms.find(room => room.id === id)?.name ?? id;
 const historyDate = (value: string) => new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' }).format(new Date(value));
 </script>
 
-<svelte:head><title>Kalender Ruangan | InpaCare</title></svelte:head>
+<svelte:head><title>Kalender penempatan | InpaCare</title></svelte:head>
 <div class="placement-page flex min-w-0 flex-col gap-6">
 <section class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-	<div><h1 class="page-title">Kalender Ruangan</h1><p class="page-subtitle">Pantau ketersediaan dan durasi rawat inap setiap pasien.</p></div>
+	<div><h1 class="page-title">Kalender penempatan</h1><p class="page-subtitle">Pantau ketersediaan dan durasi rawat inap setiap pasien.</p></div>
 	{#if data.user.role === 'PERAWAT'}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={() => { placing=!placing; }}><Plus size={16} aria-hidden="true"/> Tempatkan pasien</Button>{/if}
 </section>
 {#if data.user.role === 'PERAWAT' && !canManage}<p class="text-sm text-muted-foreground">Anda dapat membuat penempatan awal. Hubungi koordinator untuk mengubah jadwal, memindahkan ruang, atau membatalkan penempatan.</p>{/if}
@@ -129,7 +134,7 @@ const historyDate = (value: string) => new Intl.DateTimeFormat('id-ID', { dateSt
 					{#if room.status!=='available'}<span class="room-unavailable">Dalam pemeliharaan</span>
 					{:else if dayPlacements(room.id,day).length===0}<span class="free">Tersedia</span>
 					{:else}<div class="day-bookings">{#each dayPlacements(room.id,day) as p (p.id)}
-						<div class="booking" class:start={p.startsOn===iso(day)} class:end={p.endsOn===iso(day)} title={p.patientName+' · '+p.startsOn+' – '+p.endsOn}>
+						<div class="booking" class:start={p.startsOn===iso(day)} class:end={p.endsOn===iso(day)} title={`${p.patientName} · ${date(p.startsOn)}–${date(p.endsOn)}`}>
 							<strong>{p.patientName}</strong>
 							{#if p.startsOn===iso(day) || p.endsOn===iso(day)}<small>{titleDate(new Date(p.startsOn+'T00:00:00Z'))} – {titleDate(new Date(p.endsOn+'T00:00:00Z'))}</small>{/if}
 						</div>
@@ -139,46 +144,46 @@ const historyDate = (value: string) => new Intl.DateTimeFormat('id-ID', { dateSt
 		{:else}<TableRow><TableCell class="empty" colspan={8}>Belum ada data ruangan.</TableCell></TableRow>{/each}</TableBody>
 	</Table></div>
 	<div class="legend"><span><i class="dot available-dot"></i>Tersedia</span><span><i class="dot occupied-dot"></i>Terisi</span><span><i class="dot maintenance-dot"></i>Dalam pemeliharaan</span></div>
-	<p class="footnote">Rentang tanggal bersifat inklusif. Penempatan baru divalidasi kembali terhadap kapasitas dan jadwal pasien ketika disimpan.</p>
+	<p class="footnote">Tanggal masuk dan tanggal selesai sama-sama dihitung. Saat Anda menyimpan, InpaCare memeriksa kapasitas ruang dan jadwal pasien.</p>
 </Card>
 {#if canManage}
 <Card class="gap-4 p-5 sm:p-6 placement-list">
-    <div class="panel-header"><div><h2>Kelola penempatan</h2><p class="muted">Perubahan dan pembatalan memerlukan alasan. Periode yang terkait siklus mengikuti keputusan dokter; perpindahan ruang tidak boleh memutus tugas yang tersimpan.</p></div></div>
+    <div class="panel-header"><div><h2>Kelola penempatan</h2><p class="muted">Isi alasan saat mengubah atau membatalkan penempatan. Jika penempatan terkait rekap, ajukan perubahan tanggal kepada dokter. Pilih ruang yang tetap mencakup jadwal tugas yang tersimpan.</p></div></div>
     <div class="table-wrap"><Table class="data-table">
         <TableHeader><TableRow><TableHead>Pasien</TableHead><TableHead>Ruangan</TableHead><TableHead>Periode</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader>
         <TableBody>{#each data.placements as placement (placement.id)}
             <TableRow>
                 <TableCell><strong>{placement.patientName}</strong><span class="cell-meta">{placement.medicalRecordNo} · {placement.status === 'active' ? 'Aktif' : 'Dibatalkan'}</span></TableCell>
-                <TableCell>{placement.roomName}</TableCell><TableCell>{placement.startsOn} – {placement.endsOn}</TableCell>
+                <TableCell>{placement.roomName}</TableCell><TableCell>{date(placement.startsOn)} – {date(placement.endsOn)}</TableCell>
                 <TableCell><div class="action-buttons action-buttons--table">
                     <Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || placement.status !== 'active'} aria-haspopup="dialog" onclick={() => editingPlacement = placement}><Pencil aria-hidden="true" /> Ubah penempatan</Button>
                     <Button variant="destructive" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || placement.status !== 'active'} aria-haspopup="dialog" onclick={() => { cancelling = placement; cancelReason = ''; }}><Ban aria-hidden="true" /> Batalkan</Button>
                     <Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" disabled={busy} aria-haspopup="dialog" onclick={() => void showHistory(placement)}><History aria-hidden="true" /> Riwayat</Button>
                 </div></TableCell>
             </TableRow>
-        {:else}<TableRow><TableCell colspan={4} class="empty">Tidak ada penempatan di rentang minggu ini.</TableCell></TableRow>{/each}</TableBody>
+        {:else}<TableRow><TableCell colspan={4} class="empty">Belum ada penempatan pada pekan ini. Pilih pekan lain untuk melihat jadwalnya.</TableCell></TableRow>{/each}</TableBody>
     </Table></div>
 </Card>
 {/if}
 </div>
-{#if placing && data.user.role === 'PERAWAT'}<Modal title="Penempatan pasien" description="Pilih pasien, ruangan, dan periode rawat inap. Ketersediaan diperiksa saat disimpan." {busy} protectChanges onclose={() => placing = false}>
+{#if placing && data.user.role === 'PERAWAT'}<Modal title="Penempatan pasien" description="Pilih pasien, ruang, tanggal masuk, dan tanggal selesai. InpaCare memeriksa ketersediaan saat Anda menyimpan." {busy} protectChanges onclose={() => placing = false}>
 {#snippet children(close)}
 	<form aria-label="Penempatan pasien" class="form-grid" onsubmit={place}>
 		<label class="field">Pasien<FormSelect name="patientId" required options={[{ value: "", label: "Pilih pasien" }, ...(data.patients).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} /></label>
 		<label class="field">Ruangan<FormSelect name="roomId" required options={[{ value: "", label: "Pilih ruangan tersedia" }, ...(data.rooms.filter((r)=>r.status==='available')).map((room) => ({ value: room.id, label: (room.name) + " · " + (room.roomClass) + " · kapasitas " + (room.capacity) }))]} /></label>
 		<label class="field">Tanggal masuk<FormDatePicker class="h-11 text-base md:text-sm" name="startsOn" type="date" value={data.from} required /></label>
-		<label class="field">Tanggal keluar<FormDatePicker class="h-11 text-base md:text-sm" name="endsOn" type="date" value={data.to} required /></label>
+		<label class="field">Tanggal selesai<FormDatePicker class="h-11 text-base md:text-sm" name="endsOn" type="date" value={data.to} required /></label>
 		<div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> {busy ? 'Menyimpan penempatan…' : 'Simpan penempatan'}</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={close}><X aria-hidden="true" /> Batal</Button></div>
 	</form>
 {/snippet}</Modal>{/if}
 
-{#if editingPlacement && canManage}{@const placement = editingPlacement}<Modal title="Ubah penempatan" description="Pilih ruangan dan periode. Perubahan tanggal yang terkait siklus harus mengikuti keputusan dokter." {busy} protectChanges onclose={() => editingPlacement = null}>
+{#if editingPlacement && canManage}{@const placement = editingPlacement}<Modal title="Ubah penempatan" description={`Ubah ruang atau tanggal penempatan ${placement.patientName}. Untuk tanggal yang terkait rekap, ajukan perubahan kepada dokter.`} {busy} protectChanges onclose={() => editingPlacement = null}>
 {#snippet children(close)}
     <form class="form-grid" onsubmit={(event) => reschedule(event, placement)}>
         <label class="field">Pasien<Input class="h-11 text-base md:text-sm" value={placement.patientName} disabled /></label>
         <label class="field">Ruangan<FormSelect name="roomId" value={placement.roomId} required options={data.rooms.filter(room => room.status === 'available' || room.id === placement.roomId).map(room => ({ value: room.id, label: room.name + ' \u00b7 ' + room.roomClass }))} /></label>
         <label class="field">Tanggal masuk<FormDatePicker name="startsOn" value={placement.startsOn} required /></label>
-        <label class="field">Tanggal keluar<FormDatePicker name="endsOn" value={placement.endsOn} required /></label>
+        <label class="field">Tanggal selesai<FormDatePicker name="endsOn" value={placement.endsOn} required /></label>
         <label class="field sm:col-span-2">Alasan perubahan<Textarea name="reason" required maxlength={2000} /></label>
         <div class="form-actions"><Button type="submit" class="h-11 px-4" disabled={busy}><Save aria-hidden="true" /> Simpan penempatan</Button><Button variant="outline" class="h-11 px-4" type="button" onclick={close}><X aria-hidden="true" /> Batal</Button></div>
     </form>
@@ -191,8 +196,8 @@ const historyDate = (value: string) => new Intl.DateTimeFormat('id-ID', { dateSt
                 <div><h3 class="text-base font-semibold">{item.action === 'cancelled' ? 'Pembatalan' : 'Perubahan'} oleh {item.actorName}</h3><p class="text-sm text-muted-foreground">{historyDate(item.createdAt)} WIB</p></div>
                 <p class="wrap-anywhere whitespace-pre-wrap">{item.reason}</p>
                 <dl class="grid min-w-0 gap-2 text-sm">
-                    <dt class="font-semibold">Sebelum</dt><dd class="wrap-anywhere">{roomLabel(item.before.room_id)} · {item.before.starts_on} – {item.before.ends_on} · {item.before.status === 'active' ? 'Aktif' : 'Dibatalkan'} · versi {item.before.version}</dd>
-                    <dt class="font-semibold">Sesudah</dt><dd class="wrap-anywhere">{roomLabel(item.after.room_id)} · {item.after.starts_on} – {item.after.ends_on} · {item.after.status === 'active' ? 'Aktif' : 'Dibatalkan'} · versi {item.after.version}</dd>
+                    <dt class="font-semibold">Sebelum</dt><dd class="wrap-anywhere">{roomLabel(item.before.room_id)} · {date(item.before.starts_on)} – {date(item.before.ends_on)} · {item.before.status === 'active' ? 'Aktif' : 'Dibatalkan'} · versi {item.before.version}</dd>
+                    <dt class="font-semibold">Sesudah</dt><dd class="wrap-anywhere">{roomLabel(item.after.room_id)} · {date(item.after.starts_on)} – {date(item.after.ends_on)} · {item.after.status === 'active' ? 'Aktif' : 'Dibatalkan'} · versi {item.after.version}</dd>
                 </dl>
             </article>
         {:else}<p class="text-muted-foreground">Belum ada perubahan penempatan yang tercatat.</p>{/each}
@@ -203,13 +208,13 @@ const historyDate = (value: string) => new Intl.DateTimeFormat('id-ID', { dateSt
     <AlertDialog.Content onEscapeKeydown={(event) => { if (busy) event.preventDefault(); }}>
         <AlertDialog.Header>
             <AlertDialog.Title>Batalkan penempatan?</AlertDialog.Title>
-            <AlertDialog.Description>Batalkan penempatan {cancelling?.patientName} di {cancelling?.roomName}? Ketergantungan dan versi data akan diperiksa saat disimpan.</AlertDialog.Description>
+            <AlertDialog.Description>Penempatan {cancelling?.patientName} di {cancelling?.roomName} akan dibatalkan. Riwayatnya tetap tersimpan. Isi alasan untuk melanjutkan.</AlertDialog.Description>
         </AlertDialog.Header>
         <label class="field">Alasan pembatalan<Textarea bind:value={cancelReason} required maxlength={2000} disabled={busy} /></label>
         <AlertDialog.Footer>
             <AlertDialog.Cancel disabled={busy}><ArrowLeft aria-hidden="true" /> Kembali</AlertDialog.Cancel>
             <AlertDialog.Action disabled={busy || !cancelReason.trim()} variant="destructive" onclick={(event) => { event.preventDefault(); if (cancelling) void cancelPlacement(cancelling); }}>
-                <Ban aria-hidden="true" /> {busy ? 'Membatalkan…' : 'Konfirmasi pembatalan'}
+                <Ban aria-hidden="true" /> {busy ? 'Membatalkan…' : 'Batalkan penempatan'}
             </AlertDialog.Action>
         </AlertDialog.Footer>
     </AlertDialog.Content>

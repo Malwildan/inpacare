@@ -1,10 +1,10 @@
-# Local runtime setup
+# Penyiapan runtime Windows
 
-The Windows setup keeps PostgreSQL binaries, database files, connection details, logs, and credentials in the ignored `.local/` directory. It does not install a Windows service or bind PostgreSQL outside loopback. Node.js 24.18+ is installed separately and is the only application runtime.
+Penyiapan menyimpan perangkat PostgreSQL, basis data, koneksi, log, dan kredensial di `.local/` yang diabaikan Git. PostgreSQL hanya menerima koneksi loopback dan berjalan tanpa layanan Windows. Pasang Node.js 24.18+ secara terpisah.
 
-## Install and start
+## Pasang dan mulai
 
-Run PowerShell from the project root:
+Jalankan PowerShell dari akar proyek.
 
 ```powershell
 ./scripts/setup-runtime.ps1
@@ -16,15 +16,15 @@ $env:DATABASE_URL = (Get-Content .local/database-url.txt -Raw).Trim()
 npm run migration:run --workspace @inpacare/api
 ```
 
-The setup downloads [EDB's PostgreSQL 17 Windows binary archive](https://www.enterprisedb.com/download-postgresql-binaries) into `.local/downloads/` and extracts the required database tools under `.local/postgresql/`. `database.ps1` creates its own cluster, database, and role on first use; the API URL is `.local/database-url.txt`:
+Pemasang mengunduh [arsip PostgreSQL 17 untuk Windows dari EDB](https://www.enterprisedb.com/download-postgresql-binaries) ke `.local/downloads/` dan mengekstrak perangkatnya ke `.local/postgresql/`. Pada penggunaan pertama, `database.ps1` membuat klaster, basis data, dan peran. URL koneksi aplikasi disimpan di `.local/database-url.txt`.
 
 ```text
 postgres://inpacare:inpacare@127.0.0.1:55432/inpacare
 ```
 
-This fixed password is for synthetic local development only. PostgreSQL listens on `127.0.0.1:55432`; the generated local superuser password is held in `.local/postgres-superuser-password.txt` and is not used by the app.
+Gunakan kata sandi contoh hanya untuk pengembangan dengan data sintetis. PostgreSQL menggunakan `127.0.0.1:55432`. Kata sandi superuser lokal disimpan di `.local/postgres-superuser-password.txt` dan aplikasi memakai akun basis data terpisah.
 
-To create demo accounts and fixtures, seed explicitly after the migration. The seed only accepts an empty users table:
+Untuk membuat akun dan data demo, jalankan pengisian setelah migrasi. Tabel pengguna harus kosong.
 
 ```powershell
 $env:SEED_DEMO_PASSWORD = 'choose-a-demo-only-password'
@@ -32,9 +32,9 @@ npm run seed --workspace @inpacare/api
 Remove-Item Env:SEED_DEMO_PASSWORD
 ```
 
-Then run `./scripts/start.ps1 -SkipBuild`. Application start never migrates or seeds the database.
+Jalankan `./scripts/start.ps1 -SkipBuild` setelah migrasi dan pengisian data selesai.
 
-## Manage the local database
+## Kelola basis data lokal
 
 ```powershell
 ./scripts/database.ps1 -Action Status
@@ -42,8 +42,8 @@ Then run `./scripts/start.ps1 -SkipBuild`. Application start never migrates or s
 ./scripts/database.ps1 -Action Start
 ```
 
-`Stop` targets only the cluster in `.local/postgres-data`; it will not stop another PostgreSQL instance. Use `./scripts/test-api.ps1` to run API workflows against a separate disposable database that the helper removes afterward.
+`Stop` hanya menghentikan klaster di `.local/postgres-data`. Jalankan `./scripts/test-api.ps1` untuk menguji API pada basis data sementara yang dihapus setelah pengujian.
 
-## Limits
+## Cakupan
 
-The PostgreSQL runtime and synthetic data are for local development and coursework review, not hospital deployment. Never put real patient or production credentials in this local demo.
+Gunakan runtime lokal untuk pengembangan dan peninjauan proyek dengan data sintetis. Simpan informasi pasien dan kredensial produksi di luar demo.

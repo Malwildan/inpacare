@@ -40,14 +40,14 @@ export interface UpdateObservationInput extends ObservationInput {
 }
 const validateObservation = (input: ObservationInput) => {
   if (!input.symptoms.trim())
-    throw DomainError.validation("Gejala wajib diisi.");
+    throw DomainError.validation("Isi Gejala sebelum menyimpan observasi.");
   if (
     !/T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(input.observedAt)
   )
-    throw DomainError.validation("Waktu pemeriksaan harus memakai zona waktu.");
+    throw DomainError.validation("Waktu pemeriksaan tidak valid. Periksa tanggal, jam, dan zona waktu pemeriksaan.");
   if (!hasCompleteBloodPressure(input.systolic, input.diastolic))
     throw DomainError.validation(
-      "Tekanan darah harus diisi lengkap (sistolik dan diastolik).",
+      "Tekanan darah belum lengkap. Isi Sistolik dan Diastolik dalam mmHg, atau kosongkan keduanya.",
     );
 };
 export class RekamMedisUseCases {
@@ -107,7 +107,7 @@ export class RekamMedisUseCases {
   ) {
     if (actor.role !== "DOKTER") throw DomainError.forbidden();
     if (!input.reason.trim())
-      throw DomainError.validation("Alasan koreksi wajib diisi.");
+      throw DomainError.validation("Isi Alasan koreksi sebelum menyimpan perubahan.");
     for (const [value, label] of [
       [input.complaint, "Keluhan"],
       [input.diagnosis, "Diagnosis"],
@@ -119,9 +119,7 @@ export class RekamMedisUseCases {
       if (!before) throw DomainError.notFound();
       if (before.doctor_id !== actor.id) throw DomainError.forbidden();
       if (Number(before.version) !== input.expectedVersion)
-        throw DomainError.conflict(
-          "Rekam medis berubah. Muat ulang sebelum menyimpan.",
-        );
+        throw DomainError.conflict();
       await canReadPatient(tx.patients, actor, before.patient_id);
       const after = {
         complaint: input.complaint.trim(),
@@ -165,9 +163,7 @@ export class RekamMedisUseCases {
       if (!before) throw DomainError.notFound();
       if (before.doctor_id !== actor.id) throw DomainError.forbidden();
       if (Number(before.version) !== input.expectedVersion)
-        throw DomainError.conflict(
-          "Rekam medis berubah. Muat ulang sebelum menghapus.",
-        );
+        throw DomainError.conflict();
       await tx.medicalRecords.deleteRecord(recordId);
       await tx.medicalRecords.createRecordHistory({
         id: id(),
@@ -247,7 +243,7 @@ export class RekamMedisUseCases {
   ) {
     if (actor.role !== "PERAWAT") throw DomainError.forbidden();
     if (!input.reason.trim())
-      throw DomainError.validation("Alasan koreksi wajib diisi.");
+      throw DomainError.validation("Isi Alasan koreksi sebelum menyimpan perubahan.");
     validateObservation(input);
     return this.uow.run(async (tx) => {
       const current = await tx.medicalRecords.lockObservation(
@@ -257,9 +253,7 @@ export class RekamMedisUseCases {
       if (!current) throw DomainError.notFound();
       await canReadPatient(tx.patients, actor, current.patient_id);
       if (Number(current.version ?? 1) !== input.expectedVersion)
-        throw DomainError.conflict(
-          "Observasi berubah. Muat ulang sebelum menyimpan.",
-        );
+        throw DomainError.conflict();
       const vital = await tx.medicalRecords.lockVital(observationId);
       const before = {
         symptoms: current.symptoms,

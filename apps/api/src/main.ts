@@ -7,6 +7,7 @@ import {
 } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
 import { ApiExceptionFilter } from "./presentation/http/filters/api-exception.filter";
+import { validationMessage } from "./presentation/http/filters/validation-message";
 import { DomainError } from "./domain/shared/domain-error";
 import { securityHeaders } from "./presentation/http/middleware/security-headers.middleware";
 import { trustedOrigins } from "./presentation/http/security/auth-context";
@@ -33,7 +34,8 @@ export async function createApp() {
       whitelist: true,
       forbidNonWhitelisted: true,
       forbidUnknownValues: true,
-      exceptionFactory: () => DomainError.validation(),
+      dismissDefaultMessages: true,
+      exceptionFactory: (errors) => DomainError.validation(validationMessage(errors)),
       validationError: { target: false, value: false },
     }),
   );

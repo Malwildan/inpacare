@@ -1,12 +1,12 @@
-# Dashboard, cycle, notification, and billing API
+# API rekap rawat inap, notifikasi, dan tagihan
 
-Base path `/api/v1`. All calls require the session cookie; write calls also require the readable session CSRF token and same-origin `Origin` header. JSON request keys are camelCase. IDs are opaque strings. Timestamps include an offset. Amounts are decimal strings. These shapes are implemented by `apps/api/src/cycle.rs`, `billing.rs`, and `notifications.rs`.
+Awalan API adalah `/api/v1`. Gunakan kuki sesi untuk semua permintaan. Untuk mengubah data, sertakan token CSRF sesi dan header `Origin` yang sama dengan aplikasi. Kunci JSON menggunakan camelCase. ID berupa teks opak, waktu menyertakan zona, dan nominal memakai teks desimal. Lihat [kontrak OpenAPI](../../contracts/openapi.json).
 
-## Cycles and dashboard
+## Rekap rawat inap
 
 ### `GET /cycles`
 
-Doctors receive cycles assigned to them; nurses receive cycles assigned to them. Admisi receives `403 FORBIDDEN`. Returns at most 100 newest items and a total.
+Dokter dan perawat menerima rekap sesuai penugasan. Admisi menerima `403 FORBIDDEN`. Respons memuat hingga 100 data terbaru dan totalnya.
 
 ```json
 {"items":[{"id":"cyc-1","patientId":"pat-1","patientName":"Siti Rahmawati","medicalRecordNo":"RM-004218","placementId":"plc-1","room":"Melati 01","doctorName":"dr. Hendra Wijaya","nurseName":"Dina Putri","status":"in_care","version":2,"createdAt":"2026-10-29T10:00:00Z","requests":[]}],"total":1}
@@ -14,53 +14,53 @@ Doctors receive cycles assigned to them; nurses receive cycles assigned to them.
 
 ### `POST /cycles` (PERAWAT)
 
-Starts a pending recap; a placement can be omitted for a newly admitted patient. The doctor must be an active DOKTER and an optional placement must be active for the selected patient. The active-patient uniqueness constraint blocks duplicate cycles.
+Rekap tanpa penempatan berstatus `pending`. Jika memilih penempatan aktif milik pasien atau membuat penempatan baru, rekap berstatus `assigned`. Gunakan dokter `DOKTER` yang aktif. Batas satu rekap aktif per pasien mencegah rekap ganda.
 
 ```json
 {"patientId":"pat-1","doctorId":"usr-doctor-1","placementId":"plc-1"}
 ```
 
-Returns `201` with `id`, `patientId`, `placementId`, `doctorId`, `nurseId`, `status`, and `version`.
+Respons `201` berisi `id`, `patientId`, `placementId`, `doctorId`, `nurseId`, `status`, dan `version`.
 
 ### `GET /cycles/{id}`
 
-Returns the same cycle record with assigned user IDs and its request history. Only the assigned nurse or doctor can read it.
+Hanya perawat atau dokter yang ditugaskan dapat membaca rekap beserta ID petugas dan riwayat pengajuan.
 
-### `PATCH /cycles/{id}` (assigned PERAWAT)
+### `PATCH /cycles/{id}` (PERAWAT yang ditugaskan)
 
-Only `pending -> assigned -> in_care` is supported. A linked active placement is required before advancing; a pending recap without one returns 409 without changing its version. Linking a placement after recap creation remains follow-up scope. Requires the current version:
+Urutan status adalah `pending -> assigned -> in_care`. Saat rekap masih `pending`, kaitkan penempatan aktif sebelum melanjutkan status. Jika penempatan belum ada, permintaan melanjutkan status menghasilkan 409 dan versi tetap sama. Sertakan versi terbaru.
 
 ```json
 {"status":"assigned","expectedVersion":1}
 ```
 
-Returns `{"ok":true,"status":"assigned","version":2}`. An invalid transition, lost assignment, or stale version returns a conflict and makes no change.
+Contoh hasil adalah `{"ok":true,"status":"assigned","version":2}`. Perubahan yang melanggar urutan atau memakai versi lama ditolak. Periksa data terbaru sebelum mengirim kembali.
 
-### `POST /cycles/{id}/requests` (assigned PERAWAT)
+### `POST /cycles/{id}/requests` (PERAWAT yang ditugaskan)
 
-Requires an in-care cycle, reason, and no existing pending request. Only `extend` and `release` are available.
+Ajukan `extend` atau `release` untuk pasien yang sedang dirawat. Isi alasan. Selesaikan permintaan sebelumnya jika masih menunggu keputusan.
 
 ```json
 {"kind":"extend","requestedEnd":"2026-11-05","reason":"Dokter meminta observasi tambahan."}
 ```
 
-For release, send `{"kind":"release","requestedEnd":null,"reason":"Kondisi sudah stabil."}`. Returns `201` with request ID, cycle ID, kind, date, reason, and `status:"pending"`. A partial request is rejected; only one pending request per cycle is allowed.
+Untuk pelepasan, kirim `{"kind":"release","requestedEnd":null,"reason":"Kondisi sudah stabil."}`. Respons `201` memuat ID permintaan, ID rekap, jenis, tanggal, alasan, dan `status:"pending"`. Hanya satu permintaan per rekap dapat menunggu keputusan.
 
-### `POST /cycles/{id}/requests/{requestId}/decision` (assigned DOKTER)
+### `POST /cycles/{id}/requests/{requestId}/decision` (DOKTER yang ditugaskan)
 
-The assigned doctor must provide a decision note and current cycle version:
+Isi catatan keputusan dan sertakan versi rekap saat ini.
 
 ```json
 {"decision":"approve","note":"Jadwal observasi dilanjutkan.","expectedVersion":3}
 ```
 
-`decision` is `approve` or `reject`. Approval is one transaction with the request state, linked placement/cycle, and persistent nurse notification. Extension must lengthen the active placement and pass a capacity check over every day. Release shortens an already-started placement to facility local today; it is refused if unfinished future tasks remain. Rejection changes no placement or cycle status but records the decision. The response is `{"ok":true,"status":"approved","version":4}`. Stale decisions and unsafe linked-state changes conflict without partial writes.
+`decision` menerima `approve` atau `reject`. Saat disetujui, API menyimpan status permintaan, perubahan penempatan atau rekap, serta notifikasi perawat dalam satu transaksi. Perpanjangan harus melewati jadwal aktif dan memenuhi kapasitas setiap hari. Pelepasan mempersingkat penempatan yang sudah dimulai hingga hari ini menurut waktu fasilitas. Tugas aktif mendatang menghalangi pelepasan. Penolakan mencatat keputusan dan mempertahankan penempatan serta status rekap. Contoh respons adalah `{"ok":true,"status":"approved","version":4}`. Jika terjadi konflik, transaksi tidak menyimpan perubahan sebagian.
 
-## Notifications
+## Notifikasi
 
 ### `GET /notifications`
 
-Returns up to 50 records belonging to the current user, ordered newest first:
+Respons memuat hingga 50 notifikasi milik pengguna, mulai dari yang terbaru.
 
 ```json
 {"items":[{"id":"ntf-1","cycleId":"cyc-1","message":"Permintaan extend disetujui.","readAt":null,"createdAt":"2026-10-29T10:15:00Z"}],"total":1}
@@ -68,48 +68,48 @@ Returns up to 50 records belonging to the current user, ordered newest first:
 
 ### `POST /notifications/{id}/read`
 
-Marks only the current user's record as read, idempotently. Unknown or another user's notification returns 404.
+Menandai notifikasi milik pengguna sebagai sudah dibaca. Pengulangan tindakan mempertahankan hasil yang sama. Notifikasi yang hilang atau milik akun lain menghasilkan 404.
 
-## Invoices
+## Tagihan
 
-Only ADMISI can list, create, read detail, or change invoice payment status. The API returns patient identity and billing data without medical-record content.
+Hanya ADMISI dapat membaca daftar dan detail, membuat tagihan, atau mengubah status pembayaran. Respons berisi identitas pasien dan tagihan. Isi klinis tidak disertakan.
 
 ### `GET /invoices?search=&status=&limit=`
 
-Supports bounded search over patient name, MR number or invoice ID; optional status `unpaid|paid`; the page limit defaults to 50 and caps at 100. The returned `total` is the number of rows in this page. Each item contains ID, patient identity, placement, BPJS snapshot, exact `totalAmount`, `coveredAmount`, `payableAmount`, payment status, version, timestamp, and line count.
+Cari nama pasien, nomor rekam medis, atau ID tagihan. Filter `status` menerima `unpaid|paid`. Batas bawaan 50 dan maksimal 100. Nilai `total` menghitung baris pada halaman hasil. Tiap baris memuat ID, identitas, penempatan, kepesertaan BPJS saat tagihan dibuat, `totalAmount`, `coveredAmount`, `payableAmount`, status pembayaran, versi, waktu, dan jumlah rincian.
 
 ### `POST /invoices`
 
-Requires 1–30 line items. Amounts are non-negative decimal strings with up to two fractional digits. Each line subtotal and invoice totals are calculated with Rust Decimal on the server. BPJS coverage is an explicit snapshot; it cannot exceed gross or be used when the selected patient has no BPJS flag. No browser-calculated amount is trusted.
+Sertakan 1–30 rincian. Gunakan nominal desimal nonnegatif dalam bentuk teks dengan maksimal dua angka pecahan. Server menghitung subtotal dan total. Nilai jaminan BPJS tidak boleh melebihi total dan harus nol bagi pasien tanpa BPJS.
 
 ```json
 {"patientId":"pat-1","placementId":"plc-1","coveredAmount":"500000.00","lines":[{"description":"Kamar kelas 2 (malam)","quantity":2,"unitPrice":"650000.00"}]}
 ```
 
-Returns `201` with invoice ID, patient identity, BPJS snapshot, exact totals, initial `status:"unpaid"`, `version:1`, and stored line items. The invoice, all line snapshots, and creation history commit atomically.
+Respons `201` memuat ID, identitas pasien, kepesertaan BPJS saat tagihan dibuat, total, `status:"unpaid"`, `version:1`, dan rincian tersimpan. Tagihan, rincian, dan riwayat dibuat dalam satu transaksi.
 
 ### `GET /invoices/{id}`
 
-Returns billing-only patient context, line details with subtotal, totals, and audit history. It omits clinical notes, diagnoses, observations and vitals.
+Respons berisi identitas untuk tagihan, rincian layanan, subtotal, total, dan riwayat perubahan.
 
 ### `PATCH /invoices/{id}`
 
-Changes payment status, replaces invoice lines and/or changes BPJS coverage. Send at least one change. Existing status-only callers remain compatible. Every request requires a nonempty reason (up to 500 characters) and optimistic version:
+Kirim minimal satu perubahan pada status pembayaran, seluruh rincian, atau nilai jaminan. Sertakan alasan yang tidak kosong dan paling banyak 500 karakter, serta versi saat ini.
 
 ```json
 {"status":"paid","reason":"Bukti pembayaran dicocokkan.","expectedVersion":1}
 ```
 
-For line or coverage edits, totals are recalculated on the server and returned as decimal strings. Existing `roomItemId` and `kind` metadata are retained when omitted from corresponding replacement lines. The row lock, version check, edit and history entry commit atomically. Paid invoices cannot have financial edits; stale versions and repeated status writes are rejected.
+Jika rincian atau jaminan berubah, server menghitung ulang dan mengembalikan nominal dalam bentuk teks desimal. Metadata `roomItemId` dan `kind` tetap dipakai jika tidak dikirim pada rincian pengganti yang bersesuaian. API mengunci baris dan menyimpan perubahan bersama riwayat. Tagihan lunas mengunci rincian keuangan. Versi lama dan penetapan status yang sama ditolak.
 
-## Shared error contract
+## Kontrak pesan kesalahan
 
 ```json
-{"error":{"code":"CONFLICT","message":"Tagihan telah berubah. Muat ulang lalu coba lagi."}}
+{"error":{"code":"CONFLICT","message":"Data sudah berubah. Muat ulang untuk melihat data terbaru, lalu periksa perubahan Anda sebelum menyimpan kembali."}}
 ```
 
-Malformed or unsupported values are `422 VALIDATION_FAILED`; missing or expired sessions are `401`; prohibited role/scope is `403`; unavailable scoped records are `404`; stale state and concurrency constraints are `409`. Raw SQL errors and medical data are not returned.
+Isian tidak valid menghasilkan `422 VALIDATION_FAILED`. Sesi yang tidak ada atau berakhir menghasilkan 401, izin ditolak menghasilkan 403, dan data yang tidak tersedia menghasilkan 404. Konflik versi atau aturan kerja menghasilkan 409. Respons tidak meneruskan pesan SQL mentah atau informasi klinis.
 
-## Known source adaptation
+## Penyesuaian rancangan awal
 
-The source provides inpatient status labels and doctor approval but leaves the exact storage/state mapping unresolved. The implementation uses persisted pending requests and an explicit decision to avoid changing committed state before doctor approval. Financial coverage and payment values remain staff-entered demo fields; no external payer, BPJS or payment verification is claimed. Capacity and release safeguards are engineering choices needed to keep demo data coherent.
+Aplikasi menyimpan pengajuan dan hanya mengubah status yang berlaku setelah dokter menyetujui. Petugas mengisi nilai jaminan dan pembayaran pada demo. Pemeriksaan kapasitas dan tugas menjaga konsistensi data saat penempatan diperpanjang atau dipersingkat.

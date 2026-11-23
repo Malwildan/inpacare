@@ -1,18 +1,19 @@
-# Project status
+# Status proyek
 
-InpaCare implements an educational inpatient-care workflow with synthetic data. The current source includes six domain areas, authenticated roles, and a server-rendered frontend. This document describes implemented scope, not a production deployment guarantee.
+InpaCare mendukung alur rawat inap untuk pembelajaran dengan data sintetis. Aplikasi web dirender di server dan menampilkan data serta tindakan sesuai izin petugas.
 
-## Implemented
+## Cakupan saat ini
 
-- Identity: Argon2 passwords, server-side sessions, logout/revocation, role/coordinator capabilities, and same-origin/CSRF checks.
-- Rooms: list/detail/create/edit, equipment/facility items, exact inventory cost, nurse PIC, capacity checks, and version conflicts.
-- Placement: inclusive weekly occupancy, admission placement, maintenance/overlap checks, and transactional patient/room capacity locking.
-- Nursing: task creation, delegation, progress, notes, reassignment, reason-required cancellation/logical deletion, and atomic history. Former PIC access is removed after reassignment.
-- Clinical: assigned-doctor records with versioned edits and nursing observations/vitals. Admissions staff cannot read clinical text.
-- Care cycles: scoped recaps, active-placement progression, durable extension/release requests, assigned-doctor decisions, history, and notifications.
-- Billing: admissions-only invoices, decimal-string totals, recorded insurance coverage, payment status, and versioned history. No payment or insurance-service transaction is performed.
+- Akses petugas memakai Argon2, sesi di server, pencabutan sesi saat keluar, peran petugas, serta pemeriksaan Origin dan CSRF.
+- Admisi dapat mendaftarkan pasien, menerima nomor rekam medis otomatis, dan mencari identitas.
+- Ruang rawat inap mencakup daftar, detail, fasilitas, biaya, tarif per hari, kapasitas, dan penanggung jawab. Koordinator dapat mengelola ruang dan fasilitas.
+- Kalender menampilkan keterisian mingguan. Perawat membuat penempatan awal. Koordinator dapat mengubah atau membatalkan penempatan sesuai aturan rekap dan tugas. Riwayat mencatat perubahan.
+- Tugas perawatan mencakup penugasan, status, catatan, pengalihan, pembatalan, penghapusan dari papan, dan riwayat. Penanggung jawab lama kehilangan akses setelah pengalihan.
+- Rekam medis mencakup catatan dokter yang dapat dikoreksi dengan versi dan observasi perawat. Admisi hanya menerima data administratif.
+- Rekap rawat inap mencakup penempatan saat dibuat atau sesudahnya, mulai perawatan, pengajuan perpanjangan atau pelepasan, keputusan dokter, dan notifikasi.
+- Admisi mengelola tagihan dan rincian, nilai jaminan, pembayaran, hasil pemeriksaan klaim, serta riwayat. Nilai disimpan sebagai desimal. Pembayaran dan verifikasi layanan penjamin di luar aplikasi tetap dilakukan terpisah.
 
-Demo defaults and unresolved source decisions are recorded in [implementation rules](development/BUILD_CONTRACT.md) and [planning](planning/REQUIREMENTS_AND_DECISIONS.md).
+Lihat [aturan demo](development/BUILD_CONTRACT.md), [referensi domain](README.md#referensi), dan [inventaris teks](development/TEKS_INPACARE.md).
 
 ## Validation evidence
 
@@ -20,13 +21,12 @@ The implementation was checked on 2026-10-29 with 4 Rust unit tests, 11 PostgreS
 
 The retained [synthetic read smoke](validation/performance-smoke.json) covers 60 loopback reads with 5 concurrent workers. It is not a sustained capacity, field Web Vitals, or production-readiness measurement. Private machine and account diagnostics are excluded from public source.
 
-## Follow-up areas
+## Pekerjaan lanjutan
 
-- Complete visual parity with the captured design states and improve responsive/accessibility coverage.
-- Monthly calendar, placement rescheduling/cancellation, and associated task/cycle effects.
-- Attach or replace placements after creating a pending recap.
-- Account administration and recovery, retention/deletion rules, and idempotent create requests.
-- Invoice-line editing, full claim workflows, and separately specified external integrations.
-- Sustained load testing, backup restoration exercises, and operational deployment controls.
+- Periksa kesesuaian dengan keadaan desain dan perluas cakupan pengujian responsif serta aksesibilitas.
+- Kalender bulanan.
+- Administrasi dan pemulihan akun, kebijakan retensi, dan pengiriman ulang yang aman pada operasi pembuatan lain.
+- Integrasi eksternal dan alur klaim lanjutan jika sudah ditetapkan.
+- Pengujian beban berkelanjutan, latihan pemulihan cadangan, dan kontrol pengoperasian.
 
-Use [feature requests](https://github.com/Malwildan/inpacare/issues/new/choose) to discuss scope and acceptance criteria before implementing changes to domain rules.
+Bahas cakupan serta kriteria penerimaan melalui [usulan fitur](https://github.com/Malwildan/inpacare/issues/new/choose) sebelum mengubah aturan domain.

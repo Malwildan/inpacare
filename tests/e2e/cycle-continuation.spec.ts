@@ -100,16 +100,21 @@ test('validation and network failures keep the selected placement and allow an i
     await page.route(`**/api/v1/cycles/${cycle.id}`, async route => {
         if (route.request().method() !== 'PATCH') return route.continue();
         attempts++;
-        if (attempts === 1) return route.fulfill({ status: 422, json: { error: { code: 'VALIDATION', message: 'Penempatan pasien tidak cocok.' } } });
+        if (attempts === 1) return route.fulfill({ status: 422, json: { error: { code: 'VALIDATION_FAILED', message: 'Penempatan ini milik pasien lain. Pilih penempatan untuk pasien yang dipilih.' } } });
         if (attempts === 2) return route.abort('failed');
         return route.continue();
     });
     await detail.getByRole('button', { name: 'Simpan penempatan' }).click();
-    await expect(detail.getByRole('alert')).toContainText('tidak cocok');
+    await expect(detail.getByRole('alert')).toContainText('Penempatan ini milik pasien lain');
     await expect(detail.getByRole('combobox', { name: /^Penempatan/ })).toHaveAttribute('data-value', placement.id);
     await detail.getByRole('button', { name: 'Simpan penempatan' }).click();
-    await expect(detail.getByRole('alert')).toBeVisible();
+    await expect(detail.getByRole('alert')).toContainText('Periksa data terbaru sebelum mengirim kembali.');
     await expect(detail.getByRole('combobox', { name: /^Penempatan/ })).toHaveAttribute('data-value', placement.id);
+    await expect(detail.getByRole('button', { name: 'Simpan penempatan' })).toBeDisabled();
+    await detail.getByRole('button', { name: 'Muat detail terbaru' }).click();
+    await expect(detail.getByRole('status')).toContainText('Detail terbaru dimuat');
+    await detail.getByRole('button', { name: 'Ubah penempatan', exact: true }).click();
+    await selectOption(detail.getByRole('combobox', { name: /^Penempatan/ }), placement.id);
     await detail.getByRole('button', { name: 'Simpan penempatan' }).click();
     await expect(detail.getByRole('button', { name: 'Konfirmasi sudah ditempatkan' })).toBeEnabled();
     expect(attempts).toBe(3);
@@ -123,7 +128,7 @@ test('a real version conflict reads the latest detail without automatically over
     let writes = 0;
     page.on('request', request => { if (request.method() === 'PATCH') writes++; });
     await detail.getByRole('button', { name: 'Simpan penempatan' }).click();
-    await expect(detail.getByRole('alert')).toContainText('telah berubah');
+    await expect(detail.getByRole('alert')).toContainText('Data sudah berubah');
     await expect(detail.getByRole('combobox', { name: /^Penempatan/ })).toHaveAttribute('data-value', placement.id);
     await expect(detail.getByRole('button', { name: 'Simpan penempatan' })).toBeDisabled();
     await detail.getByRole('button', { name: 'Muat detail terbaru' }).click();

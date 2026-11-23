@@ -1,45 +1,44 @@
-# Documentation
+# Dokumentasi
 
-Start with the [project README](../README.md), then choose the guide for your task.
+Mulai dari [README proyek](../README.md), lalu pilih panduan sesuai pekerjaan Anda.
 
-## Development
+## Pengembangan
 
-- [Getting started](development/GETTING_STARTED.md): prerequisites, local API/frontend setup, and environment variables.
-- [Windows runtime](development/RUNTIME_SETUP.md): isolated Rust and PostgreSQL tools.
-- [API workflow tests](development/API_TESTS.md): disposable PostgreSQL tests.
-- [Browser tests](development/BROWSER_TESTS.md): Playwright setup and scope.
-- [UI components](development/UI_COMPONENTS.md): shadcn-svelte source, local customizations and update checks.
-- [Implementation rules](development/BUILD_CONTRACT.md): current domain and interface decisions, with historical implementation ownership noted separately.
-- [Contributing](../CONTRIBUTING.md): changes, validation, and pull requests.
-- [OpenAPI contract](../contracts/README.md): specification and generated TypeScript.
-- [API Explorer](development/API_EXPLORER.md): shared Swagger UI and authenticated API testing.
+- [Penyiapan pengembangan](development/GETTING_STARTED.md) untuk prasyarat, API dan web lokal, serta variabel lingkungan.
+- [Runtime Windows](development/RUNTIME_SETUP.md) untuk perangkat PostgreSQL lokal.
+- [Pengujian API](development/API_TESTS.md) untuk skenario dengan PostgreSQL sementara.
+- [Pengujian peramban](development/BROWSER_TESTS.md) untuk penyiapan dan cakupan Playwright.
+- [Komponen antarmuka](development/UI_COMPONENTS.md) untuk sumber shadcn-svelte, penyesuaian lokal, dan pemeriksaan pembaruan.
+- [Aturan demo](development/BUILD_CONTRACT.md) untuk keputusan domain dan antarmuka.
+- [Arsitektur API](development/ARCHITECTURE.md) dan [arsitektur aplikasi web](development/FRONTEND_ARCHITECTURE.md).
+- [Panduan kontribusi](../CONTRIBUTING.md) untuk perubahan, pemeriksaan, dan pull request.
+- [Kontrak OpenAPI](../contracts/README.md) untuk spesifikasi dan tipe TypeScript.
+- [Penjelajah API](development/API_EXPLORER.md) untuk Swagger UI dan cara menguji dengan akun InpaCare.
+- [Inventaris teks InpaCare](development/TEKS_INPACARE.md) untuk cakupan dan pemeriksaan pesan antarmuka.
 
-## Deployment
+## Pengoperasian
 
-- [CI and continuous delivery](deployment/CONTINUOUS_DELIVERY.md): verified main builds and automatic native demo updates.
-- [Docker Compose](deployment/HOSTING.md): alternative container stack and data backup commands.
-- [Native Linux](deployment/NATIVE_HOSTING.md): project-local runtimes and user services.
-- [Shared database tools](deployment/SHARED_TOOLS.md): pgAdmin access and individual database accounts.
-- [Linux API cross-build](deployment/LINUX_BUILD.md): build a static Linux executable from Windows.
+- [CI dan pembaruan demo otomatis](deployment/CONTINUOUS_DELIVERY.md).
+- [Docker Compose](deployment/HOSTING.md) untuk pengoperasian dan cadangan data di kontainer.
+- [Linux dengan systemd](deployment/NATIVE_HOSTING.md) untuk runtime lokal dan layanan pengguna.
+- [Perangkat basis data bersama](deployment/SHARED_TOOLS.md) untuk pgAdmin dan akun individual.
 
-## Reference
+<a id="reference"></a>
 
-- [Clinical records and nursing tasks](reference/clinical.md).
-- [Care cycles, notifications, and billing](reference/cycles-and-billing.md).
-- [Rooms and placements](reference/rooms-and-placements.md).
-- [Current project status](PROJECT_STATUS.md): implemented scope, historical validation, and follow-up areas.
+## Referensi
 
-## Planning and design provenance
+- [Tugas perawatan dan rekam medis](reference/clinical.md).
+- [Rekap rawat inap, notifikasi, dan tagihan](reference/cycles-and-billing.md).
+- [Ruang rawat inap dan penempatan](reference/rooms-and-placements.md).
+- [Status proyek](PROJECT_STATUS.md) untuk cakupan, hasil pemeriksaan terdahulu, dan pekerjaan lanjutan.
 
-- [Implementation plan](planning/IMPLEMENTATION_PLAN.md).
-- [Requirements and unresolved decisions](planning/REQUIREMENTS_AND_DECISIONS.md).
-- [Technical design](planning/TECHNICAL_DESIGN.md).
-- [Delivery and validation plan](planning/DELIVERY_AND_VALIDATION.md).
-- [Captured design evidence](planning/sources/figma-final-evidence.md).
-- [Requirements evidence](planning/sources/requirements-evidence.md).
+## Arsip perencanaan dan desain
 
-Planning captures describe the source and decisions at the time of implementation. The original requirements export, student IDs, machine-specific deployment records, and authentication diagnostics are excluded from this public repository. Referenced third-party source material retains its original authorship and access settings.
+- [Rencana implementasi](planning/IMPLEMENTATION_PLAN.md).
+- [Kebutuhan dan keputusan](planning/REQUIREMENTS_AND_DECISIONS.md).
+- [Rancangan teknis](planning/TECHNICAL_DESIGN.md).
+- [Rencana pengiriman dan pengujian](planning/DELIVERY_AND_VALIDATION.md).
+- [Bukti desain](planning/sources/figma-final-evidence.md) dan [bukti kebutuhan](planning/sources/requirements-evidence.md).
+- [Catatan pembuatan hasil build Rust lintas platform](deployment/LINUX_BUILD.md).
 
-- [Backend architecture and layer responsibilities](development/ARCHITECTURE.md)
-
-Frontend contributors: see [feature-first architecture](development/FRONTEND_ARCHITECTURE.md) for module ownership, dependency rules and validation.
+Arsip mencatat sumber dan keputusan pada saat implementasi. Ekspor kebutuhan awal, identitas mahasiswa, konfigurasi host pribadi, dan diagnostik autentikasi disimpan di luar repositori publik. Materi pihak ketiga mengikuti hak cipta dan pengaturan akses sumbernya.

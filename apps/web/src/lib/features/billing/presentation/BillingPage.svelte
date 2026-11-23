@@ -10,7 +10,7 @@ import { invalidateAll } from '$app/navigation';
 import { draftRoomLines, type Billing, type BillingPageData, type PatientInvoiceContext, type SelectedInvoice, type Invoice, type InvoiceLine, type ChangePayment, type NewInvoice } from '$lib/features/billing';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
-import { money as rupiah } from '$lib/shared/format';
+import { date, money as rupiah } from '$lib/shared/format';
 import MoneyInput from '$lib/shared/ui/MoneyInput.svelte';
 import { Check, ChevronDown, Eye, List, Pencil, Plus, Save, Trash2, X } from 'lucide-svelte';
 import * as DropdownMenu from '$lib/shared/ui/dropdown-menu/index.js';
@@ -64,12 +64,16 @@ async function send<T>(operation: () => Promise<T>, message = 'Perubahan berhasi
     const toastId = toast.loading('Menyimpan perubahan…');
     try {
         const result = await operation();
-        await invalidateAll();
-        toast.success(message, { id: toastId });
+        try {
+            await invalidateAll();
+            toast.success(message, { id: toastId });
+        } catch {
+            toast.warning('Perubahan tagihan tersimpan. Muat ulang halaman untuk melihat daftar terbaru.', { id: toastId });
+        }
         return result;
     }
     catch (cause) {
-        toast.error(sessionFailure(cause), { id: toastId });
+        toast.error(sessionFailure(cause, 'save', 'tagihan'), { id: toastId });
     }
     finally {
         busy = false;
@@ -82,7 +86,8 @@ function reportInvalid(event: Event) {
     lastInvalidAt = Date.now();
     const field = event.target as HTMLInputElement;
     const label = field.labels?.[0]?.textContent?.trim() ?? 'Isian';
-    toast.error(`${label}: ${field.title || field.validationMessage || 'isian belum valid.'}`);
+    if (field.validity.valueMissing) toast.error(`Isi ${label}.`);
+    else toast.error(field.title || `Periksa nilai pada kolom ${label}.`);
 }
 async function create(event: SubmitEvent) {
     event.preventDefault();
@@ -109,7 +114,7 @@ async function openInvoice(id: string) {
         claimResultDraft = invoice.claimResult ?? '';
     }
     catch (cause) {
-        toast.error(sessionFailure(cause));
+        toast.error(sessionFailure(cause, 'load', 'Detail tagihan'));
     }
 }
 function closeInvoiceView() {
@@ -147,7 +152,7 @@ async function updateStatus(event: SubmitEvent, invoice: Pick<Invoice, 'id' | 'v
     event.preventDefault();
     const form = new FormData(event.currentTarget as HTMLFormElement);
     const reason = formText(form, 'reason').trim();
-    if (!reason) { toast.error('Alasan perubahan wajib diisi.'); return; }
+    if (!reason) { toast.error('Isi Alasan perubahan status pembayaran.'); return; }
     const result = await send(() => billing.changePayment(invoice.id, { status: formText(form, 'status') as ChangePayment['status'], reason, expectedVersion: invoice.version }));
     if (result) {
         invoiceView = 'detail';
@@ -158,7 +163,7 @@ async function updateStatus(event: SubmitEvent, invoice: Pick<Invoice, 'id' | 'v
 }
 async function editLine(event: SubmitEvent, line: InvoiceLine) { event.preventDefault(); if (!selected)
     return; const f = new FormData(event.currentTarget as HTMLFormElement); const reason = String(formText(f, 'reason') ?? '').trim(); if (!reason) {
-    toast.error('Alasan perubahan rincian wajib diisi.');
+    toast.error('Isi Alasan perubahan rincian layanan.');
     return;
 } const result = await send(() => billing.editLine(selected!.id, line.id, { roomItemId: formText(f, 'roomItemId') || null, kind: formText(f, 'kind') || null, description: formText(f, 'description'), quantity: Number(formText(f, 'quantity')), unitPrice: String(formText(f, 'unitPrice')), expectedVersion: selected!.version, reason })); if (result)
     await openInvoice(selected!.id); }
@@ -171,7 +176,7 @@ async function deleteLine(event: SubmitEvent) {
     event.preventDefault();
     if (!selected || !deletingLine || busy) return;
     const reason = lineDeleteReason.trim();
-    if (!reason) { toast.error('Alasan penghapusan wajib diisi.'); return; }
+    if (!reason) { toast.error('Isi Alasan penghapusan rincian layanan.'); return; }
     const id = selected.id;
     const lineId = deletingLine.id;
     const expectedVersion = selected.version;
@@ -195,7 +200,7 @@ async function deleteInvoice(event: SubmitEvent) {
     const invoice = deletingInvoice;
     if (!invoice || busy) return;
     const reason = deleteReason.trim();
-    if (!reason) { toast.error('Alasan penghapusan wajib diisi.'); return; }
+    if (!reason) { toast.error('Isi Alasan penghapusan tagihan.'); return; }
     if (await send(async () => { await billing.remove(invoice.id, { expectedVersion: invoice.version, reason }); return true; }, 'Tagihan berhasil dihapus. Riwayat penghapusan tetap tercatat.')) {
         invoiceView = 'detail';
         deletingInvoice = null;
@@ -206,7 +211,7 @@ async function deleteInvoice(event: SubmitEvent) {
 }
 async function choosePatient(value: string) {
     if (value === patientId) return;
-    if (draftEdited && !confirm('Ganti pasien? Rincian dan jaminan yang sudah diubah akan direset.')) return;
+    if (draftEdited && !confirm('Ganti pasien? Rincian dan jaminan yang sudah diubah akan dikosongkan.')) return;
     const request = ++contextRequest;
     patientId = value;
     creationContext = null;
@@ -226,7 +231,7 @@ async function choosePatient(value: string) {
         }
         catch (cause) {
             if (request === contextRequest)
-                toast.error(sessionFailure(cause));
+                toast.error(sessionFailure(cause, 'load', 'Daftar penempatan pasien'));
         }
         finally {
             if (request === contextRequest) contextLoading = false;
@@ -235,7 +240,7 @@ async function choosePatient(value: string) {
 }
 function choosePlacement(value: string) {
     if (value === placementId) return;
-    if (draftEdited && !confirm('Ganti penempatan? Rincian dan jaminan yang sudah diubah akan direset.')) return;
+    if (draftEdited && !confirm('Ganti penempatan? Rincian dan jaminan yang sudah diubah akan dikosongkan.')) return;
     placementId = value;
     const suggested = draftRoomLines(creationContext?.placements.find((item) => item.id === value), data.rooms);
     lines = suggested.length ? suggested : [{ description: '', quantity: 1, unitPrice: '' }];
@@ -255,9 +260,9 @@ function startInvoiceCreation() {
 }
 </script>
 
-<svelte:head><title>Manajemen Tagihan | InpaCare</title></svelte:head>
+<svelte:head><title>Tagihan | InpaCare</title></svelte:head>
 <div class="billing-page flex min-w-0 flex-col gap-6">
-<section class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="page-title">Manajemen Tagihan</h1><p class="page-subtitle">Catat biaya layanan dan perlengkapan pasien, lalu ikuti status pembayarannya.</p></div><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={startInvoiceCreation}><Plus size={16} aria-hidden="true"/> Buat tagihan</Button></section>
+<section class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="page-title">Tagihan</h1><p class="page-subtitle">Catat biaya layanan dan perlengkapan pasien, lalu ikuti status pembayarannya.</p></div><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={startInvoiceCreation}><Plus size={16} aria-hidden="true"/> Buat tagihan</Button></section>
 
 {#if selected || (invoiceView === 'payment' && paymentInvoice)}
 <Modal title={invoiceView === 'detail' ? 'Rincian tagihan' : invoiceView === 'edit' ? 'Ubah tagihan' : invoiceView === 'line' ? 'Ubah rincian layanan' : invoiceView === 'claim' ? 'Verifikasi klaim' : invoiceView === 'delete' ? 'Hapus tagihan?' : invoiceView === 'deleteLine' ? 'Hapus rincian tagihan?' : 'Ubah status pembayaran'}
@@ -272,12 +277,12 @@ function startInvoiceCreation() {
   </nav>
   <section aria-label="Rincian tagihan">
    {#if detailTab === 'summary'}<div class="patient-card"><strong>{selected.patientContext.patient.name}</strong><span>{selected.medicalRecordNo}</span><span>Status BPJS: {selected.patientContext.patient.bpjs ? 'Terdaftar' : 'Tidak terdaftar'}</span><StatusBadge value={selected.status} label={selected.status === 'paid' ? 'Lunas' : 'Belum dibayar'} /></div>
-<div class="detail-totals"><span>{selected.bpjsSnapshot ? `Jaminan BPJS: ${rupiah(selected.coveredAmount)}` : 'Tanpa jaminan BPJS'}</span><strong>Total: {rupiah(selected.totalAmount)} · Dibayar pasien: {rupiah(selected.payableAmount)}</strong></div>
+<div class="detail-totals"><span>{selected.bpjsSnapshot ? `Jaminan BPJS: ${rupiah(selected.coveredAmount)}` : 'Tanpa jaminan BPJS'}</span><strong>Total: {rupiah(selected.totalAmount)} · Bagian pasien: {rupiah(selected.payableAmount)}</strong></div>
 <p>Hasil verifikasi klaim: <strong>{selected.claimResult ?? 'Belum ada hasil verifikasi'}</strong></p>
 <p class="muted">Riwayat tagihan pasien: {selected.patientContext.invoices.length}</p>
 
    {:else if detailTab === 'lines'}
-   <div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Layanan</TableHead><TableHead>Jumlah</TableHead><TableHead>Harga satuan</TableHead><TableHead>Subtotal</TableHead>{#if data.user.role === 'ADMISI'}<TableHead>Aksi</TableHead>{/if}</TableRow></TableHeader><TableBody>
+   <div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Nama layanan</TableHead><TableHead>Jumlah</TableHead><TableHead>Harga satuan</TableHead><TableHead>Subtotal</TableHead>{#if data.user.role === 'ADMISI'}<TableHead>Aksi</TableHead>{/if}</TableRow></TableHeader><TableBody>
     {#each selected.lines as line (line.id)}<TableRow><TableCell class="whitespace-normal">{line.description}</TableCell><TableCell>{line.quantity}</TableCell><TableCell>{rupiah(line.unitPrice)}</TableCell><TableCell>{rupiah(line.lineTotal)}</TableCell>{#if data.user.role === 'ADMISI'}<TableCell><div class="action-buttons action-buttons--table"><Button variant="outline" disabled={busy || locked} onclick={() => { editingLine = line; invoiceView = 'line'; }}><Pencil aria-hidden="true" /> Ubah rincian</Button><Button variant="outline" disabled={busy || locked} onclick={() => startLineDelete(line)}><Trash2 aria-hidden="true" /> Hapus rincian</Button></div></TableCell>{/if}</TableRow>{/each}
    </TableBody></Table></div>
    {:else}<h3>Riwayat perubahan</h3>{#if selected.history.length}<ul class="history-list">{#each selected.history as item}<li><strong>{({created:'Tagihan dibuat',status_changed:'Status pembayaran diubah',updated:'Tagihan dan jaminan diperbarui',line_updated:'Rincian diperbarui',line_deleted:'Rincian dihapus',claim_verification:'Klaim diverifikasi',deleted:'Tagihan dihapus'} as Record<string,string>)[item.action] ?? item.action} · {item.actor}</strong><span>{item.reason} · {new Date(item.createdAt).toLocaleString('id-ID')}</span></li>{/each}</ul>{:else}<p class="muted">Belum ada riwayat.</p>{/if}{/if}
@@ -291,7 +296,7 @@ function startInvoiceCreation() {
     <Button variant="destructive" disabled={busy || locked} onclick={startInvoiceDelete}><Trash2 aria-hidden="true" /> Hapus tagihan</Button>
    </div>
   {/if}
- {:else if invoiceView === 'edit' && selected}<form onsubmit={saveInvoiceEdit} oninvalidcapture={reportInvalid}><div class="line-heading"><h3>Ubah rincian</h3><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="button" disabled={editLines.length>=30} onclick={()=>editLines=[...editLines,{id:'',description:'',quantity:1,unitPrice:'0',lineTotal:'0',roomItemId:null,kind:'service'}]}><Plus aria-hidden="true" /> Tambah baris</Button></div>{#each editLines as line,index (line)}<div class="line-editor editing grid"><label class="field">Jenis<Input class="h-11 text-base md:text-sm" bind:value={line.kind} maxlength={40}/></label><label class="field">Perlengkapan ruangan<FormSelect bind:value={line.roomItemId} options={[{ value: null, label: "Layanan tanpa perlengkapan ruangan" }, ...(data.rooms).flatMap((room) => [...(room.items).map((roomItem) => ({ value: roomItem.id, label: (room.name) + " · " + (roomItem.name) }))])]} /></label><label class="field">Deskripsi<Input class="h-11 text-base md:text-sm" bind:value={line.description} required maxlength={160}/></label><label class="field">Jumlah<Input class="h-11 text-base md:text-sm" bind:value={line.quantity} type="number" min="1" max="10000" required/></label><MoneyInput label="Harga satuan" bind:value={line.unitPrice} required /><Button variant="outline" size="icon" class="remove-line size-11 text-destructive hover:text-destructive" type="button" aria-label="Hapus baris rincian" title="Hapus baris" disabled={editLines.length<=1} onclick={()=>editLines=editLines.filter((_,i)=>i!==index)}><Trash2 size={18} aria-hidden="true" /></Button></div>{/each}<MoneyInput label="Jumlah jaminan BPJS (Rp)" bind:value={editCovered} disabled={!selected.bpjsSnapshot} required hint={selected.bpjsSnapshot ? '' : 'Pasien ini tidak terdaftar BPJS, jadi jaminan otomatis Rp 0.'} /><label class="field">Alasan perubahan<Input class="h-11 text-base md:text-sm" bind:value={editReason} required maxlength={500}/></label><div class="detail-totals"><span>Total layanan: {rupiah(editTotal)}</span><strong>Dibayar pasien: {rupiah(Math.max(0,editTotal-Number(editCovered)))}</strong></div><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan perubahan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={close}><X aria-hidden="true" /> Batal</Button></div></form>
+ {:else if invoiceView === 'edit' && selected}<form onsubmit={saveInvoiceEdit} oninvalidcapture={reportInvalid}><div class="line-heading"><h3>Ubah rincian</h3><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="button" disabled={editLines.length>=30} onclick={()=>editLines=[...editLines,{id:'',description:'',quantity:1,unitPrice:'0',lineTotal:'0',roomItemId:null,kind:'service'}]}><Plus aria-hidden="true" /> Tambah baris</Button></div>{#each editLines as line,index (line)}<div class="line-editor editing grid"><label class="field">Jenis<Input class="h-11 text-base md:text-sm" bind:value={line.kind} maxlength={40}/></label><label class="field">Perlengkapan ruangan<FormSelect bind:value={line.roomItemId} options={[{ value: null, label: "Layanan tanpa perlengkapan ruangan" }, ...(data.rooms).flatMap((room) => [...(room.items).map((roomItem) => ({ value: roomItem.id, label: (room.name) + " · " + (roomItem.name) }))])]} /></label><label class="field">Deskripsi<Input class="h-11 text-base md:text-sm" bind:value={line.description} required maxlength={160}/></label><label class="field">Jumlah<Input class="h-11 text-base md:text-sm" bind:value={line.quantity} type="number" min="1" max="10000" required/></label><MoneyInput label="Harga satuan" bind:value={line.unitPrice} required /><Button variant="outline" size="icon" class="remove-line size-11 text-destructive hover:text-destructive" type="button" aria-label="Hapus baris rincian" title="Hapus baris" disabled={editLines.length<=1} onclick={()=>editLines=editLines.filter((_,i)=>i!==index)}><Trash2 size={18} aria-hidden="true" /></Button></div>{/each}<MoneyInput label="Nilai jaminan BPJS (Rp)" bind:value={editCovered} disabled={!selected.bpjsSnapshot} required hint={selected.bpjsSnapshot ? '' : 'Pasien ini tidak terdaftar BPJS, jadi jaminan otomatis Rp 0.'} /><label class="field">Alasan perubahan<Input class="h-11 text-base md:text-sm" bind:value={editReason} required maxlength={500}/></label><div class="detail-totals"><span>Total layanan: {rupiah(editTotal)}</span><strong>Bagian pasien: {rupiah(Math.max(0,editTotal-Number(editCovered)))}</strong></div><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy}><Save aria-hidden="true" /> Simpan perubahan</Button><Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" type="button" onclick={close}><X aria-hidden="true" /> Batal</Button></div></form>
  {:else if invoiceView === 'line' && selected && editingLine}{@const line = editingLine}<form class="form-grid" onsubmit={(event)=>editLine(event,line)}><fieldset class="contents" disabled={locked}><label class="field">Jenis<Input class="h-11 text-base md:text-sm" name="kind" value={line.kind??''} placeholder="layanan / perlengkapan"/></label><label class="field">Perlengkapan ruangan<FormSelect name="roomItemId" value={line.roomItemId??''} options={[{ value: "", label: "Layanan tanpa perlengkapan ruangan" }, ...(data.rooms).flatMap((room) => [...(room.items).map((roomItem) => ({ value: roomItem.id, label: (room.name) + " · " + (roomItem.name) }))])]} /></label><label class="field">Deskripsi<Input class="h-11 text-base md:text-sm" name="description" value={line.description} required maxlength={160}/></label><label class="field">Jumlah<Input class="h-11 text-base md:text-sm" name="quantity" type="number" min="1" value={line.quantity} required/></label><MoneyInput label="Harga satuan" name="unitPrice" value={line.unitPrice} required /><label class="field">Alasan<Input class="h-11 text-base md:text-sm" name="reason" required maxlength={500}/></label><div class="form-actions"><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy||locked}><Save aria-hidden="true" /> Simpan</Button><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button></div></fieldset></form>
  {:else if invoiceView === 'claim' && selected}<form class="form-grid" onsubmit={(event)=>selected&&verifyClaim(event,selected)}><div class="field"><label for="claim-result">Hasil verifikasi klaim</label><div class="relative">
     <Input id="claim-result" class="h-11 pr-12 text-base md:text-sm" name="result" bind:value={claimResultDraft} required maxlength={120} />
@@ -349,9 +354,9 @@ function startInvoiceCreation() {
 <Card class="min-w-0 gap-4 p-5 sm:p-6" role="region" aria-label="Daftar tagihan">
 	<div class="panel-header"><div><h2>Daftar tagihan</h2><span class="muted">{invoices.length} dari {data.invoices.length} tagihan</span></div></div>
 	<div class="filters"><label class="field search-field">Cari pasien / nomor tagihan<Input class="h-11 text-base md:text-sm" type="search" bind:value={search} placeholder="Cari nama pasien..." /></label><label class="field">Status<FormSelect bind:value={statusFilter} options={[{ value: "", label: "Semua status" }, { value: "unpaid", label: "Belum dibayar" }, { value: "paid", label: "Lunas" }]} /></label></div>
-	<div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Pasien</TableHead><TableHead>Nomor tagihan</TableHead><TableHead>Total</TableHead><TableHead>Jaminan</TableHead><TableHead>Dibayar pasien</TableHead><TableHead>Status</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader><TableBody>
+	<div class="table-wrap"><Table class="data-table"><TableHeader><TableRow><TableHead>Pasien</TableHead><TableHead>Nomor tagihan</TableHead><TableHead>Total</TableHead><TableHead>Jaminan</TableHead><TableHead>Bagian pasien</TableHead><TableHead>Status</TableHead><TableHead>Aksi</TableHead></TableRow></TableHeader><TableBody>
 		{#each invoices as invoice (invoice.id)}<TableRow><TableCell><strong>{invoice.patientName}</strong><span class="cell-meta">{invoice.medicalRecordNo}</span></TableCell><TableCell>{invoice.id}</TableCell><TableCell>{rupiah(invoice.totalAmount)}</TableCell><TableCell>{invoice.bpjsSnapshot ? rupiah(invoice.coveredAmount) : '—'}</TableCell><TableCell>{rupiah(invoice.payableAmount)}</TableCell><TableCell><StatusBadge value={invoice.status} label={invoice.status === 'paid' ? 'Lunas' : 'Belum dibayar'} /></TableCell><TableCell><div class="action-buttons action-buttons--table"><Button variant="outline" class="h-11 px-4" aria-haspopup="dialog" onclick={() => void showInvoice(invoice.id)}><Eye aria-hidden="true" /> Lihat detail</Button>{#if data.user.role === 'ADMISI'}<Button variant="outline" class="h-11" disabled={busy} onclick={() => startPaymentChange(invoice)}><Pencil aria-hidden="true" /> Ubah status</Button>{/if}</div></TableCell></TableRow>
-		{:else}<TableRow><TableCell colspan={7} class="empty">Belum ada tagihan yang cocok.</TableCell></TableRow>{/each}
+		{:else}<TableRow><TableCell colspan={7} class="empty">{search || statusFilter ? 'Tidak ada tagihan yang cocok. Ubah pencarian atau filter status.' : 'Belum ada tagihan. Pilih Buat tagihan untuk menambahkan tagihan.'}</TableCell></TableRow>{/each}
 	</TableBody></Table></div>
 </Card>
 <p class="muted scope-note">Status dan nilai jaminan di atas dicatat oleh petugas Admisi. Pembayaran dan verifikasi BPJS tidak terhubung ke layanan eksternal.</p>
@@ -366,12 +371,12 @@ function startInvoiceCreation() {
 			<label class="field">Pasien<FormSelect name="patientId" bind:value={() => patientId, (value) => { void choosePatient(value ?? ''); }} disabled={busy} required options={[{ value: "", label: "Pilih pasien" }, ...(data.reference.patients).map((item) => ({ value: item.id, label: (item.medicalRecordNo) + " · " + (item.name) }))]} /></label>
 			{#if patient}<div class="patient-card"><strong>{patient.name}</strong><span>{patient.medicalRecordNo}</span><span>Status BPJS: {patient.bpjs ? 'Terdaftar' : 'Tidak terdaftar'}</span></div>{/if}
 			{#if contextLoading}<p class="text-sm text-muted-foreground" role="status">Memuat penempatan dan biaya kamar…</p>{/if}
-			{#if creationContext}<label class="field">Penempatan<FormSelect name="placementId" bind:value={() => placementId, (value) => choosePlacement(value ?? '')} disabled={busy} options={[{ value: "", label: "Tanpa penempatan / isi manual" }, ...availablePlacements.map((placement) => ({ value: placement.id, label: (placement.room) + " · " + (placement.startsOn) + " – " + (placement.endsOn) }))]} /></label>
-                <p class="text-sm text-muted-foreground" role="status">{#if creationPlacement && creationRoom}Biaya kamar terisi dari tarif harian saat ini untuk periode {creationPlacement.startsOn} – {creationPlacement.endsOn}, termasuk tanggal masuk dan keluar. Periksa jumlah hari dan harga; semua rincian tetap bisa diubah atau ditambah.{:else if creationPlacement}Tarif kamar penempatan ini tidak tersedia. Isi rincian layanan secara manual.{:else if availablePlacements.length}Pilih penempatan untuk mengisi biaya kamar otomatis, atau isi rincian secara manual.{:else}Belum ada penempatan pasien. Rincian layanan dapat diisi secara manual.{/if}</p>
+			{#if creationContext}<label class="field">Penempatan<FormSelect name="placementId" bind:value={() => placementId, (value) => choosePlacement(value ?? '')} disabled={busy} options={[{ value: "", label: "Tanpa penempatan / isi manual" }, ...availablePlacements.map((placement) => ({ value: placement.id, label: (placement.room) + " · " + date(placement.startsOn) + "–" + date(placement.endsOn) }))]} /></label>
+                <p class="text-sm text-muted-foreground" role="status">{#if creationPlacement && creationRoom}Rincian kamar memakai tarif per hari saat ini untuk {date(creationPlacement.startsOn)}–{date(creationPlacement.endsOn)}, termasuk tanggal masuk dan tanggal selesai. Periksa jumlah hari dan harga. Anda dapat mengubah atau menambah rincian.{:else if creationPlacement}Tarif kamar penempatan ini tidak tersedia. Isi rincian layanan secara manual.{:else if availablePlacements.length}Pilih penempatan untuk mengisi biaya kamar otomatis, atau isi rincian secara manual.{:else}Belum ada penempatan pasien. Rincian layanan dapat diisi secara manual.{/if}</p>
             {/if}
 			<div class="line-heading"><h3>Rincian layanan</h3><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="button" disabled={contextLoading || busy || lines.length >= 30} onclick={() => { lines = [...lines,{description:'',quantity:1,unitPrice:''}]; draftEdited = true; }}><Plus size={14} aria-hidden="true"/> Tambah baris</Button></div>
-			{#each lines as line, index (line)}<div class="line-row"><label class="field">Layanan<Input class="h-11 text-base md:text-sm" bind:value={line.description} disabled={contextLoading || busy} maxlength={160} required placeholder="Contoh: Kamar kelas 2 (hari)" /></label><label class="field quantity-field">Jumlah<Input class="h-11 text-base md:text-sm" bind:value={line.quantity} disabled={contextLoading || busy} type="number" min="1" max="10000" required /></label><MoneyInput label="Harga satuan (Rp)" bind:value={line.unitPrice} disabled={contextLoading || busy} required /><Button variant="outline" size="icon" class="remove-line size-11 text-destructive hover:text-destructive" type="button" aria-label="Hapus baris rincian" title="Hapus baris" disabled={contextLoading || busy || lines.length <= 1} onclick={() => { lines = lines.filter((_, i) => i !== index); draftEdited = true; }}><Trash2 size={18} aria-hidden="true" /></Button></div>{/each}
-			<MoneyInput label="Jumlah jaminan BPJS (Rp)" bind:value={coveredAmount} disabled={contextLoading || busy || !patient?.bpjs} required hint={!patient ? 'Pilih pasien terlebih dahulu.' : patient.bpjs ? 'Nilai diisi sesuai hasil pemeriksaan petugas; aplikasi demo tidak memverifikasi BPJS.' : 'Pasien ini tidak terdaftar BPJS, jadi jaminan otomatis Rp 0.'} />
+			{#each lines as line, index (line)}<div class="line-row"><label class="field">Nama layanan<Input class="h-11 text-base md:text-sm" bind:value={line.description} disabled={contextLoading || busy} maxlength={160} required placeholder="Contoh kamar kelas 2 (hari)" /></label><label class="field quantity-field">Jumlah<Input class="h-11 text-base md:text-sm" bind:value={line.quantity} disabled={contextLoading || busy} type="number" min="1" max="10000" required /></label><MoneyInput label="Harga satuan (Rp)" bind:value={line.unitPrice} disabled={contextLoading || busy} required /><Button variant="outline" size="icon" class="remove-line size-11 text-destructive hover:text-destructive" type="button" aria-label="Hapus baris rincian" title="Hapus baris" disabled={contextLoading || busy || lines.length <= 1} onclick={() => { lines = lines.filter((_, i) => i !== index); draftEdited = true; }}><Trash2 size={18} aria-hidden="true" /></Button></div>{/each}
+			<MoneyInput label="Nilai jaminan BPJS (Rp)" bind:value={coveredAmount} disabled={contextLoading || busy || !patient?.bpjs} required hint={!patient ? 'Pilih pasien terlebih dahulu.' : patient.bpjs ? 'Nilai diisi sesuai hasil pemeriksaan petugas; aplikasi demo tidak memverifikasi BPJS.' : 'Pasien ini tidak terdaftar BPJS, jadi jaminan otomatis Rp 0.'} />
 
 		</Card>
 		<Card class="summary h-max gap-0 p-5 sm:p-6" role="complementary" aria-label="Ringkasan biaya"><h2 class="mb-4">Ringkasan biaya</h2><div class="summary-row"><span>Total layanan</span><strong>{rupiah(total)}</strong></div><div class="summary-row"><span>Jaminan BPJS</span><strong>−{rupiah(covered)}</strong></div><div class="summary-row grand-total"><span>Total tagihan</span><strong>{rupiah(payable)}</strong></div></Card>

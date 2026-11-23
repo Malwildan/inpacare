@@ -1,4 +1,3 @@
-import { toastMessage } from '../toast.mjs';
 import { test, expect } from '@playwright/test';
 
 test('notifications show truthful loading, retry and keyboard dismissal', async ({ page }) => {
@@ -26,13 +25,12 @@ test('notifications show truthful loading, retry and keyboard dismissal', async 
  await trigger.click();
  await expect.poll(() => requests).toBe(1);
  release();
- await expect(toastMessage(page, 'Gagal memuat notifikasi.')).toContainText('Gagal memuat notifikasi.');
- await page.keyboard.press('Escape');
- await expect(trigger).toBeFocused();
- await trigger.click();
+ await expect(page.getByRole('alert')).toHaveText('Notifikasi gagal dimuat. Periksa koneksi Anda, lalu muat ulang.');
+ await page.getByRole('button', { name: 'Coba lagi', exact: true }).click();
  await expect(page.getByText('Notifikasi sintetis')).toBeVisible();
  expect(requests).toBe(2);
  await page.keyboard.press('Escape');
+ await expect(trigger).toBeFocused();
  await page.setViewportSize({ width: 390, height: 844 });
  const menu = page.getByRole('button', { name: 'Buka navigasi' });
  await menu.click();

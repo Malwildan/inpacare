@@ -36,7 +36,7 @@ export class TugasPerawatan {
   revise(actor: Actor, changes: TaskChanges): TaskState {
     assertEditableFields(actor, changes);
     if (changes.title !== undefined && !changes.title.trim())
-      throw DomainError.validation("Judul wajib diisi.");
+      throw DomainError.validation("Isi Judul tugas.");
     if (
       !Object.keys(changes).some(
         (key) => key !== "expectedVersion" && key !== "reason",
@@ -52,7 +52,7 @@ export class TugasPerawatan {
       changes.status === "cancelled" &&
       (!isCoordinator(actor) || !changes.reason?.trim())
     )
-      throw DomainError.validation("Pembatalan memerlukan alasan koordinator.");
+      throw DomainError.validation("Hanya koordinator yang dapat membatalkan tugas. Isi Alasan pembatalan untuk melanjutkan.");
     const startsAt = changes.startsAt
       ? parseTaskInstant(changes.startsAt, "Waktu mulai")
       : this.state.startsAt;
@@ -73,7 +73,7 @@ export class TugasPerawatan {
   static validateSpan(start: Date, end: Date) {
     if (end < start)
       throw DomainError.validation(
-        "Waktu selesai tidak boleh sebelum waktu mulai.",
+        "Waktu selesai sebelum waktu mulai. Pilih waktu selesai yang sama dengan atau setelah waktu mulai.",
       );
   }
   static validateStatus(
@@ -89,6 +89,6 @@ export class TugasPerawatan {
         next === "cancelled" &&
         ["todo", "in_progress"].includes(current));
     if (!allowed)
-      throw DomainError.validation("Perubahan status tugas tidak diizinkan.");
+      throw DomainError.validation("Perubahan status tugas ditolak. Periksa status saat ini dan pilih salah satu tujuan yang tersedia.");
   }
 }

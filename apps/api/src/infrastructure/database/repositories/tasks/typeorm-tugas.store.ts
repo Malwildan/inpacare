@@ -108,9 +108,7 @@ export class TypeOrmTaskStore implements TaskStore {
       placement.patient_id !== rel.patient_id ||
       placement.room_id !== rel.room_id
     )
-      throw DomainError.conflict(
-        "Penempatan berubah; muat ulang sebelum menyimpan tugas.",
-      );
+      throw DomainError.conflict();
     await this.manager.query(
       "SELECT id FROM cycles WHERE placement_id=$1 ORDER BY id FOR UPDATE",
       [rel.placement_id],

@@ -68,7 +68,7 @@ export class TypeOrmRoomStore implements RoomStore {
           }
         )?.code;
       if (code === "23505")
-        throw DomainError.conflict("Nama ruangan sudah digunakan.");
+        throw DomainError.conflict("Nama ruang sudah digunakan. Masukkan nama lain.");
       throw error;
     }
   }
@@ -126,7 +126,7 @@ export class TypeOrmRoomStore implements RoomStore {
           }
         )?.code;
       if (code === "23505")
-        throw DomainError.conflict("Nama ruangan sudah digunakan.");
+        throw DomainError.conflict("Nama ruang sudah digunakan. Masukkan nama lain.");
       throw error;
     }
   }

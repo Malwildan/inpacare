@@ -13,13 +13,13 @@
 </script>
 
 {#snippet Fallback()}
-	<span>Next</span>
+	<span>Berikutnya</span>
 	<ChevronRightIcon class={cn("cn-rtl-flip size-4", className)} />
 {/snippet}
 
 <PaginationPrimitive.NextButton
 	bind:ref
-	aria-label="Go to next page"
+	aria-label="Buka halaman berikutnya"
 	class={cn(buttonVariants({ variant: "ghost" }), "pr-1.5!", className)}
 	{...restProps}
 >

@@ -45,10 +45,10 @@ export function money(value: string | number): string {
         const negative = value.startsWith('-');
         const [integer, fraction = ''] = (negative ? value.slice(1) : value).split('.');
         const amount = integer.replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        return `${negative ? '-' : ''}Rp ${amount}${/[1-9]/.test(fraction) ? `,${fraction.padEnd(2, '0')}` : ''}`;
+        return `${negative ? '-' : ''}Rp${amount}${/[1-9]/.test(fraction) ? `,${fraction.padEnd(2, '0')}` : ''}`;
     }
     const numeric = Number(value);
-    return `${numeric < 0 ? '-' : ''}Rp ${new Intl.NumberFormat('id-ID', {
+    return `${numeric < 0 ? '-' : ''}Rp${new Intl.NumberFormat('id-ID', {
         minimumFractionDigits: Number.isInteger(numeric) ? 0 : 2,
         maximumFractionDigits: 2
     }).format(Math.abs(numeric))}`;

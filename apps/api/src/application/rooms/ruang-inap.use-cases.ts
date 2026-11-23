@@ -80,12 +80,10 @@ export class RuangInapUseCases {
       const version = await tx.rooms.lockVersion(roomId);
       if (version === undefined) throw DomainError.notFound();
       if (version !== dto.expectedVersion)
-        throw DomainError.conflict(
-          "Ruangan telah berubah; muat ulang sebelum menyimpan.",
-        );
+        throw DomainError.conflict();
       if (await tx.rooms.capacityExceeded(roomId, dto.capacity))
         throw DomainError.conflict(
-          "Kapasitas tidak boleh kurang dari penempatan yang sudah tersimpan.",
+          "Kapasitas lebih kecil daripada jumlah penempatan yang sudah tersimpan. Masukkan kapasitas yang dapat menampung penempatan tersebut.",
         );
       await tx.rooms.update(roomId, {
         name: dto.name.trim(),
@@ -128,9 +126,7 @@ export class RuangInapUseCases {
       const version = await tx.rooms.lockVersion(roomId);
       if (version === undefined) throw DomainError.notFound();
       if (version !== dto.expectedVersion)
-        throw DomainError.conflict(
-          "Ruangan telah berubah; muat ulang sebelum menyimpan.",
-        );
+        throw DomainError.conflict();
       const updated = await tx.rooms.updateItem(roomId, itemId, {
         name: dto.name.trim(),
         category: dto.category.trim(),
@@ -155,9 +151,7 @@ export class RuangInapUseCases {
       const version = await tx.rooms.lockVersion(roomId);
       if (version === undefined) throw DomainError.notFound();
       if (version !== dto.expectedVersion)
-        throw DomainError.conflict(
-          "Ruangan telah berubah; muat ulang sebelum menyimpan.",
-        );
+        throw DomainError.conflict();
       if (!(await tx.rooms.deleteItem(roomId, itemId)))
         throw DomainError.notFound();
       await tx.rooms.bumpVersion(roomId);
@@ -176,9 +170,7 @@ export class RuangInapUseCases {
       const version = await tx.rooms.lockVersion(roomId);
       if (version === undefined) throw DomainError.notFound();
       if (version !== dto.expectedVersion)
-        throw DomainError.conflict(
-          "Ruangan telah berubah; muat ulang sebelum menghapus.",
-        );
+        throw DomainError.conflict();
       if (await tx.rooms.hasActiveLinks(roomId))
         throw DomainError.conflict(
           "Selesaikan atau batalkan penempatan dan tugas aktif sebelum mengarsipkan ruangan.",
