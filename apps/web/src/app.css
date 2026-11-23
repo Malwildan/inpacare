@@ -31,7 +31,7 @@
 	--muted-foreground: #5e687a;
 	--accent: #eef0f5;
 	--accent-foreground: #202638;
-	--destructive: #a83232;
+	--destructive: var(--danger);
 	--destructive-foreground: #ffffff;
 	--border: #dfe3eb;
 	--input: #cbd1dc;
@@ -64,7 +64,11 @@
 	--info: #235e91;
 	--info-soft: #e8f2fb;
 	--danger: #a83232;
+	--danger-hover: #8b2727;
 	--danger-soft: #fbebeb;
+	--danger-soft-hover: #f5dada;
+	--extended: #64408f;
+	--extended-soft: #f3edfb;
 }
 
 @theme inline {
@@ -103,7 +107,11 @@
 	--color-info: var(--info);
 	--color-info-soft: var(--info-soft);
 	--color-danger: var(--danger);
+	--color-danger-hover: var(--danger-hover);
 	--color-danger-soft: var(--danger-soft);
+	--color-danger-soft-hover: var(--danger-soft-hover);
+	--color-extended: var(--extended);
+	--color-extended-soft: var(--extended-soft);
 
 	--color-chart-1: var(--chart-1);
 	--color-chart-2: var(--chart-2);

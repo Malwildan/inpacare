@@ -8,12 +8,12 @@ const labels: Record<string, string> = {
     paid: 'Lunas', unpaid: 'Belum lunas', approved: 'Disetujui', rejected: 'Ditolak', active: 'Aktif', release: 'Pelepasan'
 };
 const tones: Record<string, BadgeVariant> = {
-    pending: 'warning', todo: 'warning', unpaid: 'warning', assigned: 'info', occupied: 'info', in_progress: 'info',
-    in_care: 'success', done: 'success', paid: 'success', available: 'success', approved: 'success', active: 'success',
+    pending: 'warning', todo: 'warning', unpaid: 'warning', assigned: 'secondary', occupied: 'info', in_progress: 'info', in_care: 'info',
+    released: 'success', done: 'success', paid: 'success', available: 'success', approved: 'success', active: 'success',
     cancelled: 'destructive', rejected: 'destructive', high: 'destructive', maintenance: 'destructive', normal: 'info'
 };
 </script>
 
-<Badge variant={tones[value] ?? 'outline'} class={value === 'extend' ? 'border-transparent bg-[#f3edfb] text-[#64408f]' : undefined}>
+<Badge variant={tones[value] ?? 'outline'} class={value === 'extend' ? 'border-transparent bg-extended-soft text-extended' : undefined}>
     {label ?? labels[value] ?? 'Status belum dikenali'}
 </Badge>

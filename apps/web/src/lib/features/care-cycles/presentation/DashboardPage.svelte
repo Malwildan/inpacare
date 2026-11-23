@@ -22,7 +22,13 @@ import CycleTaskForm from './CycleTaskForm.svelte';
 import CycleTasks from './CycleTasks.svelte';
 import CycleRequestReview from './CycleRequestReview.svelte';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
-const statusLabels: Record<string, string> = { pending: 'Menunggu', assigned: 'Sudah ditempatkan', in_care: 'Dalam perawatan', extend: 'Diperpanjang', released: 'Pelepasan' };
+const cycleStatuses = [
+    { status: 'pending', label: 'Menunggu', tone: 'bg-warning-soft text-warning' },
+    { status: 'assigned', label: 'Sudah ditempatkan', tone: 'bg-secondary text-secondary-foreground' },
+    { status: 'in_care', label: 'Dalam perawatan', tone: 'bg-info-soft text-info' },
+    { status: 'extend', label: 'Diperpanjang', tone: 'bg-extended-soft text-extended' },
+    { status: 'released', label: 'Pelepasan', tone: 'bg-success-soft text-success' },
+];
 const requestLabels: Record<string, string> = { pending: 'Menunggu keputusan', approved: 'Disetujui', rejected: 'Ditolak' };
 const assignmentTime = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' });
 import Badge from '$lib/shared/ui/status-badge.svelte';
@@ -112,7 +118,10 @@ let reviewBody = $state<HTMLDivElement | null>(null);
 let requestKind = $state('release');
 let cycles = $derived(data.cycles);
 let rooms = $derived(data.reference.rooms);
-let counts = $derived(['pending', 'assigned', 'in_care', 'extend', 'released'].map((status) => ({ status, count: data.cycles.filter((c) => c.status === status).length })));
+let counts = $derived(cycleStatuses.map((item) => ({
+    ...item,
+    count: data.cycles.filter((cycle) => cycle.status === item.status).length,
+})));
 async function openDetail(id: string, requestId?: string) {
     returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     listPosition = { x: window.scrollX, y: window.scrollY, left: cycleTable?.querySelector<HTMLElement>('[data-slot="table-container"]')?.scrollLeft ?? 0 };
@@ -377,7 +386,12 @@ async function deleteCycle(cycle: CycleDetail) {
 </section>
 
 <section class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" aria-label="Jumlah rekap menurut status">
-	{#each counts as item}<Card class="gap-1 p-4"><strong class="text-2xl font-semibold tabular-nums">{item.count}</strong><span class="text-sm text-muted-foreground">{({pending:'Menunggu',assigned:'Sudah ditempatkan',in_care:'Dalam perawatan',extend:'Diperpanjang',released:'Pelepasan'} as Record<string,string>)[item.status]}</span></Card>{/each}
+	{#each counts as item (item.status)}
+        <Card class={`gap-1 p-4 ${item.tone}`}>
+            <strong class="text-2xl font-semibold tabular-nums">{item.count}</strong>
+            <span class="text-sm">{item.label}</span>
+        </Card>
+    {/each}
 </section>
 
 <div class="flex flex-wrap gap-3"><Button variant="outline" class="h-11" aria-haspopup="dialog" onclick={() => notificationsOpen = true}><Bell aria-hidden="true" /> Lihat notifikasi</Button></div>
@@ -640,7 +654,7 @@ async function deleteCycle(cycle: CycleDetail) {
             <label class="field">Alasan penghapusan<Textarea name="reason" bind:value={deletionReason} required maxlength={500}/></label>
             <div class="flex justify-end gap-2">
                 <Button variant="outline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button>
-                <Button type="submit" variant="destructive" disabled={busy}><Trash2 aria-hidden="true" /> {busy ? 'Menghapus…' : 'Konfirmasi hapus'}</Button>
+                <Button type="submit" variant="destructive-confirm" disabled={busy}><Trash2 aria-hidden="true" /> {busy ? 'Menghapus…' : 'Konfirmasi hapus'}</Button>
             </div>
         </form>
  {/if}
@@ -686,7 +700,7 @@ async function deleteCycle(cycle: CycleDetail) {
 <Modal title="Filter rekap" description="Pilih pasien, ruangan, dan status perawatan untuk membatasi daftar rekap." busy={filterBusy} onclose={() => filterOpen = false}>
     {#snippet children(close)}
     <form class="flex flex-col gap-4" onsubmit={(event) => filterCycles(event, filterDraft)}>
-<label class="field">Pasien<FormSelect bind:value={filterDraft.patientId} options={[{ value: "", label: "Semua pasien" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} /></label><label class="field">Ruangan<FormSelect bind:value={filterDraft.roomId} options={[{ value: "", label: "Semua ruangan" }, ...(rooms).map((room) => ({ value: room.id, label: (room.name) }))]} /></label><label class="field">Status<FormSelect bind:value={filterDraft.status} options={[{ value: "", label: "Semua status" }, ...(counts).flatMap((item) => [{ value: item.status, label: (({pending:'Menunggu',assigned:'Sudah ditempatkan',in_care:'Dalam perawatan',extend:'Diperpanjang',released:'Pelepasan'} as Record<string,string>)[item.status]) }]), { value: "pending_approval", label: "Menunggu keputusan" }]} /></label>
+<label class="field">Pasien<FormSelect bind:value={filterDraft.patientId} options={[{ value: "", label: "Semua pasien" }, ...(data.reference.patients).map((patient) => ({ value: patient.id, label: (patient.name) + " · " + (patient.medicalRecordNo) }))]} /></label><label class="field">Ruangan<FormSelect bind:value={filterDraft.roomId} options={[{ value: "", label: "Semua ruangan" }, ...(rooms).map((room) => ({ value: room.id, label: (room.name) }))]} /></label><label class="field">Status<FormSelect bind:value={filterDraft.status} options={[{ value: "", label: "Semua status" }, ...cycleStatuses.map(({ status, label }) => ({ value: status, label })), { value: "pending_approval", label: "Menunggu keputusan" }]} /></label>
         <div class="form-actions"><Button variant="outline" disabled={filterBusy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button type="submit" disabled={filterBusy}><Filter aria-hidden="true" /> Terapkan filter</Button></div>
     </form>
     {/snippet}
