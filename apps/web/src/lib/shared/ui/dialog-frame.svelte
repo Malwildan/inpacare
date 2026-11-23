@@ -6,7 +6,7 @@ import { Button } from './button/index.js';
 
 let { title, description, onclose, children, busy = false, protectChanges = false, formKey = '', backLabel, wide = false }: {
     title: string;
-    description: string;
+    description?: string;
     onclose: () => void;
     children: Snippet<[close: () => void]>;
     busy?: boolean;
@@ -83,7 +83,7 @@ async function continueEditing() {
         onCloseAutoFocus={(event) => { event.preventDefault(); if (opener?.isConnected) opener.focus(); }}>
         <Dialog.Header class="shrink-0 border-b p-5 pr-14 text-left">
             <Dialog.Title>{discarding ? 'Abaikan perubahan?' : title}</Dialog.Title>
-            <Dialog.Description>{discarding ? 'Perubahan belum disimpan. Lanjutkan mengisi atau abaikan perubahan untuk kembali.' : description}</Dialog.Description>
+            {#if discarding || description}<Dialog.Description>{discarding ? 'Perubahan belum disimpan. Lanjutkan mengisi atau abaikan perubahan untuk kembali.' : description}</Dialog.Description>{/if}
         </Dialog.Header>
         {#if discarding}
             <div bind:this={confirmation} class="flex flex-wrap justify-end gap-2 p-5">

@@ -37,7 +37,7 @@ async function markRead(id: string) {
 }
 </script>
 
-<Modal title="Semua notifikasi" description="Lihat pemberitahuan dan tandai sebagai sudah dibaca." busy={reading !== null} {onclose}>
+<Modal title="Semua notifikasi" busy={reading !== null} {onclose}>
     {#snippet children(close)}
     {#if loading}
         <p role="status">Memuat notifikasi…</p>

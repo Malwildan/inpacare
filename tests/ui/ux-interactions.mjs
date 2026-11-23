@@ -58,6 +58,9 @@ try {
     await page.getByRole('button', { name: 'Lihat semua notifikasi', exact: true }).click();
     const shellNotices = page.getByRole('dialog', { name: 'Semua notifikasi', exact: true });
     await expect(shellNotices).toContainText('Sintetis');
+    await expect(shellNotices).toHaveAccessibleDescription('');
+    const noticeDescription = await shellNotices.getAttribute('aria-describedby');
+    if (noticeDescription) assert.ok(await page.locator(`[id="${noticeDescription}"]`).count(), 'Dialog description reference must resolve');
     await expect(page.getByRole('dialog')).toHaveCount(1);
     await page.keyboard.press('Escape');
     await expect(trigger).toBeFocused();
@@ -73,6 +76,7 @@ try {
     const modalTrigger = page.getByRole('button', { name: 'Open test modal' });
     await modalTrigger.click();
     await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveAccessibleDescription('Synthetic focus and keyboard fixture.');
     await page.keyboard.press('Escape');
     await expect(page.locator('#closes')).toHaveText('1');
     await expect(page.getByRole('dialog')).toHaveCount(0);

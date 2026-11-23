@@ -1,5 +1,4 @@
 <script lang="ts">
-import { ArrowLeft, LogIn } from 'lucide-svelte';
 import { Button } from '$lib/shared/ui/button/index.js';
 import { Card, CardContent, CardHeader } from '$lib/shared/ui/card/index.js';
 let { status, message, back }: { status: number; message: string | undefined; back: { href: string; label: string } } = $props();
@@ -19,9 +18,9 @@ const fallback = $derived(status === 403 ? 'Akun Anda tidak memiliki akses ke ha
         <CardContent class="space-y-6">
             <p class="break-words text-sm leading-relaxed text-muted-foreground">{message ?? fallback}</p>
             <div class="action-buttons mx-auto">
-                <Button href={back.href} class="min-h-11"><ArrowLeft aria-hidden="true" /> {back.label}</Button>
+                <Button href={back.href} class="min-h-11">{back.label}</Button>
                 {#if status >= 500}<Button variant="outline" class="min-h-11" onclick={() => window.location.reload()}>Muat ulang halaman</Button>{/if}
-                <Button href="/login" variant="outline" class="min-h-11"><LogIn aria-hidden="true" /> Halaman masuk</Button>
+                <Button href="/login" variant="outline" class="min-h-11">Halaman masuk</Button>
             </div>
         </CardContent>
     </Card>

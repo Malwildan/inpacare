@@ -48,7 +48,6 @@ import { ArrowLeft, CalendarDays } from 'lucide-svelte';
 	<header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
 		<div class="min-w-0">
 			<h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Ringkasan pasien</h1>
-			<p class="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed text-muted-foreground">Lihat identitas, riwayat penempatan, dan tim perawatan sesuai akses Anda.</p>
 		</div>
 		<Button variant="outline" class="h-11 shrink-0 px-4" href={data.user.role === 'ADMISI' ? '/patients' : '/dashboard'}><ArrowLeft aria-hidden="true" /> Kembali</Button>
 	</header>
@@ -59,7 +58,6 @@ import { ArrowLeft, CalendarDays } from 'lucide-svelte';
 				<CardTitle role="heading" aria-level={2} class="text-[19px]">{data.context.patient.name}</CardTitle>
 				<CardDescription class="mt-1">Nomor rekam medis {data.context.patient.medicalRecordNo}</CardDescription>
 			</div>
-			<Badge variant="secondary">{data.context.patient.medicalRecordNo}</Badge>
 		</CardHeader>
 		<CardContent>
 			<dl class="grid grid-cols-1 gap-5 sm:grid-cols-2">

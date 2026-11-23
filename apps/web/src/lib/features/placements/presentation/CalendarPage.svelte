@@ -15,7 +15,7 @@ import type { Placements, CalendarPageData, Placement, PlacementHistory } from '
 import { todayJakarta } from '$lib/features/placements';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
-import { ArrowLeft, Ban, CalendarDays, ChevronLeft, ChevronRight, History, Pencil, Plus, Save, X } from 'lucide-svelte';
+import { ArrowLeft, Ban, ChevronLeft, ChevronRight, History, Pencil, Plus, Save, X } from 'lucide-svelte';
 let { data, placementService }: {
     data: CalendarPageData;
     placementService: Placements;
@@ -110,7 +110,7 @@ const historyDate = (value: string) => new Intl.DateTimeFormat('id-ID', { dateSt
 <svelte:head><title>Kalender penempatan | InpaCare</title></svelte:head>
 <div class="placement-page flex min-w-0 flex-col gap-6">
 <section class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-	<div><h1 class="page-title">Kalender penempatan</h1><p class="page-subtitle">Pantau ketersediaan dan durasi rawat inap setiap pasien.</p></div>
+	<h1 class="page-title">Kalender penempatan</h1>
 	{#if data.user.role === 'PERAWAT'}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={() => { placing=!placing; }}><Plus size={16} aria-hidden="true"/> Tempatkan pasien</Button>{/if}
 </section>
 {#if data.user.role === 'PERAWAT' && !canManage}<p class="text-sm text-muted-foreground">Anda dapat membuat penempatan awal. Hubungi koordinator untuk mengubah jadwal, memindahkan ruang, atau membatalkan penempatan.</p>{/if}
@@ -121,7 +121,7 @@ const historyDate = (value: string) => new Intl.DateTimeFormat('id-ID', { dateSt
 		<div class="week-navigation" aria-label="Navigasi kalender">
 			<Button variant="ghost" class="size-11 p-2 no-underline hover:no-underline" aria-label="Minggu sebelumnya" onclick={() => void moveWeek(-1)}><ChevronLeft size={18} aria-hidden="true"/></Button>
 			<strong>{titleDate(dates[0])} – {titleDate(dates[6])} {dates[6].getUTCFullYear()}</strong>
-			<Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" onclick={() => void goto('/calendar')}><CalendarDays aria-hidden="true" /> Hari ini</Button>
+			<Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" onclick={() => void goto('/calendar')}>Hari ini</Button>
 			<Button variant="ghost" class="size-11 p-2 no-underline hover:no-underline" aria-label="Minggu berikutnya" onclick={() => void moveWeek(1)}><ChevronRight size={18} aria-hidden="true"/></Button>
 		</div>
 	</div>
