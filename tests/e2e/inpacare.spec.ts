@@ -187,7 +187,7 @@ test('role navigation only exposes the signed-in role’s screens and small scre
 	await expect(admission.getByRole('heading',{name:'Tagihan',exact:true})).toBeVisible();
 	let createdInvoiceId='';
 	admission.on('response',async(response)=>{if(response.request().method()==='POST'&&new URL(response.url()).pathname==='/api/v1/invoices'&&response.status()===201){createdInvoiceId=(await response.json()).id;}});
-	await admission.getByRole('button',{name:/Buat tagihan/}).click();
+	await admission.getByRole('button',{name:'Buat tagihan',exact:true}).click();
 	const form=admission.locator('.create-form');
 	await selectOption(form.getByLabel('Pasien'), 'PT-012');
 	await form.getByLabel('Layanan').fill(`E2E layanan ${Date.now()}`);

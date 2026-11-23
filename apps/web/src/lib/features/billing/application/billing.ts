@@ -1,9 +1,10 @@
-import type { Invoice, InvoiceDetail, PatientInvoiceContext, NewInvoice, ChangePayment, EditLine, DeleteLine, ClaimVerification, DeleteInvoice, CreatedInvoice, PaymentResult, LineMutation, ClaimResult } from '../domain/models';
+import type { ReleaseHandoffPage, Invoice, InvoiceDetail, PatientInvoiceContext, NewInvoice, ChangePayment, EditLine, DeleteLine, ClaimVerification, DeleteInvoice, CreatedInvoice, PaymentResult, LineMutation, ClaimResult } from '../domain/models';
 import type { Room } from '$lib/features/rooms';
 import type { User } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
 export type BillingRepository = {
     list(): Promise<Invoice[]>;
+    releaseHandoffs(offset: number): Promise<ReleaseHandoffPage>;
     detail(id: string): Promise<InvoiceDetail>;
     patientContext(id: string): Promise<PatientInvoiceContext>;
     create(input: NewInvoice): Promise<CreatedInvoice>;
@@ -19,6 +20,8 @@ export type SelectedInvoice = InvoiceDetail & {
 export type BillingPageData = {
     invoices: Invoice[];
     rooms: Room[];
+    handoffs: ReleaseHandoffPage | null;
+    releaseOffset: number;
     user: User;
     reference: Reference;
 };

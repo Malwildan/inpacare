@@ -57,6 +57,12 @@ export class TagihanUseCases {
       limit: Math.min(100, Math.max(1, limit)),
     });
   }
+  async releaseHandoffs(actor: Actor, offset = 0) {
+    this.role(actor);
+    const limit = 20;
+    const rows = await this.store.releaseHandoffs(offset, limit + 1);
+    return { items: rows.slice(0, limit), nextOffset: rows.length > limit ? offset + limit : null };
+  }
   async patientContext(actor: Actor, patientId: string) {
     this.role(actor);
     const patient = await this.store.patientInfo(patientId);

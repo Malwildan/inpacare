@@ -16,6 +16,7 @@ import {
   EditInvoiceLineDto,
   InvoiceQueryDto,
   PaymentDto,
+  ReleaseHandoffQueryDto,
   VerifyClaimDto,
 } from "./dto/invoice.dto";
 import { TagihanUseCases } from "../../../application/billing/tagihan.use-cases";
@@ -31,6 +32,10 @@ export class TagihanController {
     q: InvoiceQueryDto,
   ) {
     return this.service.list(actor, q.search, q.status, q.limit);
+  }
+  @Get("release-handoffs")
+  releaseHandoffs(@CurrentActor() actor: Actor, @Query() query: ReleaseHandoffQueryDto) {
+    return this.service.releaseHandoffs(actor, query.offset);
   }
   @Get("patients/:patientId/context")
   patientContext(

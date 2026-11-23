@@ -39,6 +39,19 @@ export type Cycle = {
     roomId?: string | null;
     pendingApproval?: boolean;
     assignmentHistory?: CycleAssignmentEvent[];
+    releaseReadiness?: {
+        prerequisite: 'care_not_started' | 'placement_missing' | 'placement_inactive' | 'placement_not_started' | 'room_unavailable' | null;
+        placementStartsOn: string | null;
+        tasks: {
+            id: string;
+            title: string;
+            status: 'todo' | 'in_progress';
+            picName: string;
+            startsAt: string;
+            endsAt: string;
+            canOpen: boolean;
+        }[];
+    };
 };
 export type NewCycle = {
     patientId: string;
