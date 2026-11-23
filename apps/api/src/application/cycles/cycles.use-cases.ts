@@ -53,7 +53,7 @@ export class CyclesUseCases {
         "pending_approval",
       ].includes(filters.status)
     )
-      throw DomainError.validation("Status siklus tidak valid.");
+      throw DomainError.validation("Pilih status rekap rawat inap dari daftar.");
     return this.store.list(actor, {
       ...filters,
       search: filters.search?.trim() ?? "",
@@ -101,7 +101,7 @@ export class CyclesUseCases {
       if (!(await tx.cycles.canReadPatient(actor, input.patientId)))
         throw DomainError.notFound();
       if (!(await tx.cycles.activeDoctor(input.doctorId)))
-        throw DomainError.validation("Pilih dokter aktif.");
+        throw DomainError.validation("Pilih dokter penanggung jawab yang masih aktif.");
       if (!(await tx.cycles.lockPatient(input.patientId)))
         throw DomainError.notFound();
       if (await tx.cycles.hasActiveCycle(input.patientId))
@@ -114,10 +114,10 @@ export class CyclesUseCases {
           placementId,
           input.patientId,
         );
-        if (!roomId) throw DomainError.validation("Penempatan tidak sesuai dengan pasien yang dipilih.");
+        if (!roomId) throw DomainError.validation("Penempatan ini tidak sesuai dengan pasien yang dipilih. Periksa pilihan penempatan.");
         await tx.cycles.lockRoom(roomId);
         if (!(await tx.cycles.activePlacement(placementId, input.patientId)))
-          throw DomainError.conflict("Penempatan tidak lagi aktif.");
+          throw DomainError.conflict("Penempatan sudah tidak aktif. Periksa kembali penempatan pasien.");
       }
       const cycleId = await tx.cycles.nextId();
       const result: CreatedCycle = {
@@ -152,19 +152,17 @@ export class CyclesUseCases {
           seed.patient_id,
         );
         if (!roomId)
-          throw DomainError.validation("Penempatan pasien tidak cocok.");
+          throw DomainError.validation("Penempatan ini milik pasien lain. Pilih penempatan untuk pasien yang dipilih.");
         await tx.cycles.lockRoom(roomId);
         if (
           !(await tx.cycles.activePlacement(targetPlacement, seed.patient_id))
         )
-          throw DomainError.conflict("Penempatan tidak lagi aktif.");
+          throw DomainError.conflict("Penempatan sudah tidak aktif. Periksa kembali penempatan pasien.");
       }
       const current = await tx.cycles.lockCycleForChange(cycleId, actor.id);
       if (!current) throw DomainError.notFound();
       if (Number(current.version) !== input.expectedVersion)
-        throw DomainError.conflict(
-          "Siklus telah berubah. Muat ulang lalu coba lagi.",
-        );
+        throw DomainError.conflict();
       let status = current.status;
       if (input.placementId && current.status !== "pending")
         throw DomainError.conflict(
@@ -172,9 +170,9 @@ export class CyclesUseCases {
         );
       if (input.status) {
         if (!cycleTransitionAllowed(status, input.status))
-          throw DomainError.conflict("Transisi siklus tidak diizinkan.");
+          throw DomainError.conflict("Perubahan status rekap ditolak. Periksa status terbaru dan pilih tindakan yang tersedia.");
         if (!targetPlacement)
-          throw DomainError.conflict("Rekap belum memiliki penempatan.");
+          throw DomainError.conflict("Rekap belum memiliki penempatan. Pilih penempatan sebelum memulai perawatan.");
         status = input.status;
       }
       await tx.cycles.updateCyclePlacementStatus(
@@ -193,7 +191,7 @@ export class CyclesUseCases {
   async remove(actor: Actor, cycleId: string, input: DeleteCycleInput) {
     if (actor.role !== "PERAWAT") throw DomainError.forbidden();
     if (!input.reason.trim())
-      throw DomainError.validation("Alasan penghapusan wajib diisi.");
+      throw DomainError.validation("Isi Alasan penghapusan rekap rawat inap.");
     return this.uow.run(async (tx) => {
       const seed = await tx.cycles.deleteSeed(cycleId, actor.id);
       if (!seed) throw DomainError.notFound();
@@ -225,7 +223,7 @@ export class CyclesUseCases {
   async request(actor: Actor, cycleId: string, input: CycleRequestInput) {
     if (actor.role !== "PERAWAT") throw DomainError.forbidden();
     if (!input.reason.trim())
-      throw DomainError.validation("Alasan wajib diisi.");
+      throw DomainError.validation("Isi Alasan pengajuan perpanjangan atau pelepasan.");
     if ((input.kind === "extend") !== !!input.requestedEnd)
       throw DomainError.validation(
         "Isi tanggal baru hanya untuk permintaan perpanjangan.",
@@ -244,10 +242,10 @@ export class CyclesUseCases {
       const cycle = await tx.cycles.lockCycleForRequest(cycleId, actor.id);
       if (!cycle) throw DomainError.notFound();
       if (!cycle.placement_id)
-        throw DomainError.conflict("Siklus belum memiliki penempatan.");
+        throw DomainError.conflict("Rekap belum memiliki penempatan. Periksa detail rekap sebelum melanjutkan permintaan.");
       if (!["in_care", "extend"].includes(cycle.status))
         throw DomainError.conflict(
-          "Permintaan hanya tersedia pada siklus dalam perawatan.",
+          "Permintaan hanya dapat diajukan untuk rekap yang sedang Dalam perawatan. Periksa status rekap.",
         );
       await tx.cycles.addRequest({
         id: requestId,
@@ -275,7 +273,7 @@ export class CyclesUseCases {
   ) {
     if (actor.role !== "DOKTER") throw DomainError.forbidden();
     if (!input.note.trim())
-      throw DomainError.validation("Catatan keputusan wajib diisi.");
+      throw DomainError.validation("Isi Catatan keputusan sebelum menyimpan persetujuan atau penolakan.");
     return this.uow.run(async (tx) => {
       const seed = await tx.cycles.decisionSeed(cycleId, requestId);
       if (
@@ -297,13 +295,11 @@ export class CyclesUseCases {
       const req = await tx.cycles.lockRequest(cycleId, requestId);
       if (!req || req.status !== "pending") throw DomainError.notFound();
       if (Number(cycle.version) !== input.expectedVersion)
-        throw DomainError.conflict(
-          "Siklus telah berubah. Muat ulang lalu coba lagi.",
-        );
+        throw DomainError.conflict();
       const beforeStatus = cycle.status;
       if (input.decision === "approve") {
         if (!seed.placement_id)
-          throw DomainError.conflict("Siklus belum memiliki penempatan.");
+          throw DomainError.conflict("Rekap belum memiliki penempatan. Periksa detail rekap sebelum melanjutkan permintaan.");
         if (!roomId)
           throw DomainError.conflict("Penempatan tidak lagi tersedia.");
         const room = await tx.cycles.roomStatusCapacity(roomId);
@@ -314,7 +310,7 @@ export class CyclesUseCases {
           );
         const placement = await tx.cycles.placementDates(seed.placement_id);
         if (!placement || placement.status !== "active")
-          throw DomainError.conflict("Penempatan tidak lagi aktif.");
+          throw DomainError.conflict("Penempatan sudah tidak aktif. Periksa kembali penempatan pasien.");
         if (seed.kind === "extend") {
           const dates = await tx.cycles.extensionDateCheck(
             seed.requested_end!,
@@ -323,11 +319,11 @@ export class CyclesUseCases {
           );
           if (dates.invalid)
             throw DomainError.validation(
-              "Tanggal akhir harus melewati jadwal yang berlaku.",
+              "Tanggal selesai baru harus setelah tanggal selesai saat ini. Pilih tanggal yang lebih akhir.",
             );
           if (dates.too_long)
             throw DomainError.validation(
-              "Rentang penempatan maksimal 366 hari.",
+              "Rentang penempatan melebihi 366 hari. Pilih tanggal selesai yang lebih dekat.",
             );
           if (
             await tx.cycles.extensionOverlap(
@@ -349,7 +345,7 @@ export class CyclesUseCases {
             )) >= Number(room.capacity)
           )
             throw DomainError.conflict(
-              "Ruang sudah penuh pada tanggal perpanjangan.",
+              "Ruang penuh pada tanggal perpanjangan. Periksa kapasitas sebelum memutuskan permintaan.",
             );
           await tx.cycles.extendPlacement(
             seed.placement_id,
@@ -361,7 +357,7 @@ export class CyclesUseCases {
             await tx.cycles.releaseDateNotStarted(placement.starts_on, today())
           )
             throw DomainError.conflict(
-              "Penempatan belum dimulai; pelepasan otomatis tidak tersedia.",
+              "Penempatan belum dimulai sehingga pelepasan otomatis tidak tersedia. Periksa tanggal masuk sebelum memutuskan permintaan.",
             );
           if (await tx.cycles.hasFutureTasks(seed.placement_id))
             throw DomainError.conflict(

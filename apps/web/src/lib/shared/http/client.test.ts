@@ -23,12 +23,26 @@ describe('request-scoped transport', () => {
     });
     it.each([401, 403, 404, 409, 422, 503])('preserves status and error code for %i', async (status) => {
         const client = createHttpClient(async () => Response.json({ error: { code: 'TEST', message: 'Pesan API' } }, { status }));
-        await expect(client.request('/tasks')).rejects.toMatchObject({ status, code: 'TEST', message: 'Pesan API' });
+        await expect(client.request('/tasks')).rejects.toMatchObject({ status, code: 'TEST', message: '' });
+    });
+    it('preserves curated details and drops technical text even with a recognized code', async () => {
+        const make = (message: unknown) => createHttpClient(async () => Response.json({
+            error: { code: 'CONFLICT', message }
+        }, { status: 409 }));
+        const message = 'Ruang penuh pada sebagian rentang tanggal. Pilih ruang lain atau sesuaikan tanggal.';
+        await expect(make(message).request('/placements')).rejects.toMatchObject({ message });
+        for (const untrusted of [null, {}, 'SQLSTATE: duplicate key', '']) {
+            await expect(make(untrusted).request('/placements')).rejects.toMatchObject({ code: 'CONFLICT', message: '' });
+        }
+    });
+    it.each([null, [], 'text', {}, { error: { message: 'technical' } }])('rejects malformed success response %j', async (value) => {
+        const client = createHttpClient(async () => Response.json(value));
+        await expect(client.request('/tasks')).rejects.toMatchObject({ status: 200, code: 'UNEXPECTED_RESPONSE' });
     });
     it('retains a useful fallback for non-JSON errors and network failures', async () => {
         const client = createHttpClient(async () => new Response('upstream down', { status: 503 }));
         await expect(client.request('/tasks')).rejects.toBeInstanceOf(ApiError);
         const network = createHttpClient(async () => { throw new TypeError('offline'); });
-        await expect(network.request('/tasks')).rejects.toThrow('offline');
+        await expect(network.request('/tasks')).rejects.toMatchObject({ status: 0, code: 'CONNECTION_FAILED', message: '' });
     });
 });

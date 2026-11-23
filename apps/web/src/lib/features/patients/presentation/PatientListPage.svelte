@@ -4,7 +4,7 @@ import { tick } from 'svelte';
 import { Plus, ArrowRight } from 'lucide-svelte';
 import type { PatientListData, Patients } from '$lib/features/patients';
 import { formText } from '$lib/shared/presentation/form';
-import { sessionFailure } from '$lib/shared/presentation/session';
+import { isUnconfirmedSave, sessionFailure } from '$lib/shared/presentation/session';
 import { date } from '$lib/shared/format';
 import { Button } from '$lib/shared/ui/button/index.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
@@ -38,6 +38,13 @@ async function toggleForm() {
     if (creating) { await tick(); nameInput?.focus(); }
 }
 
+function reportInvalid(event: Event) {
+    const field = event.target;
+    if (!(field instanceof HTMLInputElement) || field.form?.querySelector(':invalid:not(fieldset)') !== field) return;
+    if (field.name === 'bpjsNumber') error = 'Isi Nomor BPJS dengan 13 digit.';
+    if (field.name === 'name') error = 'Isi Nama lengkap dengan maksimal 200 karakter.';
+}
+
 async function create(event: SubmitEvent) {
     event.preventDefault();
     if (busy) return;
@@ -64,28 +71,30 @@ async function create(event: SubmitEvent) {
             error = 'Pasien sudah tersimpan, tetapi daftar belum dapat dimuat ulang. Buka ringkasan pasien atau muat ulang halaman.';
         }
     } catch (failure) {
-        error = sessionFailure(failure);
+        error = isUnconfirmedSave(failure)
+            ? 'Data pasien belum dapat dipastikan tersimpan. Cari nama pasien di daftar sebelum mendaftarkan ulang.'
+            : sessionFailure(failure, 'save', 'data pasien');
     } finally {
         busy = false;
     }
 }
 </script>
 
-<svelte:head><title>Data Pasien | InpaCare</title></svelte:head>
+<svelte:head><title>Data pasien | InpaCare</title></svelte:head>
 
 <div class="flex flex-col gap-6">
     <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div class="min-w-0"><h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Data Pasien</h1><p class="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed text-muted-foreground">Daftarkan pasien dan temukan identitas untuk administrasi rawat inap.</p></div>
-        <Button class="h-11 shrink-0 px-4" aria-expanded={creating} aria-controls="patient-registration" disabled={busy} onclick={toggleForm}><Plus aria-hidden="true" /> Tambah Pasien</Button>
+        <div class="min-w-0"><h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Data pasien</h1><p class="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed text-muted-foreground">Daftarkan pasien atau cari berdasarkan nama dan nomor rekam medis.</p></div>
+        <Button class="h-11 shrink-0 px-4" aria-expanded={creating} aria-controls="patient-registration" disabled={busy} onclick={toggleForm}><Plus aria-hidden="true" /> Tambah pasien</Button>
     </header>
     {#if notice}<p class="rounded-lg border border-success/20 bg-success-soft p-4 text-sm text-success" role="status">{notice} <a class="underline underline-offset-4" href={`/patients/${savedId}`}>Lihat ringkasan pasien</a></p>{/if}
     {#if error}<p class="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive" role="alert">{error}</p>{/if}
 
     {#if creating}
     <Card id="patient-registration" aria-labelledby="registration-title">
-        <CardHeader><CardTitle id="registration-title" role="heading" aria-level={2}>Tambah Pasien</CardTitle><CardDescription>Pastikan pasien belum terdaftar. Setiap pasien menggunakan satu nomor rekam medis yang unik.</CardDescription></CardHeader>
+        <CardHeader><CardTitle id="registration-title" role="heading" aria-level={2}>Tambah pasien</CardTitle><CardDescription>Pastikan pasien belum terdaftar. Setiap pasien menggunakan satu nomor rekam medis yang unik.</CardDescription></CardHeader>
         <CardContent>
-            <form onsubmit={create} aria-busy={busy}>
+            <form onsubmit={create} oninvalidcapture={reportInvalid} aria-busy={busy}>
                 <fieldset class="grid min-w-0 gap-5 sm:grid-cols-2" disabled={busy}>
                     <legend class="sr-only">Identitas pasien baru</legend>
                     <Field><FieldLabel for="patient-record-number">Nomor rekam medis</FieldLabel><Input id="patient-record-number" value="Dibuat otomatis saat disimpan" readonly class="h-11 bg-muted text-base text-muted-foreground md:text-base" /></Field>
@@ -112,7 +121,7 @@ async function create(event: SubmitEvent) {
             <Table><TableHeader><TableRow class="bg-muted/60 hover:bg-muted/60"><TableHead class="px-4 sm:px-5">Nama / No. RM</TableHead><TableHead>Tanggal lahir</TableHead><TableHead>Jenis kelamin</TableHead><TableHead>BPJS</TableHead><TableHead class="px-4 text-right sm:px-5">Aksi</TableHead></TableRow></TableHeader><TableBody>
                 {#each data.patients.items as patient (patient.id)}
                 <TableRow><TableCell class="px-4 align-top sm:px-5"><strong class="block text-sm">{patient.name}</strong><span class="mt-1 block text-xs text-muted-foreground">{patient.medicalRecordNo}</span></TableCell><TableCell>{date(patient.birthDate)}</TableCell><TableCell>{patient.gender === 'L' ? 'Laki-laki' : 'Perempuan'}</TableCell><TableCell>{patient.bpjs ? 'Terdaftar' : 'Tidak terdaftar'}</TableCell><TableCell class="px-4 text-right sm:px-5"><Button variant="outline" class="h-11" href={`/patients/${patient.id}`}>Lihat ringkasan <ArrowRight aria-hidden="true" /></Button></TableCell></TableRow>
-                {:else}<TableRow><TableCell colspan={5} class="px-4 py-11 text-center text-sm whitespace-normal text-muted-foreground">{data.search ? 'Tidak ada pasien yang cocok. Coba nama atau nomor rekam medis lain.' : 'Belum ada pasien terdaftar. Pilih Tambah Pasien untuk mendaftarkan pasien pertama.'}</TableCell></TableRow>{/each}
+                {:else}<TableRow><TableCell colspan={5} class="px-4 py-11 text-center text-sm whitespace-normal text-muted-foreground">{data.search ? 'Tidak ada pasien yang cocok. Coba nama atau nomor rekam medis lain.' : 'Belum ada pasien terdaftar. Pilih Tambah pasien untuk mendaftarkan pasien pertama.'}</TableCell></TableRow>{/each}
             </TableBody></Table>
             <nav class="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-4 sm:px-5" aria-label="Halaman daftar pasien">
                 <span class="text-sm text-muted-foreground">{data.patients.total} pasien · Halaman {currentPage}</span>

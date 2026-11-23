@@ -28,7 +28,7 @@
         <a href="/">Kembali ke InpaCare</a>
         <a href="/db/" data-sveltekit-reload>Basis data (pgAdmin)</a>
     </nav>
-    <p>Permintaan menggunakan akun yang sedang Anda gunakan. Perubahan di halaman ini akan memengaruhi data aplikasi.</p>
+    <p>Permintaan memakai akun InpaCare Anda. Perubahan langsung tersimpan di basis data aplikasi.</p>
 </header>
 <div id="swagger-ui"></div>
 

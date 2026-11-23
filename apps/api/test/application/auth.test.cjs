@@ -20,6 +20,10 @@ test("login attempts throttle one source without locking other users or sources"
     () => limiter.consume("attacker", "rina", 0),
     (error) => error.code === "RATE_LIMITED" && /percobaan/.test(error.message),
   );
+  assert.throws(
+    () => limiter.consume("attacker", "rina", 720_000),
+    { code: "RATE_LIMITED", message: "Terlalu banyak percobaan masuk. Coba lagi dalam 3 menit." },
+  );
   assert.doesNotThrow(() => limiter.consume("legitimate", "rina", 0));
   for (let i = 0; i < 1100; i++)
     limiter.consume(`source-${i}`, `unknown-${i}`, 0);
@@ -225,7 +229,7 @@ test("token comparison, facility day, and plain domain errors are explicit", () 
   assert.match(today(), /^\d{4}-\d{2}-\d{2}$/);
   const error = DomainError.conflict();
   assert.equal(error.code, "CONFLICT");
-  assert.match(error.message, /berubah bersamaan/);
+  assert.match(error.message, /periksa perubahan Anda sebelum menyimpan kembali/);
   assert.equal(typeof error.getStatus, "undefined");
   assert.equal(typeof error.getResponse, "undefined");
 });

@@ -2,15 +2,15 @@ import Decimal from "decimal.js";
 import { DomainError } from "../shared/domain-error";
 export function validateRoomText(name: string, roomClass: string) {
   if (!name.trim() || !roomClass.trim())
-    throw DomainError.validation("Nama dan tipe ruangan wajib diisi.");
+    throw DomainError.validation("Isi Nama ruang dan Tipe ruang.");
 }
 export function validateRoomItem(name: string, category: string) {
   if (!name.trim() || !category.trim())
-    throw DomainError.validation("Nama dan kategori perlengkapan wajib diisi.");
+    throw DomainError.validation("Isi Nama fasilitas dan Kategori.");
 }
 export function validateRoomCost(value: string) {
   if (!/^\d{1,13}(\.\d{1,2})?$/.test(value))
-    throw DomainError.validation("Nilai biaya ruangan tidak valid.");
+    throw DomainError.validation("Nominal biaya ruang tidak valid. Masukkan nilai rupiah yang sesuai.");
 }
 
 const RoomDecimal = Decimal.clone({

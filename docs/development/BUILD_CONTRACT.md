@@ -1,6 +1,8 @@
-# InpaCare implementation contract
+# Keputusan demo dan pedoman antarmuka
 
 Implementation date: 2026-10-29. The one-day plan and captured Modul 2 / Figma Final evidence remain the source. This file freezes **explicit demo decisions**, not new hospital policy. Synthetic data only; no external hospital/BPJS/payment service. User authorized non-Luna agents.
+
+Untuk perilaku API saat ini, lihat [referensi domain](../README.md#referensi) dan [OpenAPI](../../contracts/openapi.json). Penugasan serta keputusan demo awal di bawah ini mencatat konteks historis.
 
 ## Historical implementation ownership
 
@@ -27,13 +29,13 @@ Integrator owns migrations, seed, Cargo/package manifests, auth, shared UI/style
 
 Schema canonical in `apps/api/migrations/0001_initial.sql`. Shared helpers: `crate::access::can_read_patient(&PgPool, &AuthUser, &str) -> AppResult<()>`; `crate::access::require_clinical(&AuthUser) -> AppResult<()>`; `crate::db::id() -> String`; `crate::db::today() -> NaiveDate` (UTC+7); `crate::db::nonempty(value:&str,label:&str,max:usize) -> AppResult<()>`. Use `AuthUser` plus `State<AppState>` extractors, `Path<String>`, `Query<...>`, `Json<...>`. All request structs deny_unknown_fields to prevent ignored privilege/field edits. Never add APIs to fake unavailable flows.
 
-## Shared Svelte UI
+## Antarmuka Svelte saat ini
 
-The current frontend uses Svelte 5, SvelteKit SSR with adapter-node, and feature-first architecture. Protected route loads supply user/reference data; app composition injects operations into feature presentation. After successful mutations, refresh authoritative server state. Preserve role restrictions, required reasons, optimistic versions, decimal-string money and date/time serialization.
+Aplikasi web memakai Svelte 5 dan SvelteKit SSR dengan adapter-node. Rute terlindungi menyediakan sesi dan data referensi. Komposisi aplikasi memasok operasi ke tampilan tiap fitur. Setelah tindakan berhasil, muat data terbaru dari server. Pertahankan izin, alasan wajib, pemeriksaan versi, nominal desimal dalam bentuk teks, dan serialisasi tanggal serta waktu.
 
-General controls use editable shadcn-svelte registry source under `$lib/shared/ui/<component>/`. Use the existing Button, Input, Native Select, Textarea, Card, Table, Badge and overlay components; customize tokens or compose feature layouts instead of rebuilding primitives. Buttons that submit forms explicitly set `type="submit"`. Keep semantic Indonesian labels, keyboard operation, pending states, failure drafts and focus return.
+Gunakan komponen shadcn-svelte dari `$lib/shared/ui/<component>/`. Tombol pengiriman formulir memerlukan `type="submit"`. Beri nama berbahasa Indonesia pada tombol dan kolom, pertahankan akses papan ketik, dan laporkan keadaan pemrosesan. Saat penyimpanan belum pasti, minta petugas memeriksa data sebelum mengirim ulang. Pertahankan fokus, draf, dan akses pesan pada formulir.
 
-See [Frontend architecture](FRONTEND_ARCHITECTURE.md) for dependency rules and [UI components](UI_COMPONENTS.md) for component ownership, customization and upstream updates. The approved migration refreshes layouts while retaining InpaCare's blue identity and DM Sans. The Rust API sections and original ownership above are historical implementation context.
+Lihat [arsitektur aplikasi web](FRONTEND_ARCHITECTURE.md), [komponen antarmuka](UI_COMPONENTS.md), dan [inventaris teks](TEKS_INPACARE.md). Bagian Rust dan penugasan lama di dokumen ini mencatat riwayat implementasi.
 
 ## Endpoint/DTO ownership
 

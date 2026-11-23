@@ -1,96 +1,54 @@
-# Shared PostgreSQL tools
+# Perangkat PostgreSQL bersama
 
-InpaCare serves pgAdmin at <https://inpacare.hailmary.my.id/db/>. It runs as a
-single-process Gunicorn user service, bound only to `127.0.0.1:5050`, behind the
-existing Caddy HTTPS site. PostgreSQL remains private on its existing localhost
-port. No DNS or firewall changes were made; Caddy adds only the `/db` gateway
-route, with no application source route changes.
+InpaCare menyediakan pgAdmin di <https://inpacare.hailmary.my.id/db/>. Gunicorn menjalankannya sebagai satu proses layanan pengguna di `127.0.0.1:5050` di belakang Caddy HTTPS. PostgreSQL tetap pada port lokalnya. Caddy menambahkan gateway `/db` dengan DNS, firewall, dan rute aplikasi yang sama.
 
-## Install and inspect
+## Pasang dan periksa layanan
 
-From the project root:
+Jalankan perintah dari akar proyek.
 
 ```sh
 scripts/setup-pgadmin.sh
 python3 scripts/pgadmin.py status
 ```
 
-The pinned runtime is pgAdmin 4 `9.19` in `.data/pgadmin/venv`, with Gunicorn
-`23.0.0`. If its wheel omits generated frontend files, the installer builds the
-matching official 9.19 source with checksum-pinned inputs; this requires Node.js
-and network access on that first repair. Complete existing bundles are reused.
-SQLite settings, sessions, storage, logs, and credentials are under
-`.data/pgadmin/`, outside release directories. The owner pgAdmin credential file
-is `.data/pgadmin/owner-credentials.txt`; the owner database editor credential
-is stored separately in `.data/pgadmin/owner-db-password.txt`. Both files are
-owner-only. The owner DB server registration contains the dedicated editor
-username and does not store a password. Each teammate uses their own PostgreSQL
-login. pgAdmin server definitions are personal to each pgAdmin account. The
-install command pre-registers the DB connection for the owner, and the teammate
-command adds that connection to each new account with its dedicated SQL login;
-pgAdmin prompts each user for their DB password because the server definition
-does not store one.
+pgAdmin 4 `9.19` berada di `.data/pgadmin/venv` dengan Gunicorn `23.0.0`. Jika paket wheel tidak memuat berkas antarmuka yang diperlukan, pemasang membangun sumber resmi 9.19 dengan input yang diperiksa checksum. Penyiapan ulang pertama memerlukan Node.js dan jaringan. Paket lengkap yang sudah ada dipakai kembali.
 
-## Add a teammate
+Pengaturan SQLite, sesi, penyimpanan, log, dan kredensial ada di `.data/pgadmin/` di luar direktori rilis. Kredensial pemilik pgAdmin disimpan di `.data/pgadmin/owner-credentials.txt`. Kata sandi penyunting basis data pemilik ada di `.data/pgadmin/owner-db-password.txt`. Kedua berkas hanya dapat dibaca pemilik.
+
+Setiap pengguna pgAdmin memiliki definisi server pribadi dan login PostgreSQL sendiri. Pemasang mendaftarkan koneksi untuk pemilik, dan perintah penambahan anggota mendaftarkan koneksi untuk akun baru. pgAdmin meminta kata sandi basis data saat koneksi dibuka.
+
+## Tambahkan anggota
 
 ```sh
 python3 scripts/pgadmin.py add-user teammate@example.com viewer
 python3 scripts/pgadmin.py add-user colleague@example.com editor
 ```
 
-The command creates an individual pgAdmin `User` and a matching database login.
-It prints only the private credential-file path. Deliver the credentials to the
-teammate out of band. Never place these files in source control or paste their
-contents into logs or chat. To change an individual's database access, retire
-their existing pgAdmin and PostgreSQL login before provisioning that identity
-with the new access class.
+Perintah membuat pgAdmin `User` dan login basis data individual. Keluaran hanya memuat lokasi berkas kredensial privat. Bagikan kredensial melalui saluran terpisah. Simpan isinya di luar Git, log, dan percakapan. Untuk mengganti akses, nonaktifkan login pgAdmin dan PostgreSQL lama sebelum membuat akun dengan izin baru.
 
-Viewer and editor roles can access only reviewed public app tables:
-`cycle_requests`, `cycles`, `doctors`, `invoice_lines`, `invoices`,
-`medical_records`, `notifications`, `nurses`, `observations`, `patients`, `placements`,
-`room_items`, `rooms`, `tasks`, and `vital_signs`. Viewer has `SELECT` only.
-Editor has `SELECT`, `INSERT`, `UPDATE`, and `DELETE` plus sequence use. Neither
-class can access `users`, `sessions`, migrations, or history tables, create
-persistent or temporary objects, truncate tables, or administer the cluster.
-PostgreSQL's default `PUBLIC` temporary-object permission is revoked for this
-database; the application login keeps its existing temporary permission. New
-tables are excluded until reviewed and explicitly added by the permissions
-synchronizer. Schema migrations remain application owned.
+Pembaca dan penyunting mengakses tabel publik yang telah ditinjau, yaitu `cycle_requests`, `cycles`, `doctors`, `invoice_lines`, `invoices`, `medical_records`, `notifications`, `nurses`, `observations`, `patients`, `placements`, `room_items`, `rooms`, `tasks`, dan `vital_signs`. Pembaca mendapat `SELECT`. Penyunting mendapat `SELECT`, `INSERT`, `UPDATE`, `DELETE`, dan penggunaan sequence. Kedua peran tidak dapat membaca tabel autentikasi, sesi, migrasi, atau riwayat, membuat objek tetap atau sementara, melakukan `TRUNCATE`, atau mengelola klaster.
 
-## Service and gateway
+Izin bawaan `PUBLIC` untuk objek sementara dicabut pada basis data ini. Login aplikasi mempertahankan izin sementaranya. Tabel baru masuk daftar izin setelah ditinjau dan ditambahkan oleh sinkronisasi izin. Migrasi tetap dijalankan oleh aplikasi.
+
+## Layanan dan gateway
 
 ```sh
 systemctl --user status inpacare-pgadmin.service
 systemctl --user restart inpacare-pgadmin.service
 ```
 
-The Caddy host config backup is `.data/pgadmin/backups/inpacare.caddy.before-pgadmin`.
-The installed user unit is `~/.config/systemd/user/inpacare-pgadmin.service`.
-The repository unit template is `ops/native/inpacare-pgadmin.service`.
+Cadangan konfigurasi Caddy berada di `.data/pgadmin/backups/inpacare.caddy.before-pgadmin`. Unit pengguna terpasang di `~/.config/systemd/user/inpacare-pgadmin.service` dan templat repositori di `ops/native/inpacare-pgadmin.service`.
 
-The `/db` reverse proxy trusts only the published Cloudflare proxy ranges, so
-pgAdmin's protected session sees the visitor's forwarded address consistently.
-Cookie protection, authentication and CSRF remain enabled. Refresh
-`CLOUDFLARE_PROXY_CIDRS` and the site template if Cloudflare changes those ranges;
-keep the trust configuration scoped to the pgAdmin route.
+Proksi `/db` hanya memercayai rentang proksi yang diterbitkan Cloudflare agar sesi pgAdmin memperoleh alamat pengunjung yang konsisten. Perlindungan kuki, autentikasi, dan CSRF aktif. Perbarui `CLOUDFLARE_PROXY_CIDRS` dan templat situs jika rentang berubah. Batasi kepercayaan itu pada rute pgAdmin.
 
-## Self-check
+## Pengujian
 
-Run `python3 scripts/check-pgadmin.py` to check viewer/editor restrictions,
-including denied auth/session/history/migration table access, persistent and
-temporary DDL, and TRUNCATE;
-one synthetic `room_items` row is inserted and deleted to verify editor writes.
-The HTTP check fetches the actual referenced scripts and stylesheets, requiring
-nonempty HTTP 200 responses with the correct MIME types. It checks login and
-session retention through both the local gateway and the public Cloudflare URL,
-plus prefix handling and Secure/HttpOnly/SameSite cookie flags over HTTPS. Its
-sanitized observations are saved in `.data/pgadmin/performance-verification.json`.
-The checker creates two
-disposable pgAdmin accounts and matching SQL logins, then removes them in a
-`finally` cleanup. It intentionally fails if it cannot confirm all controls.
+Jalankan `python3 scripts/check-pgadmin.py` untuk memeriksa batas izin pembaca dan penyunting. Pengujian mencakup penolakan tabel autentikasi, sesi, riwayat, migrasi, DDL tetap dan sementara, serta `TRUNCATE`. Skrip memasukkan dan menghapus satu baris sintetis `room_items` untuk menguji izin tulis.
 
-## Operational references
+Pemeriksaan HTTP mengambil skrip dan stylesheet yang dirujuk, lalu memeriksa respons 200 tidak kosong dan tipe MIME. Uji juga masuk, sesi, awalan rute, serta atribut Secure, HttpOnly, dan SameSite melalui gateway lokal dan HTTPS publik. Hasil tersanitasi disimpan di `.data/pgadmin/performance-verification.json`. Skrip membuat dua akun sementara beserta login SQL, lalu menghapusnya dalam `finally`. Pemeriksaan gagal jika ada pembatasan yang belum dapat dipastikan.
 
-- [pgAdmin 4 9.19 Python package](https://www.pgadmin.org/download/pgadmin-4-python/)
-- [pgAdmin 4 9.19 server deployment](https://www.pgadmin.org/docs/pgadmin4/9.19/server_deployment.html)
-- [pgAdmin 4 9.19 user management](https://www.pgadmin.org/docs/pgadmin4/9.19/user_management.html)
+## Rujukan pengoperasian
+
+- [Paket Python pgAdmin 4 9.19](https://www.pgadmin.org/download/pgadmin-4-python/)
+- [Pemasangan server pgAdmin 4 9.19](https://www.pgadmin.org/docs/pgadmin4/9.19/server_deployment.html)
+- [Pengelolaan pengguna pgAdmin 4 9.19](https://www.pgadmin.org/docs/pgadmin4/9.19/user_management.html)

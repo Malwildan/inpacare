@@ -1,6 +1,6 @@
-# InpaCare browser checks
+# Pengujian peramban InpaCare
 
-`npm run test:e2e` runs the focused Playwright checks against a locally running demo on `http://127.0.0.1:3000`. The checked-in setup keeps Chromium local to the ignored project directory:
+Jalankan `npm run test:e2e` pada demo lokal dengan basis data sintetis yang sudah dimigrasi dan diisi. Alamat bawaan adalah `http://127.0.0.1:3000`. Contoh PowerShell berikut memasang Chromium di direktori lokal yang diabaikan Git.
 
 ```powershell
 $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path (Get-Location) '.local/ms-playwright'
@@ -8,14 +8,15 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Set `INPACARE_TEST_URL` to change the origin. These checks deliberately use the demo account and synthetic database. Do not point them at a live hospital deployment.
+Isi `INPACARE_TEST_URL` dengan origin yang dipakai peramban. Untuk Vite, gunakan alamat yang ditampilkan, biasanya `http://127.0.0.1:5173`. Jika menjalankan hasil build secara langsung, setel `ORIGIN` sesuai alamat peramban, termasuk port.
 
-`npx playwright test tests/e2e/unified-admission.spec.ts --workers=1` covers the combined **Mulai rawat inap** form against a migrated, seeded disposable instance. It registers synthetic patients through admissions, reuses an existing placement, creates a new placement, saves without a room, checks role restrictions, and retries a deliberately lost successful response without duplicating records. It also verifies that details open immediately and care starts only through an explicit action. Mobile and desktop captures are written to `.local/evidence/issue-60-admission-*.png`.
+- Alur masuk mencakup isian wajib, kredensial ditolak, batas percobaan, sesi berakhir, pemulihan sesi koordinator dan Admisi, serta pencabutan sesi saat keluar.
+- Pendaftaran pasien memeriksa nomor rekam medis, fokus, izin, pencarian, validasi dan draf pada lebar 390 piksel. Penempatan memeriksa kapasitas, versi terbaru, pembatalan dan riwayat.
+- `npx playwright test tests/e2e/unified-admission.spec.ts --workers=1` menguji **Mulai rawat inap** dengan penempatan lama, penempatan baru, dan rekap tanpa ruang. Jika respons sukses sengaja diputus, pengiriman ulang isian yang sama tidak menggandakan rekap. Berkas tangkapan ada di `.local/evidence/issue-60-admission-*.png`.
+- Alur rekap memeriksa penyimpanan dan pemuatan ulang detail, permintaan serta keputusan dokter. Alur tagihan memeriksa rincian, pembayaran, klaim dan riwayat.
+- Papan tugas memeriksa tujuan seret, pembatalan di kolom asal, urutan, pindah lewat papan ketik dan sentuhan, fokus, penyimpanan tertunda, daftar kosong, filter, gagal muat, dan percobaan ulang. Saat batas percobaan masuk mengganggu rangkaian uji penuh, jalankan papan tugas pada instans sintetis tersendiri.
+- Tangkapan layar dan jejak pengujian saat gagal tersedia di `test-results/`.
 
-`npm run test:web:ux` mounts the real shell, login and modal components with synthetic services in an isolated local Vite fixture. It needs the same local Chromium installation, but no running application or database. It checks notification loading/error/retry, rapid toggling, keyboard focus, dialog dismissal, password target size and reduced motion. Feature fixtures also cover create/edit dialogs for billing, rooms, placements, tasks and medical records, dashboard filter cancellation/application, shared notification loading/retry/read actions, task audit comparisons, transitions within one detail dialog, unsaved-change confirmation, versioned payloads, failure/retry, successful return to details, advanced filters, and mobile/tablet/desktop layouts. It closes its browser and server on completion. These component checks do not verify authentication, SSR or real API integration.
+`npm run test:web:ux` menjalankan komponen nyata dengan layanan sintetis di Vite. Uji ini memerlukan Chromium lokal. Cakupannya meliputi notifikasi, fokus papan ketik, dialog, pembatalan perubahan, pengiriman yang tertunda, draf pada penolakan, tindakan kembali, filter, gerak terbatas, dan tata letak pada beberapa lebar. Gunakan Playwright terhadap aplikasi yang berjalan untuk memeriksa autentikasi, SSR, dan integrasi API.
 
-The suite checks invalid and valid login, persistent sessions across reloads and restored browser contexts (nurse and admission roles), logout/session revocation, all six core module routes, the coordinator-to-PIC nursing-task workflow through a committed status and note, invoice creation/payment-status/history, role-specific navigation, and a 390px layout. Failures retain screenshots and traces under `test-results/`.
-
-Task board checks cover whole-column drag targets, append-only drops into other columns over cards and gaps, and **Cancel** drops in the source column that preserve order and version without a write, including with filters active. They verify the `--primary` hover glow, striped gray locks with role/transition explanations, pointer-press compression, native lifted drag images, reduced motion, overlay/preview cleanup, pending and failed moves, cancellation confirmation, and explicit ordering after reload and a second session. Column contents scroll independently beneath their overlays. Task cards have one full-surface detail trigger with no separate action row. Checks cover a single Tab stop, Enter/Space, click/tap on the card padding, focus return, and Pindahkan through details for keyboard/touch users. The move dialog continues to support explicit positioning and pending dismissal.
-
-The root `package.json` provides the `test:e2e` script. When testing the Vite development server, set `INPACARE_TEST_URL` to the origin Vite prints (normally `http://127.0.0.1:5173`). The browser suites focus on representative workflows. They do not establish pixel-perfect parity with all 107 Figma screens or prove real-hospital readiness. API role, database-concurrency, medical-observation, invoice-total, and cycle-request cases live in [API_TESTS.md](API_TESTS.md).
+Lihat [pengujian API](API_TESTS.md) untuk izin, konkurensi basis data, observasi, nominal tagihan, dan keputusan rekap. Gunakan data sintetis pada instans lokal.

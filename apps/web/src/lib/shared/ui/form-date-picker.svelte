@@ -60,7 +60,9 @@ function requireValue(event: Event & { currentTarget: HTMLInputElement }) {
     // Only the first invalid field should take focus during form validation.
     if (input.form?.querySelector('input:invalid, select:invalid, textarea:invalid') === input) {
         trigger?.focus();
-        toast.error(withTime ? 'Pilih tanggal dan waktu.' : 'Pilih tanggal.', { id: 'date-validation' });
+        const label = trigger?.labels?.[0]?.childNodes[0]?.textContent?.trim() || triggerProps['aria-label'];
+        const prompt = withTime ? 'Pilih tanggal dan jam' : 'Pilih tanggal';
+        toast.error(label ? `${prompt} untuk ${label}.` : `${prompt}.`, { id: 'date-validation' });
     }
 }
 </script>

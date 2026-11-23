@@ -31,7 +31,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
       return response.status(status).json({
         error: {
           code: status === 404 ? "NOT_FOUND" : "INVALID_REQUEST",
-          message: "Format permintaan tidak valid.",
+          message: status === 404
+            ? "Alamat API tidak ditemukan. Periksa alamat permintaan."
+            : "Periksa format permintaan, lalu kirim kembali.",
         },
       });
     }
@@ -61,7 +63,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
       }
     )?.driverError?.code;
     if (pgCode && ["23505", "40001", "40P01"].includes(pgCode))
-      return response.status(409).json(errorBody(DomainError.conflict()));
+      return response.status(409).json(errorBody(DomainError.conflict("Perubahan berbenturan dengan data yang ada. Periksa data terbaru sebelum mengirim kembali.")));
     if (
       pgCode &&
       ["23503", "23514", "22003", "22007", "22008", "22P02"].includes(pgCode)
@@ -81,7 +83,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
     return response.status(500).json({
       error: {
         code: "INTERNAL_ERROR",
-        message: "Terjadi kesalahan. Silakan coba kembali.",
+        message: "Layanan mengalami gangguan. Periksa data terbaru sebelum mengulangi perubahan.",
       },
     });
   }

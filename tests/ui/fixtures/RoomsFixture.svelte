@@ -1,6 +1,6 @@
 <script>
 import RoomsPage from '$lib/features/rooms/presentation/RoomsPage.svelte';
-const data = $state({ user: { id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT' }, reference: { staff: [{ id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT' }] }, rooms: [{ id: 'room', name: 'Ruangan Uji', roomClass: 'Kelas I', capacity: 2, status: 'available', picId: 'nurse', picName: 'Perawat Uji', dailyRate: '100000.00', version: 4, totalCost: '25000.00', occupants: 0, items: [{ id: 'item', name: 'Perlengkapan Uji', category: 'Perlengkapan', quantity: 1, unitPrice: '25000.00' }] }] });
+const data = $state({ user: { id: 'nurse', name: 'Koordinator Uji', role: 'PERAWAT', coordinator: true }, reference: { staff: [{ id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT', active: true }] }, rooms: [{ id: 'room', name: 'Ruangan Uji', roomClass: 'Kelas I', capacity: 2, status: 'available', picId: 'nurse', picName: 'Perawat Uji', dailyRate: '100000.00', version: 4, totalCost: '25000.00', occupants: 0, items: [{ id: 'item', name: 'Perlengkapan Uji', category: 'Perlengkapan', quantity: 1, unitPrice: '25000.00' }] }] });
 const writes = [];
 window.roomWrites = writes;
 let fail = true;

@@ -6,7 +6,7 @@ export async function requireApiDocsSession(fetcher: typeof fetch) {
     try {
         await createAuth(fetcher).current();
     } catch (failure) {
-        if (failure instanceof ApiError && failure.status === 401) error(401, 'Login required.');
-        error(503, 'Layanan InpaCare belum tersedia. Silakan coba kembali.');
+        if (failure instanceof ApiError && failure.status === 401) error(401, 'Masuk ke InpaCare untuk membuka penjelajah API.');
+        error(503, { message: 'Penjelajah API gagal dimuat.', publicMessage: 'Penjelajah API gagal dimuat. Periksa koneksi Anda, lalu muat ulang halaman.' });
     }
 }

@@ -20,8 +20,8 @@ async function headers(page: Page) {
 
 test('admissions registers with a generated record number and finds it after reload', async ({ page }, testInfo) => {
     await signIn(page, 'admisi');
-    await page.getByRole('navigation', { name: 'Navigasi utama', exact: true }).getByRole('link', { name: 'Data Pasien', exact: true }).click();
-    await page.getByRole('button', { name: 'Tambah Pasien', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Navigasi utama', exact: true }).getByRole('link', { name: 'Data pasien', exact: true }).click();
+    await page.getByRole('button', { name: 'Tambah pasien', exact: true }).click();
     await expect(page.getByLabel('Nama lengkap')).toBeFocused();
     await expect(page.getByLabel('Nomor rekam medis', { exact: true })).toHaveAttribute('readonly', '');
     await expect(page.getByLabel('Nomor rekam medis', { exact: true })).toHaveValue('Dibuat otomatis saat disimpan');
@@ -58,7 +58,7 @@ test('registration keeps a rejected draft and fits a mobile viewport', async ({ 
     await signIn(page, 'admisi');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/patients');
-    await page.getByRole('button', { name: 'Tambah Pasien', exact: true }).click();
+    await page.getByRole('button', { name: 'Tambah pasien', exact: true }).click();
     await page.getByLabel('Nama lengkap').fill(draft.name);
     const birthDate = page.getByLabel('Tanggal lahir', { exact: true });
     await birthDate.focus();
@@ -79,13 +79,20 @@ test('registration keeps a rejected draft and fits a mobile viewport', async ({ 
     await page.route('**/api/v1/patients', async route => {
         if (route.request().method() !== 'POST') return route.continue();
         writes++;
-        await route.fulfill({ status: 503, json: { error: { code: 'UNAVAILABLE', message: 'Penyimpanan pasien sementara tidak tersedia.' } } });
+        if (writes === 1) {
+            return route.fulfill({ status: 422, json: { error: { code: 'VALIDATION_FAILED', message: 'Isi Nama lengkap dengan maksimal 200 karakter.' } } });
+        }
+        await route.fulfill({ status: 200, contentType: 'text/html', body: '<p>SQLSTATE: unexpected upstream response</p>' });
     });
-    await page.getByRole('button', { name: 'Simpan pasien', exact: true }).click();
-    await expect(page.getByRole('alert')).toContainText('sementara tidak tersedia');
+    const submit = page.getByRole('button', { name: 'Simpan pasien', exact: true });
+    await submit.click();
+    await expect(page.getByRole('alert')).toHaveText('Isi Nama lengkap dengan maksimal 200 karakter.');
+    await submit.click();
+    await expect(page.getByRole('alert')).toHaveText('Data pasien belum dapat dipastikan tersimpan. Cari nama pasien di daftar sebelum mendaftarkan ulang.');
+    await expect(page.getByText(/SQLSTATE/)).toHaveCount(0);
     await expect(page.getByLabel('Nama lengkap')).toHaveValue(draft.name);
     await expect(birthDate).toHaveAttribute('data-value', draft.birthDate);
-    expect(writes).toBe(1);
+    expect(writes).toBe(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
     await page.screenshot({ path: testInfo.outputPath('registration-mobile-error.png'), fullPage: true });
 });
@@ -93,9 +100,12 @@ test('registration keeps a rejected draft and fits a mobile viewport', async ({ 
 for (const username of ['hendra', 'dina', 'rina']) {
     test(`${username} cannot open registration or create patients through the API`, async ({ page }) => {
         await signIn(page, username);
-        await expect(page.getByRole('link', { name: 'Data Pasien', exact: true })).toHaveCount(0);
-        const response = await page.request.get('/patients');
-        expect(response.status()).toBe(403);
+        await expect(page.getByRole('link', { name: 'Data pasien', exact: true })).toHaveCount(0);
+        const response = await page.goto('/patients');
+        expect(response?.status()).toBe(403);
+        await expect(page.getByRole('heading', { name: 'Akses terbatas' })).toBeVisible();
+        await page.getByRole('link', { name: 'Kembali ke halaman utama' }).click();
+        await expect(page).toHaveURL(/\/dashboard$/);
         const before = await page.request.get('/api/v1/patients');
         const count = (await before.json()).total;
         const denied = await page.request.post('/api/v1/patients', { headers: await headers(page), data: draft });
@@ -110,7 +120,14 @@ test('registration enforces session, CSRF and server validation', async ({ page 
     expect(anonymous.status()).toBe(401);
     await signIn(page, 'admisi');
     expect((await page.request.post('/api/v1/patients', { data: draft })).status()).toBe(403);
-    for (const fields of [{ name: ' ' }, { birthDate: '2001-02-29' }, { birthDate: '9999-01-01' }, { bpjs: true }, { bpjs: true, bpjsNumber: 'abc' }, { role: 'ADMISI' }, { medicalRecordNo: 'RM-00001' }]) {
+    const badDate = await page.request.post('/api/v1/patients', {
+        headers: await headers(page), data: { ...draft, birthDate: '2001-02-29' },
+    });
+    expect(badDate.status()).toBe(422);
+    expect(await badDate.json()).toEqual({ error: {
+        code: 'VALIDATION_FAILED', message: 'Tanggal lahir tidak valid. Pilih tanggal pada kalender.',
+    } });
+    for (const fields of [{ name: ' ' }, { birthDate: '9999-01-01' }, { bpjs: true }, { bpjs: true, bpjsNumber: 'abc' }, { role: 'ADMISI' }, { medicalRecordNo: 'RM-00001' }]) {
         const invalid = await page.request.post('/api/v1/patients', { headers: await headers(page), data: { ...draft, ...fields } });
         expect(invalid.status()).toBe(422);
     }

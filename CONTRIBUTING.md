@@ -1,12 +1,12 @@
-# Contributing to InpaCare
+# Berkontribusi pada InpaCare
 
-Thank you for helping improve InpaCare. Small, focused changes are easiest to review. Documentation, accessibility, tests, and bug fixes are good starting points.
+Perubahan yang terfokus memudahkan peninjauan. Anda dapat mulai dari dokumentasi, aksesibilitas, pengujian, atau perbaikan masalah.
 
-## Start here
+## Memulai
 
-1. Search existing [issues](https://github.com/Malwildan/inpacare/issues) and pull requests.
-2. Open an issue for a new feature or a change to permissions, database schema, billing, placement, or care-cycle rules. Explain the user-visible behavior and its tradeoffs.
-3. Fork the repository and create a branch from `main`:
+1. Cari [issue](https://github.com/Malwildan/inpacare/issues) dan pull request yang sudah ada.
+2. Buat issue untuk fitur baru atau perubahan izin, skema basis data, tagihan, penempatan, atau rekap. Jelaskan dampaknya bagi petugas dan pertimbangan yang perlu diputuskan.
+3. Buat fork repositori, lalu buat cabang dari `main`.
 
    ```sh
    git clone https://github.com/YOUR_USERNAME/inpacare.git
@@ -14,39 +14,39 @@ Thank you for helping improve InpaCare. Small, focused changes are easiest to re
    git switch -c fix/short-description
    ```
 
-4. Use the [development setup](docs/development/GETTING_STARTED.md), or the Windows helper in [README](README.md).
+4. Ikuti [penyiapan pengembangan](docs/development/GETTING_STARTED.md) atau gunakan skrip Windows di [README](README.md).
 
-## Where changes belong
+## Lokasi perubahan
 
-| Change | Location |
+| Perubahan | Lokasi |
 | --- | --- |
-| API handlers and domain permissions | `apps/api/src/` |
-| Schema changes | A new versioned TypeORM migration in `apps/api/src/infrastructure/database/migrations/` |
-| Pages and shared UI | `apps/web/src/routes/` and `apps/web/src/lib/` |
-| API contract | `contracts/openapi.json` |
-| API and browser workflows | `tests/api/` and `tests/e2e/` |
-| Setup and operating instructions | `docs/development/` and `docs/deployment/` |
+| API dan izin domain | `apps/api/src/` |
+| Skema basis data | Migrasi TypeORM baru di `apps/api/src/infrastructure/database/migrations/` |
+| Halaman dan komponen antarmuka | `apps/web/src/routes/` dan `apps/web/src/lib/` |
+| Kontrak API | `contracts/openapi.json` |
+| Alur uji API dan peramban | `tests/api/` dan `tests/e2e/` |
+| Petunjuk penyiapan dan pengoperasian | `docs/development/` dan `docs/deployment/` |
 
-Keep existing startup-script paths stable unless the change also updates every caller and operating guide. The backend and frontend remain separate applications; avoid moving domain modules merely to rename folders.
+Pertahankan lokasi skrip startup. Jika perlu memindahkannya, perbarui pemanggil dan panduan terkait. API dan web adalah aplikasi terpisah. Pindahkan modul domain jika tanggung jawabnya berubah.
 
-Run database migrations as an explicit command before starting the API; application start must not migrate automatically. Demo seeding is a separate explicit command that requires `SEED_DEMO_PASSWORD` and an empty users table.
+Jalankan migrasi sebelum memulai API. Pengisian data demo memakai perintah terpisah dengan `SEED_DEMO_PASSWORD` dan tabel pengguna kosong.
 
-## Implementation expectations
+## Aturan implementasi
 
-- Follow the patterns in the files you touch. Keep changes scoped to the problem.
-- Enforce authorization in the API, including patient/record scope. Hiding a UI control is not an access check.
-- Preserve optimistic-version checks, transaction boundaries, and audit history.
-- Represent money as decimal strings in API payloads. Derive totals on the server.
-- Keep user-facing labels in Indonesian and provide labels, keyboard access, loading states, and useful error messages.
-- Add a migration rather than editing one that has already been applied.
-- Change the OpenAPI contract alongside API payloads, then run `npm run types:api`. Commit the regenerated `apps/web/src/lib/generated/api.d.ts`; do not edit it by hand.
-- Use synthetic data only. Keep credentials, database dumps, local host details, and private source documents out of commits and screenshots.
+- Ikuti pola kode sekitar dan batasi perubahan pada masalah yang dikerjakan.
+- Periksa izin dan cakupan data pasien di API. Visibilitas kontrol di aplikasi hanya memandu petugas.
+- Pertahankan versi, batas transaksi, dan riwayat perubahan.
+- Kirim nominal sebagai teks desimal. Hitung total di server.
+- Gunakan label Indonesia, akses papan ketik, dan pesan yang menyebut hasil serta tindakan pemulihan. Lihat [inventaris teks](docs/development/TEKS_INPACARE.md).
+- Tambahkan migrasi baru untuk perubahan skema yang sudah diterapkan.
+- Saat payload API berubah, perbarui OpenAPI, jalankan `npm run types:api`, lalu sertakan hasil `apps/web/src/lib/generated/api.d.ts` dalam commit.
+- Gunakan data sintetis. Simpan kredensial, dump, rincian host, dan dokumen privat di luar Git dan tangkapan layar.
 
-The [demo rules](docs/development/BUILD_CONTRACT.md) and [domain reference](docs/README.md#reference) explain the current behavior. Historical planning documents provide context; they do not grant clinical or operational approval.
+Lihat [aturan demo](docs/development/BUILD_CONTRACT.md) dan [referensi domain](docs/README.md#referensi) untuk perilaku saat ini. Dokumen perencanaan mencatat keputusan terdahulu.
 
-## Validate your change
+## Periksa perubahan
 
-From the repository root:
+Jalankan pemeriksaan yang sesuai dari akar repositori.
 
 ```sh
 npm ci
@@ -61,21 +61,21 @@ npm run test:api:unit
 npm run test:api:integration
 ```
 
-Run checks appropriate to your change. For API behavior, run the [PostgreSQL workflow tests](docs/development/API_TESTS.md) against a fresh disposable database. For frontend behavior, run the [Playwright workflows](docs/development/BROWSER_TESTS.md) against a local synthetic instance. Documentation-only changes need working links and accurate commands; they do not require a full application rebuild.
+Untuk perubahan API, jalankan [uji alur PostgreSQL](docs/development/API_TESTS.md) pada basis data sementara. Untuk perubahan antarmuka, jalankan [Playwright](docs/development/BROWSER_TESTS.md) pada instans sintetis lokal. Untuk dokumentasi, periksa tautan dan perintah.
 
-CI runs frontend checks, builds, generated-type drift detection, NestJS unit/integration tests, and the API workflow suite. Independent checks run in parallel. Pull requests select checks by changed paths; recognized documentation-only changes skip application checks, and unknown paths run everything. Main pushes, nightly runs, and manual runs validate everything and seed caches for subsequent PRs. The API gate display context changed from Rust to NestJS. Maintainers with branch protection pinned to the old display name must update that rule when adopting this workflow; the API gate continues to reject failures and unexpected skips. Run `npm run test:ci` to verify the selection logic.
+CI menjalankan pemeriksaan web, build, pemeriksaan tipe API yang dihasilkan, uji NestJS, dan alur API. Pull request memilih pemeriksaan sesuai jalur yang berubah. Perubahan dokumentasi yang dikenal melewati pemeriksaan aplikasi dan jalur yang tidak dikenal menjalankan semua pemeriksaan. Push ke `main`, pengujian harian, dan pemicu manual menjalankan seluruh rangkaian serta mengisi cache. Jika perlindungan cabang masih memakai nama pemeriksaan Rust, ganti dengan nama pemeriksaan NestJS. Periksa logika pemilihan dengan `npm run test:ci`.
 
-`npm run hooks:install` enables the committed pre-push hook in this checkout (Git hooks require a local install). For changed code it checks whitespace, Svelte/TypeScript, generated API types, and API type/build/unit checks as applicable. Keep Node.js 24.18+ and npm available, and commit or stash tracked changes before pushing so checks see the code being pushed. New branches compare against `origin/main`, or the whole tree when that ref is unavailable. The hook uses existing project checkers; the project has no ESLint or formatter configuration to replace. Browser tests remain a separate local check. Never run mutation tests against the shared public demo or a real-data database.
+Jalankan `npm run hooks:install` untuk mengaktifkan hook pre-push di salinan ini. Hook memilih pemeriksaan spasi, Svelte, TypeScript, deklarasi API, build, dan uji API sesuai perubahan. Siapkan Node.js 24.18+ dan npm. Commit atau simpan perubahan terlacak sebelum push. Cabang baru dibandingkan dengan `origin/main`. Jika rujukan itu tidak tersedia, pemeriksaan mencakup seluruh pohon berkas. Uji peramban berjalan terpisah pada instans sintetis.
 
-The hook validates the checked-out branch. Push branches separately after checking each one out; a multi-branch push with different tips is rejected. Tag updates and branch deletions do not run application checks.
+Hook memeriksa cabang yang sedang dibuka. Buka dan push cabang satu per satu jika ujung cabang berbeda. Pembaruan tag dan penghapusan cabang melewati pemeriksaan aplikasi.
 
-## Submit a pull request
+## Kirim pull request
 
-- Explain the problem, resulting behavior, and how you checked it.
-- Link the relevant issue and include screenshots for visible UI changes using synthetic data.
-- Note any migration, deployment, or compatibility impact.
-- Keep unrelated refactors and generated runtime files out of the diff.
+- Jelaskan masalah, perilaku setelah perubahan, dan pemeriksaan yang dijalankan.
+- Tautkan issue. Sertakan tangkapan layar dengan data sintetis jika tampilan berubah.
+- Catat dampak migrasi, pengoperasian, atau kompatibilitas.
+- Sertakan perubahan yang terkait langsung dengan pekerjaan.
 
-Maintainers review pull requests before merging. Be respectful, assume good intent, and focus feedback on the work. For vulnerabilities, use the private reporting route in [SECURITY.md](SECURITY.md), rather than a public issue.
+Pengelola meninjau pull request sebelum menggabungkannya. Tanggapi masukan dengan sopan dan fokus pada pekerjaan. Untuk kerentanan, ikuti [pelaporan privat](SECURITY.md).
 
-By submitting a contribution, you agree to license your original contribution under the project's [MIT license](LICENSE). Do not include material you do not have permission to share. Font and other third-party licenses remain in effect.
+Dengan mengirim kontribusi, Anda melisensikan karya asli Anda menurut [lisensi MIT](LICENSE). Sertakan hanya materi yang boleh Anda bagikan. Lisensi font dan materi pihak ketiga tetap berlaku.

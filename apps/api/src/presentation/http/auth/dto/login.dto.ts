@@ -1,11 +1,11 @@
 import { IsString, MaxLength, MinLength } from "class-validator";
 export class LoginDto {
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
+  @IsString({ message: "Isi ID petugas dengan maksimal 100 karakter." })
+  @MinLength(1, { message: "Isi ID petugas dengan maksimal 100 karakter." })
+  @MaxLength(100, { message: "Isi ID petugas dengan maksimal 100 karakter." })
   username!: string;
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
+  @IsString({ message: "Isi Kata sandi dengan maksimal 200 karakter." })
+  @MinLength(1, { message: "Isi Kata sandi dengan maksimal 200 karakter." })
+  @MaxLength(200, { message: "Isi Kata sandi dengan maksimal 200 karakter." })
   password!: string;
 }

@@ -49,7 +49,7 @@ export function createTasksUseCases(repository: TasksRepository) {
                     const page = await repository.list({ ...filters, status, order: 'board', limit: 50, offset: 0 });
                     return { items: page.items, total: page.total, error: false, filtered: false };
                 } catch (error) {
-                    if (error instanceof ApiError && error.status === 401) throw error;
+                    if (error instanceof ApiError && (error.status === 401 || error.status === 403)) throw error;
                     return { items: [], total: 0, error: true, filtered: false };
                 }
             }));

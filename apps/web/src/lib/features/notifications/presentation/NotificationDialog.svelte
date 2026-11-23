@@ -11,18 +11,18 @@ import { sessionFailure } from '$lib/shared/presentation/session';
 let { service, onclose }: { service: Notifications; onclose: () => void } = $props();
 let notices = $state<Notification[]>([]);
 let loading = $state(true);
-let failed = $state(false);
+let failure = $state('');
 let reading = $state<string | null>(null);
 let active = true;
 onMount(() => { void load(); return () => { active = false; }; });
 async function load() {
     loading = true;
-    failed = false;
+    failure = '';
     try {
         const result = await service.list();
         if (active) notices = result;
     } catch (cause) {
-        if (active) { failed = true; toast.error(sessionFailure(cause)); }
+        if (active) failure = sessionFailure(cause, 'load', 'Notifikasi');
     } finally { if (active) loading = false; }
 }
 async function markRead(id: string) {
@@ -31,17 +31,18 @@ async function markRead(id: string) {
     try {
         await service.markRead(id);
         notices = notices.map(notice => notice.id === id ? { ...notice, readAt: new Date().toISOString() } : notice);
-        toast.success('Notifikasi ditandai sudah dibaca.');
-    } catch (cause) { toast.error(sessionFailure(cause)); }
+        toast.success('Notifikasi ditandai sebagai sudah dibaca.');
+    } catch (cause) { toast.error(sessionFailure(cause, 'save', 'status baca notifikasi')); }
     finally { reading = null; }
 }
 </script>
 
-<Modal title="Semua notifikasi" description="Tinjau pemberitahuan dan tandai notifikasi yang sudah dibaca." busy={reading !== null} {onclose}>
+<Modal title="Semua notifikasi" description="Lihat pemberitahuan dan tandai sebagai sudah dibaca." busy={reading !== null} {onclose}>
     {#snippet children(close)}
     {#if loading}
         <p role="status">Memuat notifikasi…</p>
-    {:else if failed}
+    {:else if failure}
+        <p role="alert" class="text-sm text-destructive">{failure}</p>
         <Button variant="outline" class="h-11" onclick={load}><RefreshCw aria-hidden="true" /> Coba lagi</Button>
     {:else if notices.length === 0}
         <p class="muted">Belum ada notifikasi.</p>

@@ -43,22 +43,24 @@ import Modal from '$lib/shared/ui/dialog-frame.svelte';
 				recordDate: formText(f, 'recordDate')
 			});
 			creating = false;
-			await goto(`/medical-records/${row.id}`, { invalidateAll: true });
-			toast.success('Rekam medis tersimpan.');
+			await goto(`/medical-records/${row.id}`, { invalidateAll: true }).then(
+                () => toast.success('Rekam medis tersimpan.'),
+                () => toast.warning('Rekam medis tersimpan. Muat ulang daftar untuk membuka rekam medis terbaru.')
+            );
 		} catch (e) {
-			toast.error(sessionFailure(e));
+			toast.error(sessionFailure(e, 'save', 'rekam medis'));
 		} finally {
 			busy = false;
 		}
 	}
 </script>
 
-<svelte:head><title>Rekam Medis | InpaCare</title></svelte:head>
+<svelte:head><title>Rekam medis | InpaCare</title></svelte:head>
 
 <div class="flex flex-col gap-6">
 	<header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
 		<div class="min-w-0">
-			<h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Daftar Rekam Medis</h1>
+			<h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Daftar rekam medis</h1>
 			<p class="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed text-muted-foreground">
 				{admisi ? 'Proyeksi administrasi baca saja: identitas catatan dan tanggal.' : 'Catatan dokter dan observasi keperawatan pasien rawat inap.'}
 			</p>
@@ -194,7 +196,7 @@ import Modal from '$lib/shared/ui/dialog-frame.svelte';
 					{:else}
 						<TableRow class="hover:bg-transparent">
 							<TableCell colspan={admisi ? 3 : 6} class="px-4 py-11 text-center text-sm whitespace-normal text-muted-foreground sm:px-5">
-								Tidak ada rekam medis dalam cakupan Anda.
+								{search ? 'Tidak ada rekam medis yang cocok. Coba nama pasien atau nomor rekam medis lain.' : 'Belum ada rekam medis yang tersedia untuk akun Anda.'}
 							</TableCell>
 						</TableRow>
 					{/each}

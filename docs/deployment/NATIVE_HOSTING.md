@@ -1,10 +1,10 @@
-# Native Linux hosting
+# Pengoperasian di Linux dengan systemd
 
-Run the production frontend, NestJS API, and PostgreSQL as user services on an **x86_64 Linux host with systemd**. The installer targets Ubuntu 24.04-compatible distributions, including Linux Mint 22. This is not a macOS launchd installer; for other hosts, adapt the runtime or use the [Docker package](HOSTING.md).
+Jalankan aplikasi web, NestJS, dan PostgreSQL sebagai layanan pengguna pada **Linux x86_64 dengan systemd**. Pemasang mendukung distribusi yang kompatibel dengan Ubuntu 24.04, termasuk Linux Mint 22. Untuk host lain, sesuaikan runtime atau gunakan [paket Docker](HOSTING.md).
 
-## Prepare the application
+## Siapkan aplikasi
 
-The release needs Node.js 24.18+ and the compiled API/frontend output. The setup script installs a project-local Node/PostgreSQL runtime. From the repository root:
+Rilis memerlukan Node.js 24.18+ serta hasil build API dan web. Skrip menyiapkan Node.js dan PostgreSQL di direktori proyek. Jalankan perintah dari akar repositori.
 
 ```sh
 bash scripts/setup-native-linux.sh
@@ -15,22 +15,22 @@ bash scripts/native-host.sh prepare
 bash scripts/native-host.sh migrate
 ```
 
-For a new empty database, `migrate` is a separate explicit operation before app start. It is safe to re-run because the migration runner tracks applied versions. For a database created by the prior Rust API, do not run `migrate`: back it up, stop API/web writes, and run `bash scripts/native-host.sh adopt`. Adoption checks the known schema fingerprint before marking the baseline and applying the additive delta. Restart the previous app only after adoption succeeds. Automatic updates refuse an unadopted non-empty database before stopping services; see [continuous delivery](CONTINUOUS_DELIVERY.md#existing-rust-database-adoption).
+Untuk basis data baru dan kosong, jalankan `migrate` sebelum memulai aplikasi. Perintah dapat diulang karena versi yang sudah diterapkan tercatat. Untuk basis data dari API Rust, buat cadangan, hentikan penulisan dari API dan web, lalu jalankan `bash scripts/native-host.sh adopt`. Perintah tersebut memeriksa sidik skema sebelum menandai versi dasar dan menambahkan perubahan skema. Mulai ulang aplikasi lama setelah adopsi berhasil. Pembaruan otomatis memeriksa adopsi basis data sebelum menghentikan layanan. Lihat [pembaruan otomatis](CONTINUOUS_DELIVERY.md#existing-rust-database-adoption).
 
-To create synthetic demo accounts, seed only when the database is empty and provide a demo-only password explicitly:
+Untuk membuat akun demo sintetis, gunakan basis data kosong dan tetapkan kata sandi khusus demo.
 
 ```sh
 SEED_DEMO_PASSWORD='choose-a-demo-only-password' bash scripts/native-host.sh seed-demo
 ```
 
-All mutating requests, including login, require an Origin that matches the request's external scheme, host and port, or an exact entry in `TRUSTED_ORIGINS` in `.data/native.env`. The same-origin native frontend and public tunnel work without adding their addresses to that list. Set `TRUSTED_ORIGINS` for any separately hosted frontend. The API trusts forwarded host and protocol only from `TRUST_PROXY` (loopback by default); keep it behind the frontend proxy, which overwrites those headers. Then install services:
+Permintaan yang mengubah data, termasuk masuk, memerlukan Origin yang cocok dengan skema, host, dan port dari luar, atau entri yang sama persis di `TRUSTED_ORIGINS` dalam `.data/native.env`. Aplikasi web dan terowongan ber-origin sama dapat memakai daftar bawaan. Isi `TRUSTED_ORIGINS` untuk aplikasi web yang dioperasikan terpisah. Letakkan API di belakang proksi web yang mengganti header host dan protokol terusan. API hanya memercayai header itu dari `TRUST_PROXY`, dengan bawaan loopback. Pasang layanan setelah penyiapan.
 
 ```sh
 bash scripts/native-host.sh install
 ```
 
-The project-local runtime is under `.runtime`; private credentials and PostgreSQL data are under `.data`. The setup does not require sudo or install global packages. Existing database files and credentials are preserved. The API binds to `127.0.0.1:8080`, PostgreSQL to `127.0.0.1:55432`, and the frontend to `0.0.0.0:8088`; the host page is **http://127.0.0.1:8088**. PostgreSQL uses major version 16; do not copy a data directory across major versions.
-## Service lifecycle and persistence
+Runtime lokal berada di `.runtime`. Kredensial privat dan data PostgreSQL berada di `.data`. Pemasang bekerja tanpa sudo atau paket global dan mempertahankan data serta kredensial yang ada. API menerima permintaan di `127.0.0.1:8080`, PostgreSQL di `127.0.0.1:55432`, dan web di `0.0.0.0:8088`. Buka **http://127.0.0.1:8088** dari host. Gunakan direktori data yang sesuai dengan PostgreSQL 16.
+## Kelola layanan dan data
 
 ```sh
 bash scripts/native-host.sh status
@@ -39,15 +39,15 @@ bash scripts/native-host.sh start
 journalctl --user -u inpacare-api -u inpacare-web -n 50 --no-pager
 ```
 
-Stop/start preserves records. User services start at boot without an interactive login only if the host's user manager has lingering enabled. Inspect your own account with `loginctl show-user "$USER" -p Linger`; the application installer does not enable lingering or change system services.
+Menghentikan atau memulai layanan tidak menghapus data. Layanan pengguna dapat mulai saat boot tanpa login interaktif jika pengelola pengguna mengaktifkan lingering. Periksa akun dengan `loginctl show-user "$USER" -p Linger`. Kelola lingering di luar pemasang aplikasi.
 
-Preserve `.data/postgres`, `.data/native.env`, and `.data/admin-password` before moving/updating the host. `.data` has owner-only directory permissions and credential files use mode 0600. Use the bundled `pg_dump` with the existing private environment for backups; rehearse restoration separately. Do not delete the data directory or replace credential files to repair startup.
+Simpan `.data/postgres`, `.data/native.env`, dan `.data/admin-password` sebelum memindahkan atau memperbarui host. Direktori `.data` hanya dapat diakses pemilik dan berkas kredensial memakai mode 0600. Cadangkan dengan `pg_dump` bawaan serta konfigurasi privat yang ada. Uji pemulihan secara terpisah. Pertahankan direktori data dan kredensial saat menelusuri kegagalan startup.
 
-## Optional stable public HTTPS URL
+## Alamat HTTPS publik opsional
 
-The native frontend has two listeners: port 8088 fixes the external protocol to HTTP, while `HTTPS_PROXY_PORT=8089` enables a loopback-only listener whose external protocol is HTTPS. Both overwrite client protocol headers. A tunnel should forward to `http://127.0.0.1:8089`, preserving the public hostname, so public sessions receive `Secure` cookies.
+Port 8088 memakai HTTP sebagai protokol eksternal. `HTTPS_PROXY_PORT=8089` membuka port loopback yang memakai HTTPS sebagai protokol eksternal. Keduanya menimpa header protokol klien. Arahkan terowongan ke `http://127.0.0.1:8089` dan pertahankan nama host publik agar kuki sesi memakai atribut `Secure`.
 
-To use your own ngrok account, create a private `.data/ngrok.yml` with this structure in a local editor. Replace the placeholder using your own account's authtoken; never commit the resulting file:
+Untuk memakai akun ngrok sendiri, buat `.data/ngrok.yml` di editor lokal. Ganti nilai contoh dengan authtoken akun Anda dan simpan berkas di luar Git.
 
 ```yaml
 version: '3'
@@ -60,7 +60,7 @@ agent:
   update_check: false
 ```
 
-Then run:
+Pasang dan periksa layanan dengan perintah berikut.
 
 ```sh
 chmod 600 .data/ngrok.yml
@@ -69,10 +69,10 @@ bash scripts/public-tunnel.sh url
 bash scripts/public-tunnel.sh status
 ```
 
-The installer extracts ngrok from its signed official APT repository if necessary, enables `inpacare-ngrok`, and forwards to the HTTPS-origin loopback listener. Its agent API stays on `127.0.0.1:4049`, and request inspection is disabled. The project uses a separate private config, preserving account-wide ngrok files.
+Jika diperlukan, pemasang mengambil ngrok dari repositori APT resmi yang ditandatangani. Pemasang mengaktifkan `inpacare-ngrok` dan meneruskan koneksi ke port loopback untuk origin HTTPS. API agen tetap di `127.0.0.1:4049` dengan inspeksi permintaan dinonaktifkan. Konfigurasi proyek memakai berkas privat terpisah dari konfigurasi akun.
 
-`bash scripts/public-tunnel.sh stop` stops public access; `start` restores it. The assigned ngrok account domain remains the same across agent restarts. The free plan has quotas and a first-visit browser interstitial; see [ngrok's current limits](https://ngrok.com/docs/pricing-limits/free-plan-limits). Keep the host awake and online. The project demo address is listed in [README](../../README.md); contributors should use their own accounts and instances.
+Jalankan `bash scripts/public-tunnel.sh stop` untuk menghentikan akses publik atau `start` untuk memulihkannya. Domain akun ngrok tetap sama setelah agen dimulai ulang. Paket gratis memiliki kuota dan halaman perantara untuk kunjungan pertama. Pastikan host tetap aktif dan terhubung. Gunakan akun dan instans sendiri untuk pengembangan. [Batas ngrok](https://ngrok.com/docs/pricing-limits/free-plan-limits) · [Alamat demo](../../README.md)
 
-## Validation
+## Pengujian
 
-Use `python3 scripts/test-native-host.py` to run API workflows against a separate disposable database. Public HTTPS access, LAN access, data persistence, and full machine reboot behavior are separate checks; service enablement alone does not establish each of them. Historical implementation results are summarized in [project status](../PROJECT_STATUS.md).
+Jalankan `python3 scripts/test-native-host.py` untuk menguji API pada basis data sementara yang terpisah. Periksa akses HTTPS publik, akses LAN, ketahanan data, dan perilaku setelah reboot secara terpisah. Hasil sebelumnya tercatat di [status proyek](../PROJECT_STATUS.md).

@@ -73,7 +73,7 @@ test('new placement uses the shared capacity and date rules before creating a cy
     create: async () => assert.fail('full room must not be written'),
   });
   await assert.rejects(useCases.create(nurse, { ...input, newPlacement: { roomId: 'room', startsOn: '2026-11-20', endsOn: '2026-11-19' } }), { code: 'VALIDATION_FAILED' });
-  await assert.rejects(useCases.create(nurse, { ...input, newPlacement: { roomId: 'room', startsOn: '2026-11-20', endsOn: '2026-11-21' } }), error => error.code === 'CONFLICT' && /Kapasitas/.test(error.message));
+  await assert.rejects(useCases.create(nurse, { ...input, newPlacement: { roomId: 'room', startsOn: '2026-11-20', endsOn: '2026-11-21' } }), error => error.code === 'CONFLICT' && /Pilih ruang lain atau sesuaikan tanggal/.test(error.message));
   assert.ok(calls.every(value => typeof value === 'string'));
 });
 

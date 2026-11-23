@@ -4,7 +4,7 @@ import { createReferenceData } from '$lib/app/composition/reference-data';
 import { restrictedPage } from '$lib/app/navigation';
 import { ApiError } from '$lib/shared/errors';
 import type { LayoutServerLoad } from './$types';
-export const load: LayoutServerLoad = async ({ fetch, depends, url }) => {
+export const load: LayoutServerLoad = async ({ fetch, depends, url, cookies }) => {
  depends('app:session');
  try {
   const user = await createAuth(fetch).current();
@@ -12,7 +12,7 @@ export const load: LayoutServerLoad = async ({ fetch, depends, url }) => {
   return { user, reference: await createReferenceData(fetch).load() };
  } catch (failure) {
   if (isHttpError(failure)) throw failure;
-  if (failure instanceof ApiError && failure.status === 401) redirect(303, '/login');
-  error(503, 'Layanan InpaCare belum tersedia. Silakan coba kembali.');
+  if (failure instanceof ApiError && failure.status === 401) redirect(303, cookies.get('session') ? '/login?status=sesi-berakhir' : '/login');
+  error(503, { message: 'Halaman gagal dimuat', publicMessage: 'InpaCare belum dapat memuat halaman ini. Periksa koneksi Anda, lalu muat ulang halaman.' });
  }
 };

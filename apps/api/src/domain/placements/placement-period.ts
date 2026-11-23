@@ -14,15 +14,15 @@ export function validatePlacementSpan(start: string, end: string) {
     b = Date.parse(`${end}T00:00:00Z`);
   if (!valid(start) || !valid(end))
     throw DomainError.validation(
-      "Tanggal penempatan harus berupa tanggal kalender yang valid.",
+      "Tanggal masuk atau tanggal selesai tidak valid. Pilih tanggal pada kalender.",
     );
   if (!Number.isFinite(a) || !Number.isFinite(b) || b < a)
     throw DomainError.validation(
-      "Tanggal selesai tidak boleh sebelum tanggal masuk.",
+      "Tanggal selesai sebelum tanggal masuk. Pilih tanggal selesai yang sama dengan atau setelah tanggal masuk.",
     );
   const days = (b - a) / 86400000;
   if (days > 365)
-    throw DomainError.validation("Rentang penempatan maksimal satu tahun.");
+    throw DomainError.validation("Rentang penempatan melebihi 365 hari. Pilih tanggal selesai yang lebih dekat.");
   return days;
 }
 export function placementIncludesTask(

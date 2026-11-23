@@ -1,69 +1,69 @@
-# Tasks and clinical records module contract
+# Kontrak tugas perawatan dan rekam medis
 
-API prefix `/api/v1`; all routes require a live server session. JSON uses camelCase. Patient and staff IDs are opaque strings. Lists cap at 100 and default to 50. Source anchors: Modul 2 task rules §§2.1 task use cases lines 216–360, SQL model lines 10935–11065, task pseudocode lines 12959–13178; medical record/vitals entities lines 11067–11192 and use cases summarized in [requirements evidence](../planning/sources/requirements-evidence.md).
+Awalan API adalah `/api/v1`. Semua rute memerlukan sesi aktif. JSON menggunakan camelCase. ID pasien dan petugas berupa teks opak. Daftar memakai batas bawaan 50 dan batas maksimum 100. Sumber tugas dan rekam medis tercatat dalam [bukti kebutuhan](../planning/sources/requirements-evidence.md).
 
-## Nursing tasks
+## Tugas perawatan
 
 ### `GET /tasks`
 
-Optional query: `search`, `status` (`todo | in_progress | done | cancelled`), `priority` (`low | normal | high`), `roomId`, `patientId`, `picId`, `from`, `to`, `limit`, `offset`, `order=board`. Board order is durable within each status; without `order` the schedule and ID order remains unchanged. Counts reflect the full matching scope, not just the page. `todo` is the API alias for source status `baru` and is displayed as “Belum Dikerjakan.” A coordinator sees all live ward tasks; a PIC sees only tasks currently assigned to that user's account. Search covers task title, patient name and medical record number. Response:
+Parameter opsional meliputi `search`, `status` (`todo | in_progress | done | cancelled`), `priority` (`low | normal | high`), `roomId`, `patientId`, `picId`, `from`, `to`, `limit`, `offset`, dan `order=board`. Urutan papan tersimpan untuk tiap status. Jika `order` tidak dikirim, API mengurutkan menurut jadwal lalu ID. Status `todo` tampil sebagai **Belum dikerjakan**. Koordinator melihat tugas di bangsal, sedangkan perawat melihat tugas yang ditetapkan untuk akunnya. Pencarian mencakup judul tugas, nama pasien, dan nomor rekam medis.
 
 ```json
 {"items":[{"id":"…","title":"Pemeriksaan tanda vital","description":"…","notes":"…","patientId":"…","patientName":"…","medicalRecordNo":"RM-…","roomId":"…","roomName":"Melati 02","picId":"…","picName":"Dina Putri","priority":"high","status":"todo","startsAt":"2026-10-29T03:00:00Z","endsAt":"2026-10-29T03:30:00Z","version":1}],"total":1}
 ```
 
-`total` is the full scoped/filter-matched count; `counts` gives status totals. `limit` (default 50, maximum 100) and `offset` support the board pagination. Rows sort by schedule then opaque ID.
+`total` menghitung semua hasil sesuai akses dan filter. `counts` menghitung hasil per status. Gunakan `limit` (bawaan 50, maksimal 100) dan `offset` untuk memuat halaman berikutnya.
 
 ### `POST /tasks`
 
-Coordinator only. Body `{ patientId, placementId, picId, title, description?, notes?, priority, startsAt, endsAt }`. Timestamps must be RFC3339 with timezone; `endsAt` must be at or after `startsAt` (including the source-allowed zero-duration case). Priority is one of `low`, `normal`, `high`. The referenced active placement must match the patient and cover both local-calendar dates; PIC must be an active nurse. The server takes `roomId` from the placement. Creates `todo` version 1 and a history row in one transaction. Returns the created task.
+Hanya koordinator. Kirim `{ patientId, placementId, picId, title, description?, notes?, priority, startsAt, endsAt }`. Gunakan RFC 3339 dengan zona waktu. `endsAt` harus sama dengan atau setelah `startsAt`. Pilih `low`, `normal`, atau `high`. Penempatan harus aktif, milik pasien tersebut, dan mencakup kedua tanggal setempat. Pilih perawat aktif sebagai penanggung jawab. Server mengambil `roomId` dari penempatan dan menyimpan tugas `todo` versi 1 bersama riwayatnya dalam satu transaksi. Respons berisi tugas baru.
 
 ### `GET /tasks/{id}`
 
-Coordinator or currently assigned PIC. Returns the task object above. Former PIC receives 404 after reassignment.
+Koordinator atau penanggung jawab saat ini menerima detail tugas. Setelah pengalihan, penanggung jawab sebelumnya menerima 404.
 
 ### `PATCH /tasks/{id}`
 
-Coordinator or current PIC. Body `{ expectedVersion, status?, notes?, reason? }`; at least `status` or `notes` is required. Every save compares/locks the version and writes task plus history atomically. PIC can progress `todo -> in_progress -> done`; coordinator also can progress those states and cancel `todo`/`in_progress` with a non-empty `reason`. No status reopens a terminal task. Stale version is 409; invalid progression or missing cancellation reason is 422. Returns the updated task.
+Koordinator atau penanggung jawab saat ini mengirim `{ expectedVersion, status?, notes?, reason? }`. Sertakan kolom perubahan. API mengunci data, memeriksa versi, serta menyimpan tugas dan riwayat dalam satu transaksi. Penanggung jawab dapat mengubah `todo -> in_progress -> done`. Koordinator juga dapat membatalkan `todo` atau `in_progress` dengan `reason` yang tidak kosong. Tugas selesai atau dibatalkan tidak dapat dibuka kembali. Versi lama menghasilkan 409. Perubahan status yang ditolak atau alasan yang kosong menghasilkan 422. Respons berisi tugas terbaru.
 
 ### `POST /tasks/{id}/move`
 
-Current PIC or coordinator. Body `{ expectedVersion, status, beforeTaskId, reason? }`; a null anchor appends to the complete destination list. Anchors must be visible and in the destination status. Existing transition and cancellation rules apply; same-status moves also work in terminal lists. An actual move increments the version and writes history atomically; a same-position move does neither. Legacy PATCH status changes append to the destination. Migration `TaskBoardPosition1793577600003` must run before this API version.
+Koordinator atau penanggung jawab saat ini mengirim `{ expectedVersion, status, beforeTaskId, reason? }`. Gunakan `null` pada `beforeTaskId` untuk menaruh tugas di akhir daftar tujuan. Tugas acuan harus terlihat bagi petugas dan berstatus sama dengan tujuan. Aturan perubahan status dan pembatalan tetap berlaku. API mendukung pengurutan dalam status yang sama, termasuk pada daftar selesai dan dibatalkan. Perpindahan menambah versi dan riwayat. Mengirim posisi yang sama tidak menambahnya. Perubahan status lewat PATCH lama menaruh tugas di akhir daftar tujuan. Terapkan migrasi `TaskBoardPosition1793577600003` sebelum versi API ini.
 
 ### `POST /tasks/{id}/reassign`
 
-Coordinator only. Body `{ expectedVersion, picId, reason }`; PIC must be active and reason non-empty. A completed/cancelled/deleted task cannot be reassigned. Change and history are atomic. The former PIC immediately loses detail and history access. Returns updated task.
+Hanya koordinator. Kirim `{ expectedVersion, picId, reason }`. Pilih perawat aktif dan isi alasan. Tugas selesai, dibatalkan, atau dihapus tidak dapat dialihkan. Perubahan dan riwayat disimpan dalam satu transaksi. Penanggung jawab lama kehilangan akses ke detail dan riwayat. Respons berisi tugas terbaru.
 
 ### `DELETE /tasks/{id}`
 
-Coordinator only. Body `{ expectedVersion, reason }`. Sets `deleted_at`, increments version, and writes a history record with reason atomically. It never hard-deletes the record. Returns `{ "deleted": true }`.
+Hanya koordinator. Kirim `{ expectedVersion, reason }`. API mengisi `deleted_at`, menambah versi, dan menyimpan alasan dalam satu transaksi. Data tetap tersimpan. Respons berisi `{ "deleted": true }`.
 
 ### `GET /tasks/{id}/history`
 
-Coordinator or current PIC, and only while the task is active. Returns `{items:[{id,actorId,actorName,action,reason,before,after,createdAt}],total}` ordered by time and opaque history ID. Deleted tasks' history stays preserved for coordinators.
+Koordinator atau penanggung jawab saat ini dapat membaca riwayat tugas yang tersedia. Respons `{items:[{id,actorId,actorName,action,reason,before,after,createdAt}],total}` diurutkan berdasarkan waktu dan ID riwayat. Riwayat tugas yang dihapus tetap tersimpan.
 
-## Medical records
+## Rekam medis
 
-Admisi cannot call these endpoints. Doctors can read records for their assigned cycle patients; nurses share the single demo ward context. Only the record's authoring doctor can edit it. Nurses can add observations, never modify doctor-authored text. All command bodies reject unknown properties.
+Dokter dapat membaca rekam medis pasien sesuai penugasan. Perawat memakai cakupan bangsal demo dan dapat menambah observasi. Hanya dokter pembuat yang dapat mengubah catatan dokter. Rute baca untuk Admisi hanya mengembalikan data administrasi. API menolak kolom permintaan yang tidak dikenal.
 
 ### `GET /medical-records`
 
-Optional `search`, `limit`. Response `{items:[{id,patientId,patientName,medicalRecordNo,doctorName,recordDate,diagnosis,treatment,notes,version,createdAt,observationCount}],total}`. Bounded to 100 newest records in the actor's scope.
+Parameter `search` dan `limit` bersifat opsional. API mengembalikan hingga 100 rekam medis terbaru sesuai akses. Bentuk daftar klinis adalah `{items:[{id,patientId,patientName,medicalRecordNo,doctorName,recordDate,diagnosis,treatment,notes,version,createdAt,observationCount}],total}`. Lihat [OpenAPI](../../contracts/openapi.json) untuk respons Admisi.
 
 ### `POST /medical-records`
 
-Assigned doctor only. Body `{patientId,complaint,diagnosis,treatment,notes?,recordDate}`. Required text fields are non-empty; `recordDate` is `YYYY-MM-DD`. Author ID comes from the authenticated session. Returns full record details.
+Hanya dokter yang ditugaskan. Kirim `{patientId,complaint,diagnosis,treatment,notes?,recordDate}`. Isi teks wajib dan gunakan `YYYY-MM-DD` untuk `recordDate`. ID pembuat diambil dari sesi. Respons berisi detail rekam medis.
 
 ### `GET /medical-records/{id}`
 
-Doctor assigned to the patient or a nurse; returns the medical record with `observations:[{id,nurseId,nurseName,symptoms,nursingNote,observedAt,temperature,bloodPressure,pulse,respiratoryRate,spo2}]`. `bloodPressure` formats the source blood-pressure string from structured systolic/diastolic values as `"120/80"`; null means no paired value was supplied.
+Dokter yang ditugaskan dan perawat dapat membaca detail klinis dengan `observations:[{id,nurseId,nurseName,symptoms,nursingNote,observedAt,temperature,bloodPressure,pulse,respiratoryRate,spo2}]`. `bloodPressure` menggabungkan sistolik dan diastolik seperti `"120/80"`. Nilainya `null` jika pasangan tidak ada. Admisi menerima detail administrasi.
 
 ### `PATCH /medical-records/{id}`
 
-The record's authoring doctor only. Body `{expectedVersion,complaint,diagnosis,treatment,notes?,recordDate}`. Uses a row lock and optimistic version. Conflict is 409; non-authoring doctor is 403. Returns the updated record with observations.
+Hanya dokter pembuat. Kirim `{expectedVersion,complaint,diagnosis,treatment,notes?,recordDate,reason}`. API mengunci baris dan memeriksa versi. Konflik menghasilkan 409. Dokter selain pembuat menerima 403. Respons berisi rekam medis terbaru beserta observasi.
 
 ### `POST /medical-records/{id}/observations`
 
-Nurse only. Body `{symptoms,nursingNote?,observedAt,temperature?,systolic?,diastolic?,pulse?,respiratoryRate?,spo2?}`. `observedAt` is RFC3339 with timezone. Systolic/diastolic must be both supplied or both absent. Numeric measurements cannot be negative; oxygen saturation is 0–100. These checks only validate stored values; the system does not interpret measurements clinically. The observation and optional vital signs are inserted in one transaction. Returns the full updated record.
+Hanya perawat. Kirim `{symptoms,nursingNote?,observedAt,temperature?,systolic?,diastolic?,pulse?,respiratoryRate?,spo2?}`. Gunakan RFC 3339 dengan zona waktu untuk `observedAt`. Isi sistolik dan diastolik bersama-sama atau kosongkan keduanya. Batas dan presisi tiap pengukuran ada di [OpenAPI](../../contracts/openapi.json) dan DTO. Pemeriksaan hanya memvalidasi nilai. API menyimpan observasi dan tanda vital dalam satu transaksi dan mengembalikan rekam medis terbaru.
 
-Clinical form failures return a localized 422; missing/expired sessions 401; prohibited roles 403; out-of-scope record IDs 404. These workflows do not imply real hospital deployment or clinical decision support.
+Isian klinis yang ditolak menghasilkan 422 dengan pesan berbahasa Indonesia. Sesi yang tidak tersedia menghasilkan 401, izin yang tidak sesuai menghasilkan 403, dan rekam medis di luar cakupan menghasilkan 404.

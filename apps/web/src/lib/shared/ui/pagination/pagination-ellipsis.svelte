@@ -18,5 +18,5 @@
 	{...restProps}
 >
 	<MoreHorizontalIcon  />
-	<span class="sr-only">More pages</span>
+	<span class="sr-only">Halaman lainnya</span>
 </span>

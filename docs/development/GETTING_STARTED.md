@@ -1,25 +1,25 @@
-# Development setup
+# Penyiapan pengembangan
 
-Run commands from the repository root. Use your own local PostgreSQL database and synthetic records; never run mutation tests against the shared demo or real patient data.
+Jalankan perintah dari akar repositori. Gunakan basis data PostgreSQL lokal dan data sintetis. Jalankan uji yang mengubah data pada basis data sementara.
 
-## Prerequisites
+## Prasyarat
 
-- Node.js 24.18+ and npm. `.nvmrc` records the recommended major version.
-- PostgreSQL 16 or newer, either installed locally or running in Docker.
-- Python 3 for API workflows; Playwright's Chromium for browser workflows.
+- Node.js 24.18+ dan npm. Versi mayor yang disarankan tercantum di `.nvmrc`.
+- PostgreSQL 16 atau lebih baru, dipasang lokal atau dijalankan melalui Docker.
+- Python 3 untuk alur API dan Chromium dari Playwright untuk alur peramban.
 
-On Windows, `scripts/start.ps1` starts only the application and local PostgreSQL processes it owns. See [Windows runtime details](RUNTIME_SETUP.md).
+Di Windows, `scripts/start.ps1` hanya menjalankan aplikasi dan proses PostgreSQL lokal yang dikelolanya. Lihat [penyiapan runtime Windows](RUNTIME_SETUP.md).
 
-## Manual API and frontend setup
+## Siapkan API dan aplikasi web secara manual
 
-Install dependencies and copy the ignored local environment template:
+Pasang dependensi dan salin templat lingkungan lokal yang diabaikan Git.
 
 ```sh
 npm ci
 cp .env.example .env
 ```
 
-The root `.env` is not automatically loaded. Set its values in your shell and use a disposable development database. The example below creates a synthetic PostgreSQL container if port 55432 is available:
+Muat sendiri variabel dari `.env` ke shell. Contoh berikut membuat kontainer PostgreSQL untuk data sintetis jika port 55432 tersedia.
 
 ```sh
 docker run --name inpacare-dev-db \
@@ -30,7 +30,7 @@ docker run --name inpacare-dev-db \
   -d postgres:17-alpine
 ```
 
-Load the environment, build the API, and run the migration as a separate explicit step before starting the app:
+Muat variabel lingkungan, bangun API, lalu jalankan migrasi sebelum memulai aplikasi.
 
 ```sh
 set -a
@@ -40,7 +40,7 @@ npm run build:api
 npm run migration:run --workspace @inpacare/api
 ```
 
-To create synthetic demo accounts in an empty database, explicitly set a demo-only password and run the seed command. The seed refuses a database with any users:
+Untuk membuat akun demo sintetis, tentukan kata sandi khusus demo dan jalankan perintah pengisian data pada basis data dengan tabel pengguna kosong.
 
 ```sh
 export SEED_DEMO_PASSWORD='choose-a-demo-only-password'
@@ -48,38 +48,38 @@ SEED_DEMO_PASSWORD="$SEED_DEMO_PASSWORD" npm run seed --workspace @inpacare/api
 unset SEED_DEMO_PASSWORD
 ```
 
-Start the API in terminal one:
+Jalankan API di terminal pertama.
 
 ```sh
 npm run dev:api
 ```
 
-The API listens on **http://127.0.0.1:8080**. It never runs migrations or seeds while starting. `/health` checks the database connection. Set `TRUSTED_ORIGINS` to the exact browser origin used for mutating requests, including login.
+API menerima permintaan di **http://127.0.0.1:8080**. Jalankan migrasi dan pengisian data secara terpisah. Endpoint `/health` memeriksa koneksi basis data. Isi `TRUSTED_ORIGINS` dengan origin peramban yang dipakai untuk permintaan yang mengubah data, termasuk masuk.
 
-In terminal two:
+Jalankan aplikasi web di terminal kedua.
 
 ```sh
 npm run dev
 ```
 
-Open the URL Vite prints, normally **http://127.0.0.1:5173**. The server-side proxy defaults to the local API on port 8080. Set `API_ORIGIN` if the API runs elsewhere.
+Buka alamat yang ditampilkan Vite, biasanya **http://127.0.0.1:5173**. Proksi web memakai API lokal di port 8080 secara bawaan. Isi `API_ORIGIN` jika API berjalan di alamat lain.
 
-## Environment variables
+## Variabel lingkungan
 
-| Variable | Consumer | Purpose |
+| Variabel | Pemakai | Kegunaan |
 | --- | --- | --- |
-| `DATABASE_URL` | API and migration CLI | PostgreSQL connection URL; required. |
-| `API_BIND` | API | Listener, default `127.0.0.1:8080`. |
-| `TRUSTED_ORIGINS` | API | Comma-separated exact HTTP(S) origins allowed for mutating requests. |
-| `SEED_DEMO_PASSWORD` | Explicit seed CLI | Password used only by the explicit seed command; seed refuses a non-empty users table. |
-| `API_ORIGIN` | Web server | API upstream, default `http://127.0.0.1:8080`. |
-| `HOST`, `PORT` | Production web server | Listener address and port. Vite prints its own development URL. |
-| `HTTPS_PROXY_PORT` | Native web server | Optional loopback listener for a trusted HTTPS tunnel. |
-| `INPACARE_TEST_URL` | Tests | API base URL for Python; frontend origin for Playwright. See the test guides. |
+| `DATABASE_URL` | API dan CLI migrasi | URL koneksi PostgreSQL. Wajib diisi. |
+| `API_BIND` | API | Alamat layanan, bawaan `127.0.0.1:8080`. |
+| `TRUSTED_ORIGINS` | API | Origin HTTP(S) yang diizinkan mengubah data. Pisahkan dengan koma. |
+| `SEED_DEMO_PASSWORD` | CLI pengisian data | Kata sandi akun demo. Tabel pengguna harus kosong. |
+| `API_ORIGIN` | Server web | Alamat API, bawaan `http://127.0.0.1:8080`. |
+| `HOST`, `PORT` | Server web produksi | Alamat dan port. Vite menampilkan alamat pengembangan sendiri. |
+| `HTTPS_PROXY_PORT` | Server web Linux | Port loopback opsional untuk terowongan HTTPS tepercaya. |
+| `INPACARE_TEST_URL` | Pengujian | URL dasar API untuk Python atau origin aplikasi web untuk Playwright. |
 
-The demo accounts are listed in [README](../../README.md#demo-accounts). Role checks run in the API and depend on record assignment.
+Lihat [akun demo](../../README.md#akun-demo). API memeriksa peran dan penugasan pada data yang diminta.
 
-## Checks and generated code
+## Pemeriksaan dan kode hasil generasi
 
 ```sh
 npm run check
@@ -88,10 +88,10 @@ npm run types:api
 npm run test:api:unit
 ```
 
-`contracts/openapi.json` is the API contract. Regenerate TypeScript with `npm run types:api` after changing it. SQL migrations and the explicit CLI are under `apps/api/src/infrastructure/database/`.
+Kontrak API tersedia di `contracts/openapi.json`. Jalankan `npm run types:api` setelah mengubahnya. Migrasi SQL dan CLI basis data tersedia di `apps/api/src/infrastructure/database/`.
 
-For real API behavior, use the [API workflows](API_TESTS.md) with a fresh disposable database. For frontend changes, use the [browser workflows](BROWSER_TESTS.md), setting `INPACARE_TEST_URL=http://127.0.0.1:5173` if testing the Vite server. Test suites create data and should not target the shared demo.
+Uji perilaku API dengan [alur API](API_TESTS.md) pada basis data sementara yang baru. Untuk perubahan antarmuka, jalankan [alur peramban](BROWSER_TESTS.md). Isi `INPACARE_TEST_URL=http://127.0.0.1:5173` jika menggunakan Vite.
 
-## Production-style local hosting
+## Pengoperasian lokal seperti produksi
 
-`npm run build` builds both the API into `apps/api/dist` and the frontend into `apps/web/build`. Native Linux services run those Node outputs. For a complete host setup, use the [native guide](../deployment/NATIVE_HOSTING.md). The [Docker guide](../deployment/HOSTING.md) documents the Compose package.
+Perintah `npm run build` menyimpan hasil API di `apps/api/dist` dan aplikasi web di `apps/web/build`. Layanan Linux menjalankan hasil build Node.js tersebut. Ikuti [panduan Linux](../deployment/NATIVE_HOSTING.md) atau [panduan Docker Compose](../deployment/HOSTING.md).

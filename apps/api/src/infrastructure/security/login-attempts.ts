@@ -24,7 +24,7 @@ export class LoginAttempts {
     if (failures >= 10 || bucket.count >= 100)
       throw new DomainError(
         "RATE_LIMITED",
-        "Terlalu banyak percobaan. Coba lagi dalam 15 menit.",
+        `Terlalu banyak percobaan masuk. Coba lagi dalam ${Math.ceil((bucket.at + 900000 - now) / 60000)} menit.`,
       );
     bucket.count++;
     bucket.accounts.set(username, failures + 1);

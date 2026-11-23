@@ -27,7 +27,7 @@ export class TugasUseCases {
   async list(actor: Actor, q: TaskFilters) {
     if (actor.role !== "PERAWAT") throw DomainError.forbidden();
     if (q.from && q.to && q.to < q.from)
-      throw DomainError.validation("Rentang tanggal tidak valid.");
+      throw DomainError.validation("Rentang tanggal terbalik. Pilih tanggal akhir yang sama dengan atau setelah tanggal awal.");
     return this.store.list(actor, {
       order: q.order,
       search: (q.search ?? "").trim(),
@@ -45,7 +45,7 @@ export class TugasUseCases {
   async create(actor: Actor, d: CreateTaskInput) {
     if (!isCoordinator(actor)) throw DomainError.forbidden();
     const title = d.title.trim();
-    if (!title) throw DomainError.validation("Judul wajib diisi.");
+    if (!title) throw DomainError.validation("Isi Judul tugas.");
     const startsAt = parseTaskInstant(d.startsAt, "Waktu mulai"),
       endsAt = parseTaskInstant(d.endsAt, "Waktu selesai");
     TugasPerawatan.validateSpan(startsAt, endsAt);
@@ -72,12 +72,10 @@ export class TugasUseCases {
           "Pilih penempatan aktif yang mencakup seluruh waktu tugas.",
         );
       if (placement.roomId !== roomId)
-        throw DomainError.conflict(
-          "Penempatan berubah; muat ulang sebelum membuat tugas.",
-        );
+        throw DomainError.conflict();
       if (await tx.tasks.lockReleasedCycles(d.placementId))
         throw DomainError.validation(
-          "Penempatan ini sudah dirilis dan tidak dapat menerima tugas baru.",
+          "Pasien sudah dilepas dari penempatan ini. Pilih penempatan aktif untuk membuat tugas baru.",
         );
       await tx.tasks.requireActivePic(d.picId);
       await tx.tasks.createTask({
@@ -110,11 +108,9 @@ export class TugasUseCases {
       if (t.deleted_at || (!isCoordinator(actor) && t.pic_id !== actor.id))
         throw DomainError.notFound();
       if (t.version !== d.expectedVersion)
-        throw DomainError.conflict(
-          "Tugas berubah. Muat ulang sebelum menyimpan.",
-        );
+        throw DomainError.conflict();
       if (placement.status !== "active")
-        throw DomainError.validation("Penempatan pasien tidak aktif.");
+        throw DomainError.validation("Penempatan pasien sudah tidak aktif. Periksa penempatan sebelum melanjutkan tugas.");
       await tx.tasks.requireActivePic(t.pic_id);
       const model = new TugasPerawatan({
         title: t.title,
@@ -135,7 +131,7 @@ export class TugasUseCases {
         )
       )
         throw DomainError.validation(
-          "Jadwal tugas harus berada dalam rentang penempatan.",
+          "Jadwal tugas di luar rentang penempatan. Sesuaikan waktu mulai dan selesai dengan tanggal penempatan.",
         );
       const before = {
         title: t.title,
@@ -177,11 +173,11 @@ export class TugasUseCases {
       await tx.tasks.lockBoard();
       const { task: t, placement } = await tx.tasks.lockTask(taskId);
       if (t.deleted_at || (!isCoordinator(actor) && t.pic_id !== actor.id)) throw DomainError.notFound();
-      if (t.version !== d.expectedVersion) throw DomainError.conflict("Tugas berubah. Muat ulang sebelum menyimpan.");
+      if (t.version !== d.expectedVersion) throw DomainError.conflict();
       if (d.status !== t.status) {
-        if (placement.status !== "active") throw DomainError.validation("Penempatan pasien tidak aktif.");
+        if (placement.status !== "active") throw DomainError.validation("Penempatan pasien sudah tidak aktif. Periksa penempatan sebelum melanjutkan tugas.");
         TugasPerawatan.validateStatus(t.status as TaskStatus, d.status, isCoordinator(actor));
-        if (d.status === "cancelled" && !d.reason?.trim()) throw DomainError.validation("Pembatalan memerlukan alasan koordinator.");
+        if (d.status === "cancelled" && !d.reason?.trim()) throw DomainError.validation("Hanya koordinator yang dapat membatalkan tugas. Isi Alasan pembatalan untuk melanjutkan.");
         await tx.tasks.requireActivePic(t.pic_id);
       }
       const changed = await tx.tasks.movePosition(taskId, actor, d.status, d.beforeTaskId);
@@ -193,15 +189,13 @@ export class TugasUseCases {
   }
   async remove(actor: Actor, taskId: string, d: ReasonInput) {
     if (!isCoordinator(actor)) throw DomainError.forbidden();
-    if (!d.reason.trim()) throw DomainError.validation("Alasan wajib diisi.");
+    if (!d.reason.trim()) throw DomainError.validation("Isi Alasan penghapusan tugas.");
     return this.uow.run(async (tx) => {
       await tx.tasks.lockBoard();
       const { task: t } = await tx.tasks.lockTask(taskId);
       if (t.deleted_at) throw DomainError.notFound();
       if (t.version !== d.expectedVersion)
-        throw DomainError.conflict(
-          "Tugas berubah. Muat ulang sebelum menghapus.",
-        );
+        throw DomainError.conflict();
       await tx.tasks.removeTask(taskId);
       await tx.tasks.historyChange({
         id: id(),
@@ -218,7 +212,7 @@ export class TugasUseCases {
   async reassign(actor: Actor, taskId: string, d: ReassignTaskInput) {
     if (!isCoordinator(actor)) throw DomainError.forbidden();
     if (!d.reason.trim())
-      throw DomainError.validation("Alasan pengalihan wajib diisi.");
+      throw DomainError.validation("Isi Alasan pengalihan sebelum mengganti penanggung jawab tugas.");
     if (d.picId === actor.id)
       throw DomainError.validation(
         "Koordinator tidak dapat ditetapkan sebagai penanggung jawab tugas.",
@@ -228,9 +222,7 @@ export class TugasUseCases {
       const { task: t } = await tx.tasks.lockTask(taskId);
       if (t.deleted_at) throw DomainError.notFound();
       if (t.version !== d.expectedVersion)
-        throw DomainError.conflict(
-          "Tugas berubah. Muat ulang sebelum mengalihkan.",
-        );
+        throw DomainError.conflict();
       if (["done", "cancelled"].includes(t.status))
         throw DomainError.validation(
           "Tugas selesai atau dibatalkan tidak dapat dialihkan.",

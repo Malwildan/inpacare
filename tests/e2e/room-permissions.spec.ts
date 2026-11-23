@@ -7,7 +7,7 @@ test('a regular nurse can inspect rooms and facilities without master controls',
   await page.getByRole('button', { name: 'Masuk' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.goto('/rooms');
-  await expect(page.getByRole('heading', { name: 'Manajemen Ruangan' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ruang rawat inap' })).toBeVisible();
   const masterControls = page.getByRole('button', { name: /^(Tambah ruangan|Ubah|Hapus|Perlengkapan|Item)$/ });
   await expect(masterControls).toHaveCount(0);
   await page.getByRole('row').filter({ hasText: 'RG-001' }).getByRole('button', { name: 'Lihat', exact: true }).click();

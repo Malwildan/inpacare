@@ -33,13 +33,14 @@ import { Archive, ArrowLeft, Pencil, Plus, Save, X } from 'lucide-svelte';
 		const toastId = toast.loading('Menyimpan perubahan…');
 		try {
 			await operation();
-			await invalidateAll();
-			editingObservation = null;
+			const refreshed = await invalidateAll().then(() => true, () => false);
+            editingObservation = null;
 			observeOpen = false;
 			recordEditOpen = false;
-			toast.success('Perubahan tersimpan.', { id: toastId });
+			if (refreshed) toast.success('Perubahan tersimpan.', { id: toastId });
+            else toast.warning('Perubahan rekam medis tersimpan. Muat ulang halaman untuk melihat detail terbaru.', { id: toastId });
 		} catch (e) {
-			toast.error(sessionFailure(e), { id: toastId });
+			toast.error(sessionFailure(e, 'save', 'rekam medis'), { id: toastId });
 		} finally {
 			busy = false;
 		}
@@ -106,7 +107,7 @@ import { Archive, ArrowLeft, Pencil, Plus, Save, X } from 'lucide-svelte';
 		if (busy) return;
 		const reason = archiveReason.trim();
 		if (!reason) {
-			toast.error('Alasan pengarsipan wajib diisi.');
+			toast.error('Isi Alasan pengarsipan rekam medis.');
 			return;
 		}
 
@@ -114,31 +115,33 @@ import { Archive, ArrowLeft, Pencil, Plus, Save, X } from 'lucide-svelte';
 		try {
 			await medical.archive(record.id, { expectedVersion: record.version!, reason });
 			archiveOpen = false;
-			await goto('/medical-records', { invalidateAll: true });
-			toast.success('Rekam medis berhasil diarsipkan.');
+			await goto('/medical-records', { invalidateAll: true }).then(
+                () => toast.success('Rekam medis berhasil diarsipkan.'),
+                () => toast.warning('Rekam medis sudah diarsipkan. Buka kembali daftar rekam medis.')
+            );
 		} catch (e) {
-			toast.error(sessionFailure(e));
+			toast.error(sessionFailure(e, 'save', 'pengarsipan rekam medis'));
 		} finally {
 			busy = false;
 		}
 	}
 
 	function measurement(value: number | null, unit: string) {
-		return value === null || value === undefined ? '—' : `${value} ${unit}`;
+		return value === null || value === undefined ? '—' : `${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(value)} ${unit}`;
 	}
 </script>
 
-<svelte:head><title>{record.patientName} · Rekam Medis | InpaCare</title></svelte:head>
+<svelte:head><title>{record.patientName} · Rekam medis | InpaCare</title></svelte:head>
 
 <div class="flex flex-col gap-6">
 	<div class="text-sm text-muted-foreground">
-		<a href="/medical-records" class="text-primary underline-offset-4 hover:underline">Rekam Medis</a>
+		<a href="/medical-records" class="text-primary underline-offset-4 hover:underline">Rekam medis</a>
 		<span aria-hidden="true"> / </span><span>{record.medicalRecordNo}</span>
 	</div>
 
 	<header class="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 		<div class="min-w-0">
-			<h1 class="text-2xl font-semibold tracking-tight">Rekam Medis · {record.patientName}</h1>
+			<h1 class="text-2xl font-semibold tracking-tight">Rekam medis · {record.patientName}</h1>
 			<p class="mt-1 text-sm text-muted-foreground">
 				{record.medicalRecordNo} · {new Date(record.recordDate + 'T12:00:00').toLocaleDateString('id-ID')}{#if record.doctorName} · {record.doctorName}{/if}
 			</p>

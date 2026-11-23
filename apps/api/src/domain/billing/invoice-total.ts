@@ -34,16 +34,16 @@ export const calculateInvoiceLines = (
   newId: () => string,
 ): InvoiceLineTotal[] => {
   if (lines.length < 1 || lines.length > 30)
-    throw DomainError.validation("Tagihan harus memuat 1–30 rincian.");
+    throw DomainError.validation("Tambahkan minimal 1 dan maksimal 30 rincian layanan.");
   return lines.map((line) => {
     if (
       !Number.isInteger(line.quantity) ||
       line.quantity < 1 ||
       line.quantity > 10000
     )
-      throw DomainError.validation("Jumlah layanan harus 1–10.000.");
+      throw DomainError.validation("Isi Jumlah dengan bilangan bulat dari 1 sampai 10.000.");
     if (!line.description.trim())
-      throw DomainError.validation("Nama layanan wajib diisi.");
+      throw DomainError.validation("Isi Nama layanan pada setiap rincian tagihan.");
     const unitPrice = parseInvoiceMoney(line.unitPrice, "Harga satuan");
     return {
       id: line.id ?? newId(),

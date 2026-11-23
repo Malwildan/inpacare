@@ -6,13 +6,13 @@ export class DomainError extends Error {
     super(message);
     this.name = "DomainError";
   }
-  static validation(message = "Format permintaan tidak valid.") {
+  static validation(message = "Periksa isian atau pilihan Anda, lalu kirim kembali.") {
     return new DomainError("VALIDATION_FAILED", message);
   }
   static forbidden() {
     return new DomainError(
       "FORBIDDEN",
-      "Anda tidak memiliki akses untuk tindakan ini.",
+      "Akun Anda tidak memiliki izin untuk tindakan ini.",
     );
   }
   static notFound() {
@@ -24,11 +24,11 @@ export class DomainError extends Error {
   static unauthorized() {
     return new DomainError(
       "UNAUTHENTICATED",
-      "Sesi telah berakhir. Silakan masuk kembali.",
+      "Sesi Anda berakhir. Masuk kembali untuk melanjutkan.",
     );
   }
   static conflict(
-    message = "Data berubah bersamaan. Muat ulang dan coba kembali.",
+    message = "Data sudah berubah. Muat ulang untuk melihat data terbaru, lalu periksa perubahan Anda sebelum menyimpan kembali.",
   ) {
     return new DomainError("CONFLICT", message);
   }

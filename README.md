@@ -3,43 +3,43 @@
 [![CI](https://github.com/Malwildan/inpacare/actions/workflows/ci.yml/badge.svg)](https://github.com/Malwildan/inpacare/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-An inpatient-care management application built with **SvelteKit, NestJS, and PostgreSQL**. InpaCare connects room placement, nursing tasks, clinical records, care-cycle decisions, and billing in one role-aware workflow.
+InpaCare adalah aplikasi pengelolaan rawat inap berbasis **SvelteKit, NestJS, dan PostgreSQL**. Petugas dapat mengelola penempatan, tugas perawatan, rekam medis, keputusan dokter, dan tagihan sesuai hak akses.
 
-Built as an educational project with an Indonesian-language interface and synthetic records. It is a working reference implementation, with remaining scope documented in [project status](docs/PROJECT_STATUS.md).
+Proyek pembelajaran ini menggunakan antarmuka berbahasa Indonesia dan data sintetis. Lihat [status proyek](docs/PROJECT_STATUS.md) untuk cakupan dan pekerjaan lanjutan.
 
-**[Try the demo](https://inpacare.hailmary.my.id)** · **[Documentation](docs/README.md)** · **[Contribute](CONTRIBUTING.md)** · **[Report a bug](https://github.com/Malwildan/inpacare/issues/new/choose)**
+**[Coba demo](https://inpacare.hailmary.my.id)** · **[Dokumentasi](docs/README.md)** · **[Berkontribusi](CONTRIBUTING.md)** · **[Laporkan masalah](https://github.com/Malwildan/inpacare/issues/new/choose)**
 
-## Features
+## Fitur
 
-| Module | Capabilities |
+| Modul | Kegunaan |
 | --- | --- |
-| Patient registration | Admissions-only registration, automatically generated medical record numbers, and searchable patient identities. |
-| Rooms and equipment | Room inventory, equipment costs, capacity checks, and nurse assignments. |
-| Placement calendar | Weekly occupancy and admission placement with overlap and concurrent-capacity checks. |
-| Nursing tasks | Coordinator delegation, PIC progress, reassignment, cancellation, and change history. |
-| Clinical records | Assigned-doctor records and nursing observations with role and patient access checks. |
-| Care cycles | Patient recaps, extension/release requests, doctor decisions, and persisted notifications. |
-| Billing | Decimal-accurate totals, recorded insurance coverage, payment status, and audit history. |
+| Data pasien | Admisi mendaftarkan pasien, menerima nomor rekam medis otomatis, dan mencari identitas pasien. |
+| Ruang dan fasilitas | Lihat inventaris, biaya, kapasitas, dan perawat penanggung jawab. |
+| Kalender penempatan | Pantau keterisian mingguan. Sistem memeriksa benturan jadwal dan kapasitas saat menyimpan penempatan. |
+| Tugas perawatan | Koordinator menugaskan, mengalihkan, dan membatalkan tugas. Perawat memperbarui status. Riwayat mencatat perubahan. |
+| Rekam medis | Dokter mencatat pemeriksaan. Perawat menambah observasi sesuai akses pasien. |
+| Rekap rawat inap | Kelola rekap, ajukan perpanjangan atau pelepasan, dan terima notifikasi keputusan dokter. |
+| Tagihan | Lihat nilai jaminan, total, pembayaran, dan riwayat perubahan. |
 
-Authentication uses Argon2 password hashes, server-side sessions, same-origin/CSRF checks, and role permissions. Changes that require concurrency protection use version checks and database transactions.
+Autentikasi menggunakan hash Argon2, sesi di server, pemeriksaan Origin dan CSRF, serta izin berdasarkan peran. Perubahan yang dapat berbenturan memakai pemeriksaan versi dan transaksi basis data.
 
-New logins stay signed in on the same browser for up to 30 days, including after closing and reopening it. Sessions expire 30 days after login, or immediately when you sign out; clearing site cookies also requires signing in again. Use **Keluar** when leaving a shared device. Existing sessions keep their original expiry until the next login.
+Sesi bertahan hingga 30 hari sejak masuk, termasuk saat peramban ditutup dan dibuka kembali. Sesi berakhir saat Anda memilih **Keluar**. Jika kuki dihapus, masuk kembali untuk melanjutkan. Pilih **Keluar** setelah memakai perangkat bersama. Sesi lama mengikuti masa berlaku awal hingga login berikutnya.
 
-## Stack
+## Teknologi
 
-| Layer | Technology |
+| Lapisan | Teknologi |
 | --- | --- |
 | Frontend | Svelte 5, SvelteKit, TypeScript, adapter-node |
 | Backend | Node.js 24.18+, NestJS, TypeORM |
-| Database | PostgreSQL 16+ |
-| Validation | TypeScript checks and unit tests, Python API workflows, Playwright browser tests |
-| Hosting | Native Linux user services or the alternative Docker Compose package |
+| Basis data | PostgreSQL 16+ |
+| Pengujian | TypeScript, uji unit, alur API dengan Python, dan Playwright |
+| Pengoperasian | Layanan pengguna Linux atau paket Docker Compose |
 
-Pages render on the server. Browser requests use SvelteKit's same-origin `/api/v1` proxy, which forwards to the NestJS API; PostgreSQL stores the application data. The API contract lives in [contracts/openapi.json](contracts/openapi.json).
+SvelteKit merender halaman di server dan meneruskan permintaan `/api/v1` dari peramban ke NestJS melalui origin yang sama. PostgreSQL menyimpan data aplikasi. Kontrak API tersedia di [contracts/openapi.json](contracts/openapi.json).
 
-## Quick start
+## Mulai cepat
 
-Clone the repository and install **Node.js 24.18+**, **Python 3**, and PostgreSQL. On Windows, the helper keeps PostgreSQL data and credentials inside `.local/`; Rust is not required.
+Klon repositori lalu pasang **Node.js 24.18+**, **Python 3**, dan PostgreSQL. Skrip Windows menyimpan data dan kredensial PostgreSQL di `.local/`. Aplikasi menggunakan Node.js.
 
 ```sh
 git clone https://github.com/Malwildan/inpacare.git
@@ -48,7 +48,7 @@ cd inpacare
 
 ### Windows
 
-Run PowerShell from the repository root. Initialize the local PostgreSQL cluster, build the compiled API/frontend, then apply the migration explicitly before start:
+Jalankan PowerShell dari akar repositori. Siapkan klaster PostgreSQL, bangun API dan aplikasi web, lalu jalankan migrasi sebelum memulai aplikasi.
 
 ```powershell
 ./scripts/setup-runtime.ps1
@@ -65,24 +65,24 @@ Remove-Item Env:SEED_DEMO_PASSWORD
 ./scripts/start.ps1 -SkipBuild
 ```
 
-Open **http://127.0.0.1:3000**. App start never migrates or seeds. See [development setup](docs/development/GETTING_STARTED.md) for manual setup. Stop the app with `./scripts/stop.ps1`.
+Buka **http://127.0.0.1:3000**. Jalankan migrasi dan pengisian data sebagai perintah terpisah. Lihat [penyiapan pengembangan](docs/development/GETTING_STARTED.md). Hentikan aplikasi dengan `./scripts/stop.ps1`.
 
-### Linux, macOS, or an existing toolchain
+### Linux, macOS, atau perangkat yang sudah disiapkan
 
-Follow the [development guide](docs/development/GETTING_STARTED.md) to run the NestJS API and SvelteKit development server. For self-hosting, see [native Linux hosting](docs/deployment/NATIVE_HOSTING.md) or [Docker Compose](docs/deployment/HOSTING.md).
+Ikuti [panduan pengembangan](docs/development/GETTING_STARTED.md) untuk menjalankan NestJS dan SvelteKit. Untuk mengoperasikan server sendiri, gunakan [Linux dengan systemd](docs/deployment/NATIVE_HOSTING.md) atau [Docker Compose](docs/deployment/HOSTING.md).
 
-## Demo accounts
+## Akun demo
 
-| Username | Role |
+| ID petugas | Peran |
 | --- | --- |
-| `rina` | Nursing coordinator |
-| `dina`, `bima` | Nurse / assigned PIC |
-| `hendra`, `maya` | Doctor |
-| `admisi` | Admissions and billing |
+| `rina` | Koordinator perawat |
+| `dina`, `bima` | Perawat penanggung jawab |
+| `hendra`, `maya` | Dokter |
+| `admisi` | Admisi dan tagihan |
 
-Choose a password explicitly when seeding synthetic accounts. The seed command refuses a non-empty users table. The public demo is served through Cloudflare's HTTPS proxy at **https://inpacare.hailmary.my.id** and is available while its host is online. See [native hosting](docs/deployment/NATIVE_HOSTING.md) for the deployment guide.
+Tentukan kata sandi khusus saat membuat akun demo. Perintah pengisian data hanya menerima tabel pengguna yang kosong. Demo publik memakai proksi HTTPS Cloudflare di **https://inpacare.hailmary.my.id** dan tersedia selama server aktif. Lihat [panduan pengoperasian Linux](docs/deployment/NATIVE_HOSTING.md).
 
-## Repository layout
+## Struktur repositori
 
 ```text
 .github/             CI, issue forms, and pull request template
@@ -104,9 +104,9 @@ tests/
   performance/       Synthetic read smoke test
 ```
 
-Runtime directories, credentials, databases, local evidence, and compiled output are ignored by Git. Private source-document captures are omitted from the public repository.
+Direktori runtime, kredensial, basis data, bukti lokal, dan hasil kompilasi diabaikan Git. Salinan dokumen sumber privat disimpan di luar repositori publik.
 
-## Development checks
+## Pemeriksaan pengembangan
 
 ```sh
 npm ci
@@ -119,16 +119,16 @@ npm run test:api:unit
 npm run test:api:integration
 ```
 
-The [CI workflow](.github/workflows/ci.yml) checks the frontend, generated API types, NestJS unit/integration tests, and API workflows against disposable PostgreSQL services. Successful main builds publish a verified Linux release for [automatic native demo updates](docs/deployment/CONTINUOUS_DELIVERY.md). Browser checks run separately against a local synthetic instance; see [API testing](docs/development/API_TESTS.md) and [browser testing](docs/development/BROWSER_TESTS.md).
+[Alur CI](.github/workflows/ci.yml) memeriksa aplikasi web, tipe API hasil generasi, uji unit dan integrasi NestJS, serta alur API pada PostgreSQL sementara. Build `main` yang lulus menerbitkan rilis Linux untuk [pembaruan demo otomatis](docs/deployment/CONTINUOUS_DELIVERY.md). Jalankan [uji API](docs/development/API_TESTS.md) dan [uji peramban](docs/development/BROWSER_TESTS.md) pada instans sintetis lokal.
 
-## Contributing
+## Berkontribusi
 
-Contributions to documentation, accessibility, tests, and application behavior are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), open an issue for changes to permissions or domain rules, then submit a focused pull request from a fork. The [project status](docs/PROJECT_STATUS.md) lists implemented behavior and open areas.
+Baca [panduan kontribusi](CONTRIBUTING.md). Buat issue untuk perubahan izin atau aturan kerja, lalu kirim pull request yang terfokus dari fork Anda. [Status proyek](docs/PROJECT_STATUS.md) mencatat perilaku yang sudah tersedia dan pekerjaan lanjutan.
 
-Report vulnerabilities through [GitHub private vulnerability reporting](https://github.com/Malwildan/inpacare/security/advisories/new); see [SECURITY.md](SECURITY.md).
+Laporkan kerentanan melalui [pelaporan privat GitHub](https://github.com/Malwildan/inpacare/security/advisories/new). Lihat [kebijakan keamanan](SECURITY.md).
 
-## Scope and license
+## Cakupan dan lisensi
 
-This project uses synthetic data and has no live hospital, payment, or insurance integration. Production clinical deployment, full design parity, and operational certification are outside its current scope. Do not use the public demo for patient information.
+Proyek memakai data sintetis. Integrasi rumah sakit, pembayaran, penjamin, kesesuaian penuh dengan desain, dan sertifikasi operasional berada di luar cakupan. Gunakan demo publik hanya untuk data sintetis.
 
-Application code is licensed under [MIT](LICENSE). Bundled DM Sans font files retain their [SIL Open Font License](apps/web/static/fonts/OFL.txt). Third-party dependencies and referenced design materials retain their respective terms.
+Kode aplikasi memakai [lisensi MIT](LICENSE). Font DM Sans memakai [SIL Open Font License](apps/web/static/fonts/OFL.txt). Dependensi dan materi desain mengikuti lisensi masing-masing.

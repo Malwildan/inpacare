@@ -7,12 +7,12 @@ export class ReasonDto implements ReasonInput {
   @IsInt()
   @Min(1)
   expectedVersion!: number;
-  @IsString()
-  @MaxLength(500)
+  @IsString({ message: "Isi Alasan dengan maksimal 500 karakter." })
+  @MaxLength(500, { message: "Isi Alasan dengan maksimal 500 karakter." })
   reason!: string;
 }
 export class ReassignTaskDto extends ReasonDto implements ReassignTaskInput {
-  @IsString()
-  @MaxLength(36)
+  @IsString({ message: "Pilih perawat penanggung jawab." })
+  @MaxLength(36, { message: "Pilih perawat penanggung jawab." })
   picId!: string;
 }

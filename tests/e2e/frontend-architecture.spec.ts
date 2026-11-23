@@ -36,27 +36,27 @@ async function signIn(page: import('@playwright/test').Page, user = 'rina') {
 test('calendar keeps an inclusive week and a failed placement form', async ({ page }) => {
  await signIn(page);
  await page.goto('/calendar?from=2026-11-02');
- await expect(page.getByRole('heading', { name: 'Kalender Ruangan', exact: true })).toBeVisible();
+ await expect(page.getByRole('heading', { name: 'Kalender penempatan', exact: true })).toBeVisible();
  await page.getByRole('button', { name: /Tempatkan pasien/ }).click();
  const form=page.getByRole('dialog', { name: 'Penempatan pasien', exact: true }).locator('form');
  await selectOption(form.getByRole('combobox', { name: /^Pasien/ }), { index: 1 });
  await selectOption(form.getByRole('combobox', { name: /^Ruangan/ }), { index: 1 });
  await selectDate(form.getByLabel('Tanggal masuk'), '2026-11-03');
- await selectDate(form.getByLabel('Tanggal keluar'), '2026-11-04');
+ await selectDate(form.getByLabel('Tanggal selesai'), '2026-11-04');
  await page.route('**/api/v1/placements', async route => {
-  if (route.request().method() === 'POST') await route.fulfill({status:409,json:{error:{code:'CAPACITY',message:'Kapasitas telah berubah.'}}});
+  if (route.request().method() === 'POST') await route.fulfill({status:409,json:{error:{code:'CONFLICT',message:'Ruang penuh pada sebagian rentang tanggal. Pilih ruang lain atau sesuaikan tanggal.'}}});
   else await route.continue();
  });
  await form.getByRole('button', { name: /Simpan penempatan/ }).click();
- await expect(toastMessage(page, 'Kapasitas telah berubah.')).toContainText('Kapasitas telah berubah.');
+ await expect(toastMessage(page, 'Ruang penuh pada sebagian rentang tanggal. Pilih ruang lain atau sesuaikan tanggal.')).toContainText('Ruang penuh pada sebagian rentang tanggal. Pilih ruang lain atau sesuaikan tanggal.');
  await expect(form.getByLabel('Tanggal masuk')).toHaveAttribute('data-value', '2026-11-03');
- await expect(form.getByLabel('Tanggal keluar')).toHaveAttribute('data-value', '2026-11-04');
+ await expect(form.getByLabel('Tanggal selesai')).toHaveAttribute('data-value', '2026-11-04');
 });
 
 test('patient context renders after direct navigation and reload', async ({ page }) => {
  await signIn(page);
  await page.goto('/patients/PT-001');
- await expect(page.getByRole('heading', {name:'Ringkasan Pasien'})).toBeVisible();
+ await expect(page.getByRole('heading', {name:'Ringkasan pasien'})).toBeVisible();
  await expect(page.getByRole('heading', {name:'Riwayat Penempatan'})).toBeVisible();
  await page.reload();
  await expect(page.getByRole('heading', {name:'Tim Perawatan'})).toBeVisible();
@@ -76,11 +76,11 @@ test('a rejected task update preserves the draft and sends a single versioned wr
   if(route.request().method()==='PATCH') {
    writes++;
    expect(route.request().postDataJSON().expectedVersion).toEqual(expect.any(Number));
-   await route.fulfill({status:409,json:{error:{code:'CONFLICT',message:'Data telah berubah. Muat ulang.'}}});
+   await route.fulfill({status:409,json:{error:{code:'CONFLICT',message:'Data sudah berubah. Muat ulang untuk melihat data terbaru, lalu periksa perubahan Anda sebelum menyimpan kembali.'}}});
   } else await route.continue();
  });
  await dialog.getByRole('button',{name:'Simpan catatan'}).click();
- await expect(toastMessage(page, 'Data telah berubah.')).toContainText('Data telah berubah.');
+ await expect(toastMessage(page, 'Data sudah berubah.')).toContainText('Data sudah berubah.');
  await expect(dialog.getByLabel('Catatan tindakan')).toHaveValue('Draft survives a stale version');
  expect(writes).toBe(1);
 });
@@ -141,7 +141,7 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  await detail.getByRole('button',{name:'Batalkan dengan alasan'}).click();
  const cancelDialog=page.getByRole('dialog',{name:new RegExp(`Pindahkan ${task.title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}`)});
  await cancelDialog.getByLabel('Alasan pembatalan').fill('Alasan sintetis regresi');
- await cancelDialog.getByRole('button',{name:'Konfirmasi pindahkan'}).click();
+ await cancelDialog.getByRole('button',{name:'Batalkan tugas'}).click();
  const cancellation=await cancelled;
  expect(cancellation.ok()).toBe(true);
  expect(cancellation.request().postDataJSON().reason).toBe('Alasan sintetis regresi');
@@ -154,7 +154,7 @@ test('coordinator reassignment, cancellation and logical deletion preserve reaso
  await page.getByRole('dialog').getByRole('button',{name:'Hapus tugas dengan alasan'}).click();
  const removal=page.getByRole('dialog',{name:'Hapus tugas?',exact:true});
  await removal.getByLabel('Alasan penghapusan').fill('Alasan sintetis regresi');
- await removal.getByRole('button',{name:'Konfirmasi hapus',exact:true}).click();
+ await removal.getByRole('button',{name:'Hapus tugas',exact:true}).click();
  const deletion=await deleted;
  expect(deletion.ok()).toBe(true);
  expect(deletion.request().postDataJSON()).toMatchObject({reason:'Alasan sintetis regresi',expectedVersion:expect.any(Number)});

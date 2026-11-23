@@ -1,4 +1,5 @@
 <script lang="ts">
+import { date } from '$lib/shared/format';
 import { Bell, Check, Eye, Filter, Pencil, Plus, RefreshCw, Save, Search, Send, Trash2, X } from 'lucide-svelte';
 import { toast } from '$lib/shared/ui/sonner/index.js';
 import { Button } from '$lib/shared/ui/button/index.js';
@@ -10,9 +11,9 @@ import { Textarea } from '$lib/shared/ui/textarea/index.js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
 import { goto, invalidateAll } from '$app/navigation';
 import { tick } from 'svelte';
-import { ApiError } from '$lib/shared/errors';
+import { isVersionConflict } from '$lib/shared/errors';
 import type { CareCycles, DashboardData, Cycle as CycleDetail, ChangeCycle, NewCycle, NewRequest, Decision } from '$lib/features/care-cycles';
-import { sessionFailure } from '$lib/shared/presentation/session';
+import { isUnconfirmedSave, sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
 import { NotificationDialog, type Notifications } from '$lib/features/notifications';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
@@ -95,7 +96,7 @@ async function openDetail(id: string) {
     }
     catch (cause) {
         if (selectedCycleId === id)
-            detailError = sessionFailure(cause);
+            detailError = sessionFailure(cause, 'load', 'Detail rekap');
     }
     finally {
         if (selectedCycleId === id)
@@ -115,7 +116,7 @@ async function filterCycles(event: SubmitEvent, draft = { roomId: roomFilter, pa
     try {
         await goto(`/dashboard${query.size ? '?' + query : ''}`, { reset: false });
         filterOpen = false;
-    } catch (cause) { toast.error(sessionFailure(cause)); }
+    } catch (cause) { toast.error(sessionFailure(cause, 'load', 'Daftar rekap rawat inap')); }
     finally { filterBusy = false; }
 }
 async function closeDetail() {
@@ -143,7 +144,7 @@ async function refreshDetail() {
         detailSuccess = 'Detail terbaru dimuat. Periksa kembali sebelum melanjutkan.';
         try { await invalidateAll(); }
         catch { detailError = 'Detail terbaru sudah dimuat, tetapi daftar gagal diperbarui. Tutup dan cari pasien kembali.'; }
-    } catch (cause) { detailError = sessionFailure(cause); }
+    } catch (cause) { detailError = sessionFailure(cause, 'load', 'Detail rekap'); }
     finally { busy = false; }
 }
 async function saveDetail(cycle: CycleDetail, operation: () => Promise<unknown>) {
@@ -153,8 +154,8 @@ async function saveDetail(cycle: CycleDetail, operation: () => Promise<unknown>)
     detailSuccess = '';
     try { await operation(); }
     catch (cause) {
-        detailError = sessionFailure(cause);
-        detailNeedsRefresh = cause instanceof ApiError && cause.status === 409;
+        detailError = sessionFailure(cause, 'save', 'rekap rawat inap');
+        detailNeedsRefresh = isVersionConflict(cause) || isUnconfirmedSave(cause);
         busy = false;
         return;
     }
@@ -167,7 +168,7 @@ async function saveDetail(cycle: CycleDetail, operation: () => Promise<unknown>)
         detailNeedsRefresh = false;
         cycleView = 'detail';
     } catch (cause) {
-        detailError = `Perubahan tersimpan, tetapi detail terbaru gagal dimuat. ${sessionFailure(cause)}`;
+        detailError = `Perubahan tersimpan. ${sessionFailure(cause, 'load', 'Detail rekap')}`;
     }
     try { await invalidateAll(); }
     catch { detailError ||= 'Perubahan tersimpan, tetapi daftar gagal diperbarui. Tutup dan cari pasien kembali.'; }
@@ -179,12 +180,14 @@ async function send(operation: () => Promise<unknown>): Promise<boolean> {
     const toastId = toast.loading('Menyimpan perubahan…');
     try {
         await operation();
-        await invalidateAll();
-        toast.success('Perubahan berhasil disimpan.', { id: toastId });
+        await invalidateAll().then(
+            () => toast.success('Perubahan berhasil disimpan.', { id: toastId }),
+            () => toast.warning('Perubahan rekap tersimpan. Muat ulang halaman untuk melihat daftar terbaru.', { id: toastId })
+        );
         return true;
     }
     catch (cause) {
-        toast.error(sessionFailure(cause), { id: toastId });
+        toast.error(sessionFailure(cause, 'save', 'rekap rawat inap'), { id: toastId });
         return false;
     }
     finally {
@@ -210,11 +213,11 @@ async function create(event: SubmitEvent) {
     try {
         const created = await careCycles.create({ ...input, requestId: creationRequest.id });
         createOpen = false;
-        toast.success(created.status === 'assigned' ? 'Rekap dan penempatan berhasil disimpan.' : 'Rekap disimpan dengan status Menunggu.', { id: toastId });
+        toast.success(created.status === 'assigned' ? 'Rekap dan penempatan berhasil disimpan.' : 'Rekap tersimpan dengan status Menunggu. Pilih penempatan sebelum memulai perawatan.', { id: toastId });
         await openDetail(created.id);
         await invalidateAll();
     } catch (cause) {
-        if (createOpen) { createError = cause instanceof TypeError ? 'Koneksi terputus. Coba simpan lagi dengan data yang sama.' : sessionFailure(cause); toast.error(createError, { id: toastId }); }
+        if (createOpen) { createError = isUnconfirmedSave(cause) ? 'Rekap belum dapat dipastikan tersimpan. Periksa daftar rekap terbaru. Jika perlu mencoba lagi, kirim isian yang sama.' : sessionFailure(cause, 'save', 'rekap rawat inap'); toast.error(createError, { id: toastId }); }
         else toast.warning('Rekap tersimpan, tetapi daftar gagal dimuat. Muat ulang halaman.', { id: toastId });
     }
     finally { busy = false; }
@@ -243,7 +246,7 @@ async function assignPlacement(event: SubmitEvent, cycle: CycleDetail) {
 async function deleteCycle(cycle: CycleDetail) {
     if (cycle.status !== 'pending' || busy) return;
     const reason = deletionReason.trim();
-    if (!reason) { toast.error('Alasan penghapusan wajib diisi.'); return; }
+    if (!reason) { toast.error('Isi Alasan penghapusan rekap rawat inap.'); return; }
     if (await send(() => careCycles.remove(cycle.id, { expectedVersion: cycle.version, reason }))) {
         deletingCycle = null;
         closeDetail();
@@ -251,13 +254,13 @@ async function deleteCycle(cycle: CycleDetail) {
 }
 </script>
 
-<svelte:head><title>Ringkasan Siklus | InpaCare</title></svelte:head>
+<svelte:head><title>Rekap rawat inap | InpaCare</title></svelte:head>
 <div class="dashboard-page flex min-w-0 flex-col gap-6">
 <section class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-	<div><h1 class="page-title">Ringkasan Siklus Rawat Inap</h1><p class="page-subtitle">Pantau setiap pasien dan kelanjutan proses rawat inap sesuai kondisi terkini.</p></div>
+	<div><h1 class="page-title">Rekap rawat inap</h1><p class="page-subtitle">Lihat penempatan, status perawatan, dan permintaan untuk setiap pasien.</p></div>
 </section>
 
-<section class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" aria-label="Ringkasan siklus">
+<section class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" aria-label="Jumlah rekap menurut status">
 	{#each counts as item}<Card class="gap-1 p-4"><strong class="text-2xl font-semibold tabular-nums">{item.count}</strong><span class="text-sm text-muted-foreground">{({pending:'Menunggu',assigned:'Sudah ditempatkan',in_care:'Dalam perawatan',extend:'Diperpanjang',released:'Pelepasan'} as Record<string,string>)[item.status]}</span></Card>{/each}
 </section>
 
@@ -280,7 +283,7 @@ async function deleteCycle(cycle: CycleDetail) {
                 <label class="field">Dokter penanggung jawab<FormSelect name="doctorId" required bind:value={createDoctorId} disabled={busy} options={[{ value: "", label: "Pilih dokter aktif" }, ...(data.reference.staff.filter(s => s.role === 'DOKTER' && s.active)).map((doctor) => ({ value: doctor.id, label: (doctor.name) }))]} /></label>
                 <label class="field">Cara penempatan<FormSelect bind:value={createPlacementMode} disabled={busy || !createPatientId} options={[{ value: 'existing', label: 'Gunakan penempatan yang ada', disabled: matchingPlacements.length === 0 }, { value: 'new', label: 'Buat penempatan baru' }]} /></label>
                 {#if createPlacementMode === 'existing'}
-                    <label class="field">Penempatan pasien<FormSelect name="placementId" required bind:value={createPlacementId} disabled={busy} options={[{ value: '', label: 'Pilih penempatan aktif' }, ...matchingPlacements.map(placement => ({ value: placement.id, label: `${placement.roomName} · ${placement.startsOn}–${placement.endsOn}` }))]} /></label>
+                    <label class="field">Penempatan pasien<FormSelect name="placementId" required bind:value={createPlacementId} disabled={busy} options={[{ value: '', label: 'Pilih penempatan aktif' }, ...matchingPlacements.map(placement => ({ value: placement.id, label: `${placement.roomName} · ${date(placement.startsOn)}–${date(placement.endsOn)}` }))]} /></label>
                 {:else}
                     <label class="field">Ruangan<FormSelect name="roomId" required bind:value={createRoomId} disabled={busy || !createPatientId} options={[{ value: '', label: 'Pilih ruangan' }, ...rooms.filter(room => room.status === 'available').map(room => ({ value: room.id, label: `${room.name} · ${room.roomClass}` }))]} /></label>
                     <div class="grid gap-4 sm:grid-cols-2">
@@ -317,7 +320,7 @@ async function deleteCycle(cycle: CycleDetail) {
 </Card>
 
 {#if selectedCycleId}
-<Modal {busy} title={cycleView === 'detail' ? 'Detail siklus rawat inap' : cycleView === 'placement' ? 'Ubah penempatan' : cycleView === 'request' ? 'Ajukan perpanjangan atau pelepasan' : cycleView === 'decision' ? 'Keputusan dokter' : 'Hapus rekap berstatus Menunggu?'}
+<Modal {busy} title={cycleView === 'detail' ? 'Detail rekap rawat inap' : cycleView === 'placement' ? 'Ubah penempatan' : cycleView === 'request' ? 'Ajukan perpanjangan atau pelepasan' : cycleView === 'decision' ? 'Keputusan dokter' : 'Hapus rekap berstatus Menunggu?'}
  description="Informasi perawatan, penanggung jawab, dan permintaan perubahan pasien."
  protectChanges={cycleView !== 'detail' && cycleView !== 'delete'} formKey={cycleView}
  backLabel={cycleView !== 'detail' ? 'Kembali ke detail' : undefined}
@@ -347,14 +350,14 @@ async function deleteCycle(cycle: CycleDetail) {
 			{#if canManage && selectedCycle.placementId && ['in_care', 'extend'].includes(selectedCycle.status)}<div class="card-actions"><Button variant="outline" disabled={busy || detailNeedsRefresh || !!pendingRequest} onclick={() => cycleView = 'request'}><Send aria-hidden="true" /> Ajukan perpanjangan / pelepasan</Button>{#if pendingRequest}<p class="approval-note">Pengajuan sebelumnya masih menunggu keputusan dokter.</p>{/if}</div>{/if}
 			<section class="detail-section"><h3>Riwayat permintaan</h3>
 				{#if selectedCycle.requests.length === 0}<p class="muted">Belum ada permintaan.</p>
-				{:else}{#each selectedCycle.requests as item (item.id)}<div class="request-item"><div class="request-heading"><strong>{item.kind === 'extend' ? `Perpanjangan sampai ${item.requestedEnd}` : 'Pelepasan'}</strong><Badge value={item.status} label={requestLabels[item.status] ?? item.status}/></div><p>Alasan: {item.reason}</p><small>Diajukan oleh {item.requestedBy}{item.decidedBy ? ` · Diputuskan oleh ${item.decidedBy}` : ''}</small>{#if item.note}<p>Catatan dokter: {item.note}</p>{/if}
+				{:else}{#each selectedCycle.requests as item (item.id)}<div class="request-item"><div class="request-heading"><strong>{item.kind === 'extend' ? `Perpanjangan sampai ${item.requestedEnd ? date(item.requestedEnd) : "—"}` : 'Pelepasan'}</strong><Badge value={item.status} label={requestLabels[item.status] ?? item.status}/></div><p>Alasan: {item.reason}</p><small>Diajukan oleh {item.requestedBy}{item.decidedBy ? ` · Diputuskan oleh ${item.decidedBy}` : ''}</small>{#if item.note}<p>Catatan dokter: {item.note}</p>{/if}
 					{#if data.user.role === 'DOKTER' && selectedCycle.doctorId === data.user.id && item.status === 'pending'}<Button variant="outline" disabled={busy || detailNeedsRefresh} onclick={() => { decisionRequestId = item.id; cycleView = 'decision'; }}><Eye aria-hidden="true" /> Tinjau keputusan</Button>{/if}
 				</div>{/each}{/if}
 			</section>
 		{:else}<Button variant="outline" class="h-11 px-4 no-underline hover:no-underline" disabled={busy} onclick={() => void refreshDetail()}><RefreshCw aria-hidden="true" /> Coba lagi</Button>{/if}
  {:else if selectedCycle}
  <p class="mb-5 font-medium">{selectedCycle.patientName} · {selectedCycle.medicalRecordNo}</p>
- {#if cycleView === 'placement'}<form onsubmit={(event)=>assignPlacement(event,selectedCycle!)}><label class="field">Penempatan<FormSelect name="placementId" bind:value={detailPlacementId} disabled={busy || detailNeedsRefresh} options={[{ value: "", label: "Belum ditempatkan" }, ...(data.reference.placements.filter((p)=>p.status==='active'&&p.patientId===selectedCycle!.patientId)).map((placement) => ({ value: placement.id, label: (placement.roomName) + " · " + (placement.startsOn) + "–" + (placement.endsOn) }))]} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || detailNeedsRefresh}><Save aria-hidden="true" /> Simpan penempatan</Button></div></form>
+ {#if cycleView === 'placement'}<form onsubmit={(event)=>assignPlacement(event,selectedCycle!)}><label class="field">Penempatan<FormSelect name="placementId" bind:value={detailPlacementId} disabled={busy || detailNeedsRefresh} options={[{ value: "", label: "Belum ditempatkan" }, ...(data.reference.placements.filter((p)=>p.status==='active'&&p.patientId===selectedCycle!.patientId)).map((placement) => ({ value: placement.id, label: (placement.roomName) + " · " + date(placement.startsOn) + "–" + date(placement.endsOn) }))]} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || detailNeedsRefresh}><Save aria-hidden="true" /> Simpan penempatan</Button></div></form>
  {:else if cycleView === 'request'}{#if pendingRequest}<p class="approval-note" id="cycle-request-blocked">Pengajuan sebelumnya masih menunggu keputusan dokter. Pengajuan baru belum dapat dikirim.</p>{/if}<form onsubmit={(event) => request(event, selectedCycle!)}><fieldset class="request-fields" disabled={busy || detailNeedsRefresh || !!pendingRequest} aria-describedby={pendingRequest ? 'cycle-request-blocked' : undefined}><legend class="request-legend">Pengajuan perubahan perawatan</legend><div class="form-grid"><label class="field">Jenis permintaan<FormSelect name="kind" bind:value={requestKind} options={[{ value: "release", label: "Pelepasan" }, { value: "extend", label: "Perpanjangan" }]} /></label>{#if requestKind === 'extend'}<label class="field">Perpanjang sampai tanggal<FormDatePicker class="h-11 text-base md:text-sm" name="requestedEnd" type="date" required /></label>{/if}<label class="field full">Alasan<Textarea name="reason" maxlength={500} required></Textarea></label></div><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline"><Send aria-hidden="true" /> Ajukan ke dokter</Button></div></fieldset></form>
  {:else if cycleView === 'decision'}<form onsubmit={(event) => decide(event, selectedCycle!, decisionRequestId, String((event.submitter as HTMLButtonElement)?.value))}><label class="field">Catatan keputusan<Input class="h-11 text-base md:text-sm" name="note" maxlength={500} required disabled={busy || detailNeedsRefresh} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="outline" type="submit" class="h-11 px-4 no-underline hover:no-underline" name="decision" value="reject" disabled={busy || detailNeedsRefresh}><X aria-hidden="true" /> Tolak</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" name="decision" value="approve" disabled={busy || detailNeedsRefresh}><Check aria-hidden="true" /> Setujui</Button></div></form>
  {:else if cycleView === 'delete'}<form class="flex flex-col gap-4" onsubmit={(event) => { event.preventDefault(); if (deletingCycle) void deleteCycle(deletingCycle); }}>
