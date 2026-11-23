@@ -7,7 +7,7 @@ const candidate = { id: 'new-patient', name: 'Pasien Baru', medicalRecordNo: 'RM
 const data = $state({
     user: { id: 'nurse', name: 'Perawat Uji', role: 'PERAWAT', coordinator: false },
     filters: { search: '', status: '', roomId: '', patientId: '' },
-    cycles: [cycle, readableCycle], creationCandidates: [candidate],
+    cycles: [cycle, readableCycle], creationCandidates: [candidate], assignmentCandidates: [],
     reference: { patients: [candidate], rooms: [], placements: [{ id: 'cycle-placement', patientId: 'patient', roomName: 'Ruang uji', startsOn: '2026-11-02', endsOn: '2026-11-10', status: 'active' }], staff: [{ id: 'doctor', name: 'Dokter Uji', role: 'DOKTER', active: true }] }
 });
 window.cycleActions = [];

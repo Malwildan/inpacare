@@ -1,8 +1,10 @@
 import { EntityManager } from "typeorm";
 import { Actor } from "../../../../domain/auth/actor";
+import { isCoordinator } from "../../../../domain/auth/permissions";
 import {
   MedicalRecordListFilters,
   MedicalRecordStore,
+  ObservationScope,
 } from "../../../../application/medical-records/medical-record-store.port";
 export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
   constructor(private readonly manager: EntityManager) {}
@@ -18,13 +20,20 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
       };
     }
     const rows = await this.manager.query(
-      `SELECT jsonb_build_object('id',m.id,'patientId',m.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'doctorName',u.name,'recordDate',m.record_date,'diagnosis',m.diagnosis,'treatment',m.treatment,'notes',m.notes,'version',m.version,'createdAt',m.created_at,'observationCount',(SELECT count(*) FROM observations o WHERE o.record_id=m.id AND o.deleted_at IS NULL)) AS item FROM medical_records m JOIN patients p ON p.id=m.patient_id JOIN users u ON u.id=m.doctor_id WHERE m.deleted_at IS NULL AND ($1='PERAWAT' OR EXISTS(SELECT 1 FROM cycles c WHERE c.patient_id=m.patient_id AND c.doctor_id=$2)) AND ($3='' OR p.name ILIKE '%'||$3||'%' OR p.medical_record_no ILIKE '%'||$3||'%' OR m.diagnosis ILIKE '%'||$3||'%') AND ($4::text IS NULL OR m.patient_id=$4) ORDER BY m.record_date DESC,m.id LIMIT $5`,
+      `SELECT jsonb_build_object('id',m.id,'patientId',m.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'doctorName',u.name,'recordDate',m.record_date,'diagnosis',m.diagnosis,'treatment',m.treatment,'notes',m.notes,'version',m.version,'createdAt',m.created_at,'observationCount',(SELECT count(*) FROM observations o WHERE o.deleted_at IS NULL AND
+          (o.cycle_id=m.cycle_id OR (m.cycle_id IS NULL AND o.record_id=m.id AND o.cycle_id IS NULL
+            AND (($1='PERAWAT' AND o.nurse_id=$2) OR ($1='DOKTER' AND m.doctor_id=$2)))))) AS item FROM medical_records m JOIN patients p ON p.id=m.patient_id JOIN users u ON u.id=m.doctor_id WHERE m.deleted_at IS NULL AND (
+          EXISTS(SELECT 1 FROM cycles c WHERE c.id=m.cycle_id AND c.deleted_at IS NULL
+            AND (($1='PERAWAT' AND (c.nurse_id=$2 OR $6::boolean)) OR ($1='DOKTER' AND c.doctor_id=$2)))
+          OR (m.cycle_id IS NULL AND ($1='PERAWAT' OR EXISTS(
+            SELECT 1 FROM cycles c WHERE c.patient_id=m.patient_id AND c.doctor_id=$2)))) AND ($3='' OR p.name ILIKE '%'||$3||'%' OR p.medical_record_no ILIKE '%'||$3||'%' OR m.diagnosis ILIKE '%'||$3||'%') AND ($4::text IS NULL OR m.patient_id=$4) ORDER BY m.record_date DESC,m.id LIMIT $5`,
       [
         actor.role,
         actor.id,
         q.search ?? "",
         q.patientId ?? null,
         q.limit ?? 50,
+        isCoordinator(actor),
       ],
     );
     return {
@@ -41,7 +50,7 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
       return rows[0]?.item;
     }
     const rows = await this.manager.query(
-      `SELECT jsonb_build_object('id',m.id,'patientId',m.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'doctorId',m.doctor_id,'doctorName',u.name,'recordDate',m.record_date,'complaint',m.complaint,'diagnosis',m.diagnosis,'treatment',m.treatment,'notes',m.notes,'version',m.version,'createdAt',m.created_at,'updatedAt',m.updated_at,'observations',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',o.id,'nurseId',o.nurse_id,'nurseName',nu.name,'symptoms',o.symptoms,'nursingNote',o.nursing_note,'observedAt',o.observed_at,'version',o.version,'temperature',v.temperature,'systolic',v.systolic,'diastolic',v.diastolic,'bloodPressure',CASE WHEN v.systolic IS NULL THEN NULL ELSE v.systolic::text||'/'||v.diastolic::text END,'pulse',v.pulse,'respiratoryRate',v.respiratory_rate,'spo2',v.spo2) ORDER BY o.observed_at DESC) FROM observations o JOIN users nu ON nu.id=o.nurse_id LEFT JOIN vital_signs v ON v.observation_id=o.id AND v.deleted_at IS NULL WHERE o.record_id=m.id AND o.deleted_at IS NULL),'[]'::jsonb)) AS item FROM medical_records m JOIN patients p ON p.id=m.patient_id JOIN users u ON u.id=m.doctor_id WHERE m.id=$1 AND m.deleted_at IS NULL`,
+      `SELECT jsonb_build_object('id',m.id,'patientId',m.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'doctorId',m.doctor_id,'doctorName',u.name,'recordDate',m.record_date,'complaint',m.complaint,'diagnosis',m.diagnosis,'treatment',m.treatment,'notes',m.notes,'version',m.version,'createdAt',m.created_at,'updatedAt',m.updated_at,'cycleId',m.cycle_id) AS item FROM medical_records m JOIN patients p ON p.id=m.patient_id JOIN users u ON u.id=m.doctor_id WHERE m.id=$1 AND m.deleted_at IS NULL`,
       [recordId],
     );
     return rows[0]?.item;
@@ -49,6 +58,7 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
   async createRecord(d: {
     id: string;
     patientId: string;
+    cycleId: string | null;
     doctorId: string;
     complaint: string;
     diagnosis: string;
@@ -57,7 +67,7 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
     recordDate: string;
   }) {
     await this.manager.query(
-      `INSERT INTO medical_records(id,patient_id,doctor_id,complaint,diagnosis,treatment,notes,record_date) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
+      `INSERT INTO medical_records(id,patient_id,doctor_id,complaint,diagnosis,treatment,notes,record_date,cycle_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [
         d.id,
         d.patientId,
@@ -67,6 +77,7 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
         d.treatment,
         d.notes,
         d.recordDate,
+        d.cycleId,
       ],
     );
   }
@@ -155,24 +166,58 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
       [id],
     );
   }
-  async lockRecordPatient(id: string) {
-    const rows = await this.manager.query(
-      `SELECT patient_id FROM medical_records WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`,
-      [id],
+  async hasEpisodeClinicalData(cycleId: string) {
+    const [row] = await this.manager.query(
+      `SELECT EXISTS(SELECT 1 FROM observations WHERE cycle_id=$1)
+        OR EXISTS(SELECT 1 FROM medical_records WHERE cycle_id=$1) AS present`,
+      [cycleId],
     );
-    return rows[0];
+    return Boolean(row?.present);
+  }
+  async episodeForRecordDate(patientId: string, recordDate: string) {
+    const rows = await this.manager.query(
+      `SELECT c.id, c.deleted_at
+        FROM cycles c LEFT JOIN placements p ON p.id=c.placement_id AND p.patient_id=c.patient_id
+        WHERE c.patient_id=$1 AND $2::date BETWEEN
+          LEAST((c.created_at AT TIME ZONE 'Asia/Jakarta')::date, p.starts_on)
+          AND CASE WHEN c.status='released' THEN COALESCE(p.ends_on, (c.updated_at AT TIME ZONE 'Asia/Jakarta')::date)
+            ELSE 'infinity'::date END
+        LIMIT 2`,
+      [patientId, recordDate],
+    );
+    return rows.length === 1 && !rows[0].deleted_at ? rows[0].id : undefined;
+  }
+  async listObservations(actor: Actor, scope: ObservationScope) {
+    const episode = "cycleId" in scope;
+    const rows = await this.manager.query(
+      `SELECT jsonb_build_object(
+        'id',o.id,'nurseId',o.nurse_id,'nurseName',nu.name,'symptoms',o.symptoms,'nursingNote',o.nursing_note,
+        'observedAt',o.observed_at,'createdAt',o.created_at,'version',o.version,'temperature',v.temperature,
+        'systolic',v.systolic,'diastolic',v.diastolic,'bloodPressure',v.systolic::text||'/'||v.diastolic::text,
+        'pulse',v.pulse,'respiratoryRate',v.respiratory_rate,'spo2',v.spo2) AS item
+        FROM observations o JOIN users nu ON nu.id=o.nurse_id
+        LEFT JOIN vital_signs v ON v.observation_id=o.id AND v.deleted_at IS NULL
+        WHERE o.patient_id=$1 AND o.deleted_at IS NULL AND ${
+          episode ? "o.cycle_id=$2" : "o.record_id=$2 AND o.cycle_id IS NULL AND ($3 OR o.nurse_id=$4)"
+        } ORDER BY o.observed_at DESC,o.id`,
+      episode ? [scope.patientId, scope.cycleId] : [
+        scope.patientId, scope.recordId, actor.role === "DOKTER" && actor.id === scope.doctorId, actor.id,
+      ],
+    );
+    return rows.map((row: { item: Record<string, unknown> }) => row.item);
   }
   async createObservation(d: {
     id: string;
-    recordId: string;
+    patientId: string;
+    cycleId: string;
     nurseId: string;
     symptoms: string;
     nursingNote: string;
     observedAt: string;
   }) {
     await this.manager.query(
-      `INSERT INTO observations(id,record_id,nurse_id,symptoms,nursing_note,observed_at) VALUES($1,$2,$3,$4,$5,$6)`,
-      [d.id, d.recordId, d.nurseId, d.symptoms, d.nursingNote, d.observedAt],
+      `INSERT INTO observations(id,patient_id,cycle_id,nurse_id,symptoms,nursing_note,observed_at) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+      [d.id, d.patientId, d.cycleId, d.nurseId, d.symptoms, d.nursingNote, d.observedAt],
     );
   }
   async createVitals(d: {
@@ -199,10 +244,13 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
       ],
     );
   }
-  async lockObservation(recordId: string, observationId: string) {
+  async lockObservation(scope: ObservationScope, observationId: string) {
+    const episode = "cycleId" in scope;
     const rows = await this.manager.query(
-      `SELECT o.*,m.patient_id FROM observations o JOIN medical_records m ON m.id=o.record_id WHERE o.id=$1 AND o.record_id=$2 AND m.deleted_at IS NULL AND o.deleted_at IS NULL FOR UPDATE OF o`,
-      [observationId, recordId],
+      `SELECT * FROM observations WHERE id=$1 AND patient_id=$2 AND deleted_at IS NULL AND ${
+        episode ? "cycle_id=$3" : "record_id=$3 AND cycle_id IS NULL"
+      } FOR UPDATE`,
+      [observationId, scope.patientId, episode ? scope.cycleId : scope.recordId],
     );
     return rows[0];
   }

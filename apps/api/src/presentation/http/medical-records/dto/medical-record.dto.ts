@@ -25,6 +25,11 @@ export class CreateMedicalRecordDto implements CreateMedicalRecordInput {
   @MinLength(1, { message: "Pilih pasien." })
   @MaxLength(36, { message: "Pilih pasien." })
   patientId!: string;
+  @ValidateIf((_, value) => value !== undefined)
+  @IsString({ message: "Pilih rekap rawat inap." })
+  @MinLength(1, { message: "Pilih rekap rawat inap." })
+  @MaxLength(36, { message: "Pilih rekap rawat inap." })
+  cycleId?: string;
   @IsString({ message: "Isi Keluhan dengan maksimal 5.000 karakter." })
   @MinLength(1, { message: "Isi Keluhan dengan maksimal 5.000 karakter." })
   @MaxLength(5000, { message: "Isi Keluhan dengan maksimal 5.000 karakter." })

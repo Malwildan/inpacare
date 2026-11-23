@@ -1,10 +1,19 @@
 import { EntityManager } from "typeorm";
 import { Actor } from "../../../../domain/auth/actor";
+import { isCoordinator } from "../../../../domain/auth/permissions";
 import {
+  CycleAssignee,
   CycleListFilters,
   CycleStore,
   CreatedCycle,
 } from "../../../../application/cycles/cycle-store.port";
+// Use the live cycle assignee for list and detail. Coordinator scope is read-only here.
+const cycleReadScope = `c.deleted_at IS NULL AND (
+  ($1='DOKTER' AND c.doctor_id=$2) OR ($1='PERAWAT' AND (c.nurse_id=$2 OR $3::boolean))
+)`;
+const eligibleAssignees = `FROM users u JOIN nurses n ON n.user_id=u.id
+  WHERE u.role='PERAWAT' AND u.active AND n.active`;
+
 export class TypeOrmCycleStore implements CycleStore {
   constructor(private readonly manager: EntityManager) {}
   async creationForRequest(nurseId: string, requestId: string) {
@@ -27,6 +36,18 @@ export class TypeOrmCycleStore implements CycleStore {
       `SELECT p.id,p.name,p.medical_record_no AS "medicalRecordNo" FROM patients p WHERE NOT EXISTS(SELECT 1 FROM cycles c WHERE c.patient_id=p.id AND c.status<>'released' AND c.deleted_at IS NULL) ORDER BY p.name,p.id`,
     );
   }
+  async assignmentCandidates() {
+    return this.manager.query<CycleAssignee[]>(
+      `SELECT u.id,u.name ${eligibleAssignees} ORDER BY u.name,u.id`,
+    );
+  }
+  async lockActiveNurse(nurseId: string) {
+    const rows = await this.manager.query(
+      `SELECT u.id ${eligibleAssignees} AND u.id=$1 FOR SHARE OF u,n`,
+      [nurseId],
+    );
+    return rows.length > 0;
+  }
   async hasActiveCycle(patientId: string) {
     const rows = await this.manager.query(
       `SELECT EXISTS(SELECT 1 FROM cycles WHERE patient_id=$1 AND status<>'released' AND deleted_at IS NULL) AS active`,
@@ -36,10 +57,11 @@ export class TypeOrmCycleStore implements CycleStore {
   }
   async list(actor: Actor, filters: CycleListFilters) {
     const rows = await this.manager.query(
-      `SELECT jsonb_build_object('id',c.id,'patientId',c.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',c.placement_id,'room',r.name,'roomId',pl.room_id,'doctorId',c.doctor_id,'doctorName',d.name,'nurseId',c.nurse_id,'nurseName',n.name,'status',c.status,'pendingApproval',EXISTS(SELECT 1 FROM cycle_requests q WHERE q.cycle_id=c.id AND q.status='pending'),'version',c.version,'createdAt',c.created_at,'requests',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',q.id,'kind',q.kind,'requestedEnd',q.requested_end,'reason',q.reason,'requestedBy',ru.name,'status',q.status,'note',q.decision_note,'createdAt',q.created_at) ORDER BY q.created_at DESC) FROM cycle_requests q JOIN users ru ON ru.id=q.requested_by WHERE q.cycle_id=c.id),'[]'::jsonb)) AS item FROM cycles c JOIN patients p ON p.id=c.patient_id JOIN users d ON d.id=c.doctor_id JOIN users n ON n.id=c.nurse_id LEFT JOIN placements pl ON pl.id=c.placement_id LEFT JOIN rooms r ON r.id=pl.room_id WHERE c.deleted_at IS NULL AND (($1='DOKTER' AND c.doctor_id=$2) OR ($1='PERAWAT' AND c.nurse_id=$2)) AND ($3::text IS NULL OR c.patient_id=$3) AND ($4::text IS NULL OR pl.room_id=$4) AND ($5::text IS NULL OR ($5='pending_approval' AND EXISTS(SELECT 1 FROM cycle_requests q WHERE q.cycle_id=c.id AND q.status='pending')) OR c.status=$5) AND ($6='' OR p.name ILIKE '%'||$6||'%' OR p.medical_record_no ILIKE '%'||$6||'%' OR r.name ILIKE '%'||$6||'%') ORDER BY c.created_at DESC,c.id LIMIT 100`,
+      `SELECT jsonb_build_object('id',c.id,'patientId',c.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',c.placement_id,'room',r.name,'roomId',pl.room_id,'doctorId',c.doctor_id,'doctorName',d.name,'nurseId',c.nurse_id,'nurseName',n.name,'status',c.status,'pendingApproval',EXISTS(SELECT 1 FROM cycle_requests q WHERE q.cycle_id=c.id AND q.status='pending'),'version',c.version,'createdAt',c.created_at,'requests',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',q.id,'kind',q.kind,'requestedEnd',q.requested_end,'reason',q.reason,'requestedBy',ru.name,'status',q.status,'note',q.decision_note,'createdAt',q.created_at) ORDER BY q.created_at DESC) FROM cycle_requests q JOIN users ru ON ru.id=q.requested_by WHERE q.cycle_id=c.id),'[]'::jsonb)) AS item FROM cycles c JOIN patients p ON p.id=c.patient_id JOIN users d ON d.id=c.doctor_id JOIN users n ON n.id=c.nurse_id LEFT JOIN placements pl ON pl.id=c.placement_id LEFT JOIN rooms r ON r.id=pl.room_id WHERE ${cycleReadScope} AND ($4::text IS NULL OR c.patient_id=$4) AND ($5::text IS NULL OR pl.room_id=$5) AND ($6::text IS NULL OR ($6='pending_approval' AND EXISTS(SELECT 1 FROM cycle_requests q WHERE q.cycle_id=c.id AND q.status='pending')) OR c.status=$6) AND ($7='' OR p.name ILIKE '%'||$7||'%' OR p.medical_record_no ILIKE '%'||$7||'%' OR r.name ILIKE '%'||$7||'%') ORDER BY c.created_at DESC,c.id LIMIT (CASE WHEN $3::boolean THEN NULL ELSE 100 END)`,
       [
         actor.role,
         actor.id,
+        isCoordinator(actor),
         filters.patientId ?? null,
         filters.roomId ?? null,
         filters.status ?? null,
@@ -51,8 +73,21 @@ export class TypeOrmCycleStore implements CycleStore {
   }
   async detail(actor: Actor, cycleId: string) {
     const rows = await this.manager.query(
-      `SELECT jsonb_build_object('id',c.id,'patientId',c.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',c.placement_id,'room',r.name,'doctorId',c.doctor_id,'doctorName',d.name,'nurseId',c.nurse_id,'nurseName',n.name,'status',c.status,'version',c.version,'createdAt',c.created_at,'requests',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',q.id,'kind',q.kind,'requestedEnd',q.requested_end,'reason',q.reason,'requestedBy',ru.name,'status',q.status,'decidedBy',du.name,'note',q.decision_note,'createdAt',q.created_at,'decidedAt',q.decided_at) ORDER BY q.created_at DESC) FROM cycle_requests q JOIN users ru ON ru.id=q.requested_by LEFT JOIN users du ON du.id=q.decided_by WHERE q.cycle_id=c.id),'[]'::jsonb)) AS item FROM cycles c JOIN patients p ON p.id=c.patient_id JOIN users d ON d.id=c.doctor_id JOIN users n ON n.id=c.nurse_id LEFT JOIN placements pl ON pl.id=c.placement_id LEFT JOIN rooms r ON r.id=pl.room_id WHERE c.id=$1 AND c.deleted_at IS NULL AND (($2='DOKTER' AND c.doctor_id=$3) OR ($2='PERAWAT' AND c.nurse_id=$3))`,
-      [cycleId, actor.role, actor.id],
+      `SELECT jsonb_build_object('id',c.id,'patientId',c.patient_id,'patientName',p.name,'medicalRecordNo',p.medical_record_no,'placementId',c.placement_id,'room',r.name,'doctorId',c.doctor_id,'doctorName',d.name,'nurseId',c.nurse_id,'nurseName',n.name,'status',c.status,'version',c.version,'createdAt',c.created_at,'requests',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',q.id,'kind',q.kind,'requestedEnd',q.requested_end,'reason',q.reason,'requestedBy',ru.name,'status',q.status,'decidedBy',du.name,'note',q.decision_note,'createdAt',q.created_at,'decidedAt',q.decided_at) ORDER BY q.created_at DESC) FROM cycle_requests q JOIN users ru ON ru.id=q.requested_by LEFT JOIN users du ON du.id=q.decided_by WHERE q.cycle_id=c.id),'[]'::jsonb)) ||
+        CASE WHEN $3::boolean THEN jsonb_build_object('assignmentHistory', COALESCE((
+          SELECT jsonb_agg(jsonb_build_object(
+            'id',h.id,'actorId',h.actor_id,'actorName',changed_by.name,
+            'previousNurseId',h.before_data->>'nurseId','previousNurseName',COALESCE(previous_nurse.name,h.before_data->>'nurseId'),
+            'newNurseId',h.after_data->>'nurseId','newNurseName',COALESCE(new_nurse.name,h.after_data->>'nurseId'),
+            'reason',h.reason,'createdAt',h.created_at
+          ) ORDER BY (h.after_data->>'version')::integer DESC)
+          FROM cycle_history h
+          JOIN users changed_by ON changed_by.id=h.actor_id
+          LEFT JOIN users previous_nurse ON previous_nurse.id=h.before_data->>'nurseId'
+          LEFT JOIN users new_nurse ON new_nurse.id=h.after_data->>'nurseId'
+          WHERE h.cycle_id=c.id AND h.action='nurse_reassigned'
+        ),'[]'::jsonb)) ELSE '{}'::jsonb END AS item FROM cycles c JOIN patients p ON p.id=c.patient_id JOIN users d ON d.id=c.doctor_id JOIN users n ON n.id=c.nurse_id LEFT JOIN placements pl ON pl.id=c.placement_id LEFT JOIN rooms r ON r.id=pl.room_id WHERE c.id=$4 AND ${cycleReadScope}`,
+      [actor.role, actor.id, isCoordinator(actor), cycleId],
     );
     return rows[0]?.item;
   }
@@ -187,16 +222,18 @@ export class TypeOrmCycleStore implements CycleStore {
     id: string;
     cycleId: string;
     actorId: string;
+    action: "deleted" | "nurse_reassigned";
     reason: string;
     before: unknown;
     after: unknown;
   }) {
     await this.manager.query(
-      `INSERT INTO cycle_history(id,cycle_id,actor_id,action,reason,before_data,after_data) VALUES($1,$2,$3,'deleted',$4,$5::jsonb,$6::jsonb)`,
+      `INSERT INTO cycle_history(id,cycle_id,actor_id,action,reason,before_data,after_data,created_at) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,clock_timestamp())`,
       [
         d.id,
         d.cycleId,
         d.actorId,
+        d.action,
         d.reason,
         JSON.stringify(d.before),
         JSON.stringify(d.after),
@@ -247,17 +284,23 @@ export class TypeOrmCycleStore implements CycleStore {
   }
   async decisionSeed(cycleId: string, requestId: string) {
     const r = await this.manager.query(
-      `SELECT c.patient_id,c.placement_id,c.doctor_id,c.nurse_id,q.kind,q.requested_end,q.status AS request_status FROM cycles c JOIN cycle_requests q ON q.cycle_id=c.id WHERE c.id=$1 AND q.id=$2 AND c.deleted_at IS NULL`,
+      `SELECT c.patient_id,c.placement_id,c.doctor_id,q.kind,q.requested_end,q.status AS request_status FROM cycles c JOIN cycle_requests q ON q.cycle_id=c.id WHERE c.id=$1 AND q.id=$2 AND c.deleted_at IS NULL`,
       [cycleId, requestId],
     );
     return r[0];
   }
   async lockCycle(id: string) {
     const r = await this.manager.query(
-      `SELECT version,status FROM cycles WHERE id=$1 FOR UPDATE`,
+      `SELECT version,status,nurse_id FROM cycles WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`,
       [id],
     );
     return r[0];
+  }
+  async setCycleNurse(id: string, nurseId: string) {
+    await this.manager.query(
+      `UPDATE cycles SET nurse_id=$1,version=version+1,updated_at=now() WHERE id=$2`,
+      [nurseId, id],
+    );
   }
   async lockRequest(cycleId: string, requestId: string) {
     const r = await this.manager.query(
@@ -368,11 +411,12 @@ export class TypeOrmCycleStore implements CycleStore {
     id: string;
     nurseId: string;
     cycleId: string;
+    requestId?: string;
     message: string;
   }) {
     await this.manager.query(
-      `INSERT INTO notifications(id,user_id,cycle_id,message) VALUES($1,$2,$3,$4)`,
-      [d.id, d.nurseId, d.cycleId, d.message],
+      `INSERT INTO notifications(id,user_id,cycle_id,request_id,message) VALUES($1,$2,$3,$4,$5)`,
+      [d.id, d.nurseId, d.cycleId, d.requestId ?? null, d.message],
     );
   }
 }

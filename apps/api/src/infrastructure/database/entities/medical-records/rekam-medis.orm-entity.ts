@@ -9,6 +9,8 @@ export class RekamMedis {
   id!: string;
   @Column({ name: "patient_id", type: "varchar", length: 36 })
   patientId!: string;
+  @Column({ name: "cycle_id", type: "varchar", length: 36, nullable: true })
+  cycleId!: string | null;
   @Column({ name: "doctor_id", type: "varchar", length: 36 })
   doctorId!: string;
   @Column({ name: "complaint", type: "text" })

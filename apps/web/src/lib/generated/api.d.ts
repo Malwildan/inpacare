@@ -345,7 +345,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Daftar rekap rawat inap sesuai penugasan */
+        /**
+         * Daftar rekap rawat inap sesuai penugasan
+         * @description Koordinator perawat melihat seluruh rekap. Perawat melihat rekap yang menjadi tanggung jawabnya dan dokter melihat rekap dalam tanggung jawabnya.
+         */
         get: operations["GET_cycles"];
         put?: never;
         /** Buat rekap rawat inap */
@@ -544,7 +547,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Daftar rekap rawat inap */
+        /**
+         * Daftar rekap rawat inap
+         * @description Koordinator perawat melihat seluruh rekap. Perawat melihat rekap yang menjadi tanggung jawabnya dan dokter melihat rekap dalam tanggung jawabnya.
+         */
         get: operations["GET_cycles_dashboard"];
         put?: never;
         post?: never;
@@ -674,6 +680,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cycles/assignment-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Daftar perawat aktif yang dapat dipilih oleh koordinator */
+        get: operations["GET_cycles_assignment_candidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cycles/{id}/assignee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Alihkan perawat penanggung jawab oleh koordinator
+         * @description Perubahan dengan versi rekap terbaru mencatat alasan, pelaku, dan pengalihan perawat.
+         */
+        patch: operations["PATCH_cycles_id_assignee"];
+        trace?: never;
+    };
     "/api/v1/tasks/{id}/move": {
         parameters: {
             query?: never;
@@ -708,6 +751,30 @@ export interface paths {
         get: operations["GET_placements_id_history"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cycles/{id}/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Baca observasi keperawatan pada rekap
+         * @description Dokter dan perawat membaca observasi dalam cakupan rekap yang diizinkan.
+         */
+        get: operations["GET_cycles_id_observations"];
+        put?: never;
+        /**
+         * Catat observasi keperawatan pada rekap
+         * @description Perawat yang ditugaskan mencatat observasi untuk episode ini, termasuk sebelum rekam medis tersedia. Sistolik dan diastolik harus diisi bersama.
+         */
+        post: operations["POST_cycles_id_observations"];
         delete?: never;
         options?: never;
         head?: never;
@@ -918,6 +985,8 @@ export interface components {
             pulse: number | null;
             respiratoryRate: number | null;
             spo2: number | null;
+            /** Format: date-time */
+            createdAt: string;
         };
         MedicalRecord: {
             id: string;
@@ -938,6 +1007,8 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             observations: components["schemas"]["Observation"][];
+            cycleId: string | null;
+            canRecordObservations: boolean;
         };
         CycleRequest: {
             id: string;
@@ -974,6 +1045,8 @@ export interface components {
             requests: components["schemas"]["NestedCycleRequest"][];
             roomId?: string | null;
             pendingApproval?: boolean;
+            /** @description Riwayat pengalihan tersedia bagi koordinator perawat. */
+            assignmentHistory?: components["schemas"]["CycleAssignmentEvent"][];
         };
         InvoiceLine: {
             id: string;
@@ -1046,6 +1119,8 @@ export interface components {
         Notification: {
             id: string;
             cycleId: string | null;
+            /** @description Pengajuan yang dirujuk dalam rekap ini, jika tersedia. */
+            requestId?: string | null;
             message: string;
             readAt: string | null;
             /** Format: date-time */
@@ -1144,6 +1219,8 @@ export interface components {
             notes?: string;
             /** Format: date */
             recordDate: string;
+            /** @description ID rekap rawat inap yang menangani pasien. Jika kosong, API hanya menautkan episode ketika tanggal cocok dengan satu episode yang dapat diakses. */
+            cycleId?: string;
         };
         UpdateMedicalRecord: {
             expectedVersion: number;
@@ -1178,6 +1255,8 @@ export interface components {
              * @description ID pengiriman dibuat oleh klien. Perawat dan ID yang sama akan menerima hasil awal. Perubahan isian dengan ID yang sama menghasilkan 409.
              */
             requestId?: string;
+            /** @description Wajib untuk koordinator perawat. Perawat lain hanya dapat membuat rekap dengan dirinya sebagai penanggung jawab. */
+            nurseId?: string;
         };
         CyclePlacement: {
             roomId: string;
@@ -1639,6 +1718,37 @@ export interface components {
         PlacementHistoryPage: {
             items: components["schemas"]["PlacementHistory"][];
             total: number;
+        };
+        CycleObservations: {
+            items: components["schemas"]["Observation"][];
+        };
+        CycleAssignmentCandidates: {
+            items: {
+                id: string;
+                name: string;
+            }[];
+        };
+        CycleAssignmentEvent: {
+            id: string;
+            actorId: string;
+            actorName: string;
+            previousNurseId: string;
+            previousNurseName: string;
+            newNurseId: string;
+            newNurseName: string;
+            reason: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ReassignCycle: {
+            nurseId: string;
+            expectedVersion: number;
+            reason: string;
+        };
+        CycleReassigned: {
+            id: string;
+            nurseId: string;
+            version: number;
         };
     };
     responses: never;
@@ -6090,6 +6200,136 @@ export interface operations {
             };
         };
     };
+    GET_cycles_assignment_candidates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Permintaan berhasil. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleAssignmentCandidates"];
+                };
+            };
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Layanan mengalami gangguan. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    PATCH_cycles_id_assignee: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Nilainya harus sama dengan origin aplikasi. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReassignCycle"];
+            };
+        };
+        responses: {
+            /** @description Permintaan berhasil. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleReassigned"];
+                };
+            };
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Akun tidak memiliki izin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Isian atau pilihan perlu diperbaiki. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Layanan mengalami gangguan. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     POST_tasks_id_move: {
         parameters: {
             query?: never;
@@ -6222,6 +6462,156 @@ export interface operations {
             };
             /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Isian atau pilihan perlu diperbaiki. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Layanan mengalami gangguan. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    GET_cycles_id_observations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Permintaan berhasil. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleObservations"];
+                };
+            };
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Akun tidak memiliki izin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Isian atau pilihan perlu diperbaiki. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Layanan mengalami gangguan. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    POST_cycles_id_observations: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Nilainya harus sama dengan origin aplikasi. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewObservation"];
+            };
+        };
+        responses: {
+            /** @description Permintaan berhasil. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleObservations"];
+                };
+            };
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Akun tidak memiliki izin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -8,7 +8,14 @@ export type AdmissionView = AdmissionRecord & {
 } & {
     [K in ClinicalFields]?: never;
 };
+export type MedicalRecordCycle = {
+    id: string;
+    patientId: string;
+    patientName: string;
+    medicalRecordNo: string;
+};
 export type MedicalListData = {
+    cycle?: MedicalRecordCycle;
     user: User;
     reference: Reference;
 } & ({

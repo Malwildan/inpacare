@@ -3547,7 +3547,7 @@
           "sourceKey": "FK → rekam_medis.id_rekam_medis",
           "sourceConstraints": "NOT NULL",
           "actualPersistenceOrProjection": "observations.record_id",
-          "targetTypeNullabilityAndVisibility": "observations.record_id varchar(36) NOT NULL; TypeScript string public; Source UML visibility private (UML class attributes). Source UML private attribute maps to a public TypeScript TypeORM property.",
+          "targetTypeNullabilityAndVisibility": "observations.record_id varchar(36) NULL; TypeScript string | null public; Source UML visibility private (UML class attributes). Source UML private attribute maps to a public TypeScript TypeORM property.",
           "actualMapping": {
             "target": "observations.record_id",
             "columns": [
@@ -3556,16 +3556,17 @@
                 "column": "record_id",
                 "ormProperty": "recordId",
                 "postgresType": "varchar(36)",
-                "nullable": false,
+                "nullable": true,
                 "primary": false,
-                "tsDeclaredType": "string",
+                "tsDeclaredType": "string | null",
                 "tsVisibility": "public"
               }
             ],
             "sourceVisibility": "private (UML class attributes)",
             "targetVisibility": "public",
             "deviations": [
-              "Source UML private attribute maps to a public TypeScript TypeORM property."
+              "Source UML private attribute maps to a public TypeScript TypeORM property.",
+              "The record foreign key is nullable for episode observations. Legacy record links are preserved."
             ],
             "verification": "compiled TypeORM metadata/type mapping; not individual behavior proof"
           },
@@ -9205,10 +9206,10 @@
         "childEntity": "KondisiPasien",
         "parentEntity": "RekamMedis",
         "cardinality": "many-to-one",
-        "nullable": false,
+        "nullable": true,
         "unique": false,
         "adapter": null,
-        "migrationEvidence": "baseline.sql and RebuildDelta migration",
+        "migrationEvidence": "baseline.sql and EpisodeObservations migration",
         "relationProperty": "recordIdRelation",
         "relationKind": "many-to-one"
       },

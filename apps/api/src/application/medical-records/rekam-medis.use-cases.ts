@@ -5,9 +5,12 @@ import { hasCompleteBloodPressure } from "../../domain/medical-records/vital-sig
 import { id } from "../shared/runtime";
 import { UnitOfWork } from "../shared/unit-of-work.port";
 import { PatientAccess, canReadPatient } from "../patients/patient-access";
-import { MedicalRecordStore } from "./medical-record-store.port";
+import { CycleStore } from "../cycles/cycle-store.port";
+import { TransactionContext } from "../shared/transaction-context";
+import { MedicalRecordStore, ObservationScope, RecordRow } from "./medical-record-store.port";
 export interface CreateMedicalRecordInput {
   patientId: string;
+  cycleId?: string;
   complaint: string;
   diagnosis: string;
   treatment: string;
@@ -15,7 +18,7 @@ export interface CreateMedicalRecordInput {
   recordDate: string;
 }
 export interface UpdateMedicalRecordInput
-  extends Omit<CreateMedicalRecordInput, "patientId"> {
+  extends Omit<CreateMedicalRecordInput, "patientId" | "cycleId"> {
   expectedVersion: number;
   reason: string;
 }
@@ -55,6 +58,7 @@ export class RekamMedisUseCases {
     private readonly store: MedicalRecordStore,
     private readonly uow: UnitOfWork,
     private readonly patients: PatientAccess,
+    private readonly cycles: CycleStore,
   ) {}
   async list(actor: Actor, search = "", limit = 50, patientId?: string) {
     if (patientId) await canReadPatient(this.patients, actor, patientId);
@@ -62,11 +66,64 @@ export class RekamMedisUseCases {
     return this.store.list(actor, { search: search.trim(), limit, patientId });
   }
   async detail(actor: Actor, recordId: string) {
-    if (actor.role !== "ADMISI") requireClinical(actor);
-    const record = await this.store.detail(actor, recordId);
+    return this.readRecord(this.store, this.patients, this.cycles, actor, recordId);
+  }
+  private async readRecord(
+    store: MedicalRecordStore,
+    patients: PatientAccess,
+    cycles: CycleStore,
+    actor: Actor,
+    recordId: string,
+  ) {
+    const record = await store.detail(actor, recordId);
     if (!record) throw DomainError.notFound();
-    await canReadPatient(this.patients, actor, String(record.patientId));
-    return record;
+    const patientId = String(record.patientId);
+    if (actor.role === "ADMISI") {
+      await canReadPatient(patients, actor, patientId);
+      return record;
+    }
+    requireClinical(actor);
+    if (typeof record.cycleId === "string") {
+      const observations = await store.listObservations(actor, { cycleId: record.cycleId, patientId });
+      const cycle = await cycles.detail(actor, record.cycleId);
+      if (!cycle || cycle.patientId !== patientId) throw DomainError.notFound();
+      return { ...record, observations, canRecordObservations: actor.role === "PERAWAT" && cycle.nurseId === actor.id };
+    }
+    await canReadPatient(patients, actor, patientId);
+    const observations = await store.listObservations(actor, { recordId, patientId, doctorId: String(record.doctorId) });
+    return { ...record, observations, canRecordObservations: false };
+  }
+  async cycleObservations(actor: Actor, cycleId: string) {
+    requireClinical(actor);
+    const cycle = await this.cycles.detail(actor, cycleId);
+    if (!cycle) throw DomainError.notFound();
+    const items = await this.store.listObservations(actor, { cycleId, patientId: String(cycle.patientId) });
+    // Recheck before disclosure so a transfer during the read cannot expose the new team's data.
+    if (!(await this.cycles.detail(actor, cycleId))) throw DomainError.notFound();
+    return { items };
+  }
+  async addCycleObservation(actor: Actor, cycleId: string, input: ObservationInput) {
+    if (actor.role !== "PERAWAT") throw DomainError.forbidden();
+    validateObservation(input);
+    return this.uow.run(async (tx) => {
+      const cycle = await tx.cycles.lockCycleForChange(cycleId, actor.id);
+      if (!cycle) throw DomainError.notFound();
+      const detail = await tx.cycles.detail(actor, cycleId);
+      if (!detail) throw DomainError.notFound();
+      const scope = { cycleId, patientId: String(detail.patientId) };
+      await this.saveObservation(tx.medicalRecords, actor, scope, input);
+      return { items: await tx.medicalRecords.listObservations(actor, scope) };
+    });
+  }
+  private async recordCycle(tx: TransactionContext, actor: Actor, input: CreateMedicalRecordInput) {
+    const cycleId = input.cycleId ?? await tx.medicalRecords.episodeForRecordDate(input.patientId, input.recordDate);
+    if (cycleId) {
+      await tx.cycles.lockCycle(cycleId);
+      const cycle = await tx.cycles.detail(actor, cycleId);
+      if (cycle?.patientId === input.patientId) return cycleId;
+    }
+    if (input.cycleId) throw DomainError.notFound();
+    return null;
   }
   async create(actor: Actor, input: CreateMedicalRecordInput) {
     if (actor.role !== "DOKTER") throw DomainError.forbidden();
@@ -78,10 +135,13 @@ export class RekamMedisUseCases {
       if (!value.trim()) throw DomainError.validation(`${label} wajib diisi.`);
     await canReadPatient(this.patients, actor, input.patientId);
     const recordId = id();
-    await this.uow.run(async (tx) => {
+    return this.uow.run(async (tx) => {
+      if (!(await tx.cycles.lockPatient(input.patientId))) throw DomainError.notFound();
+      const cycleId = await this.recordCycle(tx, actor, input);
       await tx.medicalRecords.createRecord({
         id: recordId,
         patientId: input.patientId,
+        cycleId,
         doctorId: actor.id,
         complaint: input.complaint.trim(),
         diagnosis: input.diagnosis.trim(),
@@ -95,10 +155,10 @@ export class RekamMedisUseCases {
         actorId: actor.id,
         action: "created",
         reason: "Rekam medis dibuat",
-        after: { patientId: input.patientId, recordDate: input.recordDate },
+        after: { patientId: input.patientId, recordDate: input.recordDate, cycleId },
       });
+      return this.readRecord(tx.medicalRecords, tx.patients, tx.cycles, actor, recordId);
     });
-    return this.detail(actor, recordId);
   }
   async update(
     actor: Actor,
@@ -146,10 +206,7 @@ export class RekamMedisUseCases {
         },
         after,
       });
-      const record = await tx.medicalRecords.detail(actor, recordId);
-      if (!record) throw DomainError.notFound();
-      await canReadPatient(tx.patients, actor, String(record.patientId));
-      return record;
+      return this.readRecord(tx.medicalRecords, tx.patients, tx.cycles, actor, recordId);
     });
   }
   async delete(
@@ -189,50 +246,59 @@ export class RekamMedisUseCases {
     if (actor.role !== "PERAWAT") throw DomainError.forbidden();
     validateObservation(input);
     return this.uow.run(async (tx) => {
-      const row = await tx.medicalRecords.lockRecordPatient(recordId);
-      if (!row) throw DomainError.notFound();
-      await canReadPatient(tx.patients, actor, row.patient_id);
-      const observationId = id();
-      await tx.medicalRecords.createObservation({
-        id: observationId,
-        recordId,
-        nurseId: actor.id,
-        symptoms: input.symptoms.trim(),
-        nursingNote: input.nursingNote?.trim() ?? "",
-        observedAt: input.observedAt,
-      });
-      if (
-        [
-          input.temperature,
-          input.systolic,
-          input.pulse,
-          input.respiratoryRate,
-          input.spo2,
-        ].some((v) => v !== undefined)
-      )
-        await tx.medicalRecords.createVitals({
-          id: id(),
-          observationId,
-          temperature: input.temperature ?? null,
-          systolic: input.systolic ?? null,
-          diastolic: input.diastolic ?? null,
-          pulse: input.pulse ?? null,
-          respiratoryRate: input.respiratoryRate ?? null,
-          spo2: input.spo2 ?? null,
-        });
-      await tx.medicalRecords.createRecordHistory({
-        id: id(),
-        entityId: observationId,
-        actorId: actor.id,
-        action: "created",
-        reason: "Observasi dicatat",
-        after: { recordId },
-        entityType: "observation",
-      });
-      const record = await tx.medicalRecords.detail(actor, recordId);
-      if (!record) throw DomainError.notFound();
-      await canReadPatient(tx.patients, actor, String(record.patientId));
-      return record;
+      const scope = await this.lockRecordObservationScope(tx, actor, recordId);
+      if (!("cycleId" in scope))
+        throw DomainError.conflict("Buka rekap rawat inap pasien untuk menambah observasi.");
+      await this.saveObservation(tx.medicalRecords, actor, scope, input, recordId);
+      return this.readRecord(tx.medicalRecords, tx.patients, tx.cycles, actor, recordId);
+    });
+  }
+  private async lockRecordObservationScope(tx: TransactionContext, actor: Actor, recordId: string): Promise<ObservationScope> {
+    const record: RecordRow | undefined = await tx.medicalRecords.lockRecord(recordId);
+    if (!record) throw DomainError.notFound();
+    if (record.cycle_id) {
+      if (!(await tx.cycles.lockCycleForChange(record.cycle_id, actor.id))) throw DomainError.notFound();
+      return { cycleId: record.cycle_id, patientId: record.patient_id };
+    }
+    await canReadPatient(tx.patients, actor, record.patient_id);
+    return { recordId, patientId: record.patient_id, doctorId: record.doctor_id };
+  }
+  private async saveObservation(
+    store: MedicalRecordStore,
+    actor: Actor,
+    scope: { cycleId: string; patientId: string },
+    input: ObservationInput,
+    recordId?: string,
+  ) {
+    const observationId = id();
+    const observation = {
+      ...scope,
+      id: observationId,
+      nurseId: actor.id,
+      symptoms: input.symptoms.trim(),
+      nursingNote: input.nursingNote?.trim() ?? "",
+      observedAt: input.observedAt,
+    };
+    await store.createObservation(observation);
+    const vitals = {
+      temperature: input.temperature ?? null,
+      systolic: input.systolic ?? null,
+      diastolic: input.diastolic ?? null,
+      pulse: input.pulse ?? null,
+      respiratoryRate: input.respiratoryRate ?? null,
+      spo2: input.spo2 ?? null,
+    };
+    if (Object.values(vitals).some((value) => value !== null)) {
+      await store.createVitals({ id: id(), observationId, ...vitals });
+    }
+    await store.createRecordHistory({
+      id: id(),
+      entityId: observationId,
+      actorId: actor.id,
+      action: "created",
+      reason: "Observasi dicatat",
+      after: { ...scope, recordId, observedAt: observation.observedAt },
+      entityType: "observation",
     });
   }
   async updateObservation(
@@ -246,12 +312,9 @@ export class RekamMedisUseCases {
       throw DomainError.validation("Isi Alasan koreksi sebelum menyimpan perubahan.");
     validateObservation(input);
     return this.uow.run(async (tx) => {
-      const current = await tx.medicalRecords.lockObservation(
-        recordId,
-        observationId,
-      );
-      if (!current) throw DomainError.notFound();
-      await canReadPatient(tx.patients, actor, current.patient_id);
+      const scope = await this.lockRecordObservationScope(tx, actor, recordId);
+      const current = await tx.medicalRecords.lockObservation(scope, observationId);
+      if (!current || current.nurse_id !== actor.id) throw DomainError.notFound();
       if (Number(current.version ?? 1) !== input.expectedVersion)
         throw DomainError.conflict();
       const vital = await tx.medicalRecords.lockVital(observationId);
@@ -314,10 +377,7 @@ export class RekamMedisUseCases {
         after,
         entityType: "observation",
       });
-      const record = await tx.medicalRecords.detail(actor, recordId);
-      if (!record) throw DomainError.notFound();
-      await canReadPatient(tx.patients, actor, String(record.patientId));
-      return record;
+      return this.readRecord(tx.medicalRecords, tx.patients, tx.cycles, actor, recordId);
     });
   }
 }

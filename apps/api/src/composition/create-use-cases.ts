@@ -40,6 +40,7 @@ export function createUseCases(database: DataSource) {
       stores.medicalRecords,
       unitOfWork,
       stores.patients,
+      stores.cycles,
     ),
     billing: new TagihanUseCases(stores.billing, unitOfWork),
     reference: new ReferenceUseCases(

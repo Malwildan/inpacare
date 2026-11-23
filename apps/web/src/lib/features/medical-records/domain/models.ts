@@ -13,22 +13,9 @@ export type ClinicalRecord = {
     version: number;
     createdAt: string;
     updatedAt: string;
-    observations: ({
-        id: string;
-        nurseId: string;
-        nurseName: string;
-        symptoms: string;
-        nursingNote: string;
-        observedAt: string;
-        version: number;
-        temperature: number | null;
-        systolic: number | null;
-        diastolic: number | null;
-        bloodPressure: string | null;
-        pulse: number | null;
-        respiratoryRate: number | null;
-        spo2: number | null;
-    })[];
+    cycleId: string | null;
+    canRecordObservations: boolean;
+    observations: Observation[];
 };
 export type MedicalSummary = {
     id: string;
@@ -57,6 +44,7 @@ export type Observation = {
     symptoms: string;
     nursingNote: string;
     observedAt: string;
+    createdAt: string;
     version: number;
     temperature: number | null;
     systolic: number | null;
@@ -68,6 +56,7 @@ export type Observation = {
 };
 export type NewMedicalRecord = {
     patientId: string;
+    cycleId?: string;
     complaint: string;
     diagnosis: string;
     treatment: string;

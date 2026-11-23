@@ -1,6 +1,7 @@
 export interface NotificationItem {
   id: string;
   cycleId: string | null;
+  requestId: string | null;
   message: string;
   readAt: Date | string | null;
   createdAt: Date | string;

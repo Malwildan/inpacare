@@ -3403,7 +3403,8 @@
         "x-controller-roles": [
           "DOKTER",
           "PERAWAT"
-        ]
+        ],
+        "description": "Koordinator perawat melihat seluruh rekap. Perawat melihat rekap yang menjadi tanggung jawabnya dan dokter melihat rekap dalam tanggung jawabnya."
       },
       "post": {
         "operationId": "POST_cycles",
@@ -5425,7 +5426,8 @@
         "x-controller-roles": [
           "DOKTER",
           "PERAWAT"
-        ]
+        ],
+        "description": "Koordinator perawat melihat seluruh rekap. Perawat melihat rekap yang menjadi tanggung jawabnya dan dokter melihat rekap dalam tanggung jawabnya."
       }
     },
     "/api/v1/cycles/{id}/requests/{requestId}": {
@@ -6257,6 +6259,180 @@
         ]
       }
     },
+    "/api/v1/cycles/assignment-candidates": {
+      "get": {
+        "operationId": "GET_cycles_assignment_candidates",
+        "summary": "Daftar perawat aktif yang dapat dipilih oleh koordinator",
+        "responses": {
+          "200": {
+            "description": "Permintaan berhasil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleAssignmentCandidates"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesi tidak tersedia atau sudah berakhir.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tidak memiliki izin atau pemeriksaan Origin atau CSRF gagal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Layanan mengalami gangguan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
+      }
+    },
+    "/api/v1/cycles/{id}/assignee": {
+      "patch": {
+        "operationId": "PATCH_cycles_id_assignee",
+        "summary": "Alihkan perawat penanggung jawab oleh koordinator",
+        "tags": [
+          "Cycles"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permintaan berhasil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleReassigned"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesi tidak tersedia atau sudah berakhir.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tidak memiliki izin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau tidak tersedia untuk akun ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian atau pilihan perlu diperbaiki.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Layanan mengalami gangguan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "PERAWAT"
+        ],
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReassignCycle"
+              }
+            }
+          }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ],
+        "description": "Perubahan dengan versi rekap terbaru mencatat alasan, pelaku, dan pengalihan perawat."
+      }
+    },
     "/api/v1/tasks/{id}/move": {
       "post": {
         "operationId": "POST_tasks_id_move",
@@ -6478,6 +6654,218 @@
         ],
         "description": "Hanya koordinator. Riwayat mencakup petugas, waktu, alasan, serta data sebelum dan sesudah perubahan, termasuk pembatalan.",
         "x-coordinator-only": true
+      }
+    },
+    "/api/v1/cycles/{id}/observations": {
+      "get": {
+        "operationId": "GET_cycles_id_observations",
+        "summary": "Baca observasi keperawatan pada rekap",
+        "tags": [
+          "Cycles"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permintaan berhasil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleObservations"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesi tidak tersedia atau sudah berakhir.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tidak memiliki izin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau tidak tersedia untuk akun ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian atau pilihan perlu diperbaiki.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Layanan mengalami gangguan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "DOKTER",
+          "PERAWAT"
+        ],
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-controller-roles": [
+          "DOKTER",
+          "PERAWAT"
+        ],
+        "description": "Dokter dan perawat membaca observasi dalam cakupan rekap yang diizinkan."
+      },
+      "post": {
+        "operationId": "POST_cycles_id_observations",
+        "summary": "Catat observasi keperawatan pada rekap",
+        "tags": [
+          "Cycles"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Permintaan berhasil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleObservations"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesi tidak tersedia atau sudah berakhir.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akun tidak memiliki izin.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau tidak tersedia untuk akun ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Isian atau pilihan perlu diperbaiki.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Layanan mengalami gangguan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-required-roles": [
+          "PERAWAT"
+        ],
+        "description": "Perawat yang ditugaskan mencatat observasi untuk episode ini, termasuk sebelum rekam medis tersedia. Sistolik dan diastolik harus diisi bersama.",
+        "security": [
+          {
+            "SessionCookie": [],
+            "CSRFToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewObservation"
+              }
+            }
+          }
+        },
+        "x-controller-roles": [
+          "PERAWAT"
+        ]
       }
     }
   },
@@ -7332,6 +7720,10 @@
               "number",
               "null"
             ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
@@ -7348,7 +7740,8 @@
           "bloodPressure",
           "pulse",
           "respiratoryRate",
-          "spo2"
+          "spo2",
+          "createdAt"
         ],
         "additionalProperties": false
       },
@@ -7408,6 +7801,16 @@
             "items": {
               "$ref": "#/components/schemas/Observation"
             }
+          },
+          "cycleId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36
+          },
+          "canRecordObservations": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -7425,7 +7828,9 @@
           "version",
           "createdAt",
           "updatedAt",
-          "observations"
+          "observations",
+          "cycleId",
+          "canRecordObservations"
         ],
         "additionalProperties": false
       },
@@ -7570,6 +7975,13 @@
           },
           "pendingApproval": {
             "type": "boolean"
+          },
+          "assignmentHistory": {
+            "type": "array",
+            "description": "Riwayat pengalihan tersedia bagi koordinator perawat.",
+            "items": {
+              "$ref": "#/components/schemas/CycleAssignmentEvent"
+            }
           }
         },
         "required": [
@@ -7861,6 +8273,14 @@
               "string",
               "null"
             ]
+          },
+          "requestId": {
+            "description": "Pengajuan yang dirujuk dalam rekap ini, jika tersedia.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36
           },
           "message": {
             "type": "string"
@@ -8263,6 +8683,12 @@
           "recordDate": {
             "type": "string",
             "format": "date"
+          },
+          "cycleId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36,
+            "description": "ID rekap rawat inap yang menangani pasien. Jika kosong, API hanya menautkan episode ketika tanggal cocok dengan satu episode yang dapat diakses."
           }
         },
         "required": [
@@ -8398,6 +8824,12 @@
             "type": "string",
             "format": "uuid",
             "description": "ID pengiriman dibuat oleh klien. Perawat dan ID yang sama akan menerima hasil awal. Perubahan isian dengan ID yang sama menghasilkan 409."
+          },
+          "nurseId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36,
+            "description": "Wajib untuk koordinator perawat. Perawat lain hanya dapat membuat rekap dengan dirinya sebagai penanggung jawab."
           }
         },
         "required": [
@@ -10334,6 +10766,154 @@
         "required": [
           "items",
           "total"
+        ],
+        "additionalProperties": false
+      },
+      "CycleObservations": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Observation"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "CycleAssignmentCandidates": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 36
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "CycleAssignmentEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36
+          },
+          "actorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36
+          },
+          "actorName": {
+            "type": "string"
+          },
+          "previousNurseId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36
+          },
+          "previousNurseName": {
+            "type": "string"
+          },
+          "newNurseId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36
+          },
+          "newNurseName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "actorId",
+          "actorName",
+          "previousNurseId",
+          "previousNurseName",
+          "newNurseId",
+          "newNurseName",
+          "reason",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "ReassignCycle": {
+        "type": "object",
+        "properties": {
+          "nurseId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "nurseId",
+          "expectedVersion",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "CycleReassigned": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36
+          },
+          "nurseId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "nurseId",
+          "version"
         ],
         "additionalProperties": false
       }

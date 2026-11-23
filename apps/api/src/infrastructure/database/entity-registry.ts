@@ -1,4 +1,6 @@
+import { EpisodeObservations1793577600062 } from "./migrations/1793577600062-EpisodeObservations";
 import { PlacementHistory1793577600006 } from "./migrations/1793577600006-PlacementHistory";
+import { NotificationRequestTargets1793577600066 } from "./migrations/1793577600066-NotificationRequestTargets";
 import { RiwayatPenempatan } from "./entities/placements/riwayat-penempatan.orm-entity";
 import { AuditMedis } from "./entities/medical-records/audit-medis.orm-entity";
 import { AuditSiklus } from "./entities/cycles/audit-siklus.orm-entity";
@@ -61,6 +63,8 @@ export const ALL_MIGRATIONS = [
   PatientRecordNumber1793577600004,
   CycleCreationRequests1793577600005,
   PlacementHistory1793577600006,
+  EpisodeObservations1793577600062,
+  NotificationRequestTargets1793577600066,
 ];
 
 export function createDataSource(): DataSource {

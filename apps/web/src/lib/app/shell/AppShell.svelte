@@ -5,7 +5,7 @@ import { goto } from '$app/navigation';
 import { Bell, Check, LogOut, Menu, RefreshCw, X } from 'lucide-svelte';
 import type { User, Auth } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
-import { NotificationDialog, type Notifications, type Notification } from '$lib/features/notifications';
+import { NotificationDialog, openNotification, type Notifications, type Notification } from '$lib/features/notifications';
 import { sessionFailure } from '$lib/shared/presentation/session';
 import { Button } from '$lib/shared/ui/button/index.js';
 import * as Breadcrumb from '$lib/shared/ui/breadcrumb/index.js';
@@ -26,6 +26,7 @@ let allNotificationsOpen = $state(false);
 let notifications = $state<Notification[]>([]);
 let notificationsFailure = $state('');
 let notificationsLoading = $state(false);
+let reading = $state<string | null>(null);
 let notificationButton = $state<HTMLButtonElement | null>(null);
 let menuButton = $state<HTMLButtonElement | null>(null);
 let navigationBrand = $state<HTMLAnchorElement | null>(null);
@@ -77,15 +78,16 @@ function closeNotifications() {
     notificationsOpen = false;
     notificationButton?.focus();
 }
-async function readNotification(id: string) {
+async function activateNotification(notice: Notification) {
+    if (reading) return;
+    reading = notice.id;
     try {
-        await notificationService.markRead(id);
-        notifications = notifications.map((notice) => notice.id === id ? { ...notice, readAt: new Date().toISOString() } : notice);
-        toast.success('Notifikasi ditandai sebagai sudah dibaca.');
+        const opened = await openNotification(notice, notificationService, readAt => {
+            notifications = notifications.map(item => item.id === notice.id ? { ...item, readAt } : item);
+        });
+        if (opened) notificationsOpen = false;
     }
-    catch (error) {
-        toast.error(sessionFailure(error, 'save', 'status baca notifikasi'));
-    }
+    finally { reading = null; }
 }
 const home = $derived(data.user.role === 'ADMISI' ? '/invoices' : '/dashboard');
 </script>
@@ -182,10 +184,10 @@ const home = $derived(data.user.role === 'ADMISI' ? '/invoices' : '/dashboard');
                             <p class="p-3 text-sm text-muted-foreground">Belum ada notifikasi.</p>
                         {:else}
                             {#each notifications as notice (notice.id)}
-                                <Button variant={notice.readAt ? 'ghost' : 'secondary'} class="h-auto min-h-11 w-full flex-col items-start gap-1 whitespace-normal p-3 text-left font-normal" onclick={() => readNotification(notice.id)}>
+                                <Button variant={notice.readAt ? 'ghost' : 'secondary'} class="h-auto min-h-11 w-full flex-col items-start gap-1 whitespace-normal p-3 text-left font-normal" aria-disabled={reading !== null} onclick={() => activateNotification(notice)}>
                                     <span class="inline-flex items-start gap-2">{#if notice.readAt}<Check aria-hidden="true" class="mt-0.5 size-4 shrink-0" />{:else}<Bell aria-hidden="true" class="mt-0.5 size-4 shrink-0" />{/if}<span>{notice.message}</span></span>
                                     <small class="text-xs text-muted-foreground">{new Date(notice.createdAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</small>
-                                    <span class="sr-only">{notice.readAt ? 'Sudah dibaca' : 'Belum dibaca'}</span>
+                                    <span class="sr-only">{notice.readAt ? 'Sudah dibaca' : 'Belum dibaca'}{notice.cycleId ? (notice.requestId ? ' · Buka permintaan' : ' · Buka rekap') : ''}</span>
                                 </Button>
                             {/each}
                         {/if}
@@ -199,4 +201,4 @@ const home = $derived(data.user.role === 'ADMISI' ? '/invoices' : '/dashboard');
     <main id="main-content" tabindex="-1" class="mx-auto min-w-0 max-w-[1600px] p-4 sm:p-6 lg:p-8">{@render children()}</main>
 </div>
 
-{#if allNotificationsOpen}<NotificationDialog service={notificationService} onclose={() => { allNotificationsOpen = false; notificationButton?.focus(); }} />{/if}
+{#if allNotificationsOpen}<NotificationDialog service={notificationService} onclose={() => { allNotificationsOpen = false; notificationButton?.focus(); }} onopened={() => allNotificationsOpen = false} />{/if}
