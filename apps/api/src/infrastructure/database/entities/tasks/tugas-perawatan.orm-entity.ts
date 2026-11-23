@@ -31,6 +31,10 @@ export class TugasPerawatan {
   endsAt!: Date;
   @Column({ name: "priority", type: "text" })
   priority!: string;
+  @Column({ name: "type", type: "text", default: "regular" })
+  type!: string;
+  @Column({ name: "cycle_id", type: "varchar", length: 36, nullable: true })
+  cycleId!: string | null;
   @Column({ name: "status", type: "text" })
   status!: string;
   @Column({ name: "board_position", type: "numeric", default: 0 })

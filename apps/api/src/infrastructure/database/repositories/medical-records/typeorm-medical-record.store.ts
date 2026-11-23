@@ -191,7 +191,7 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
     const episode = "cycleId" in scope;
     const rows = await this.manager.query(
       `SELECT jsonb_build_object(
-        'id',o.id,'nurseId',o.nurse_id,'nurseName',nu.name,'symptoms',o.symptoms,'nursingNote',o.nursing_note,
+        'id',o.id,'taskId',o.task_id,'nurseId',o.nurse_id,'nurseName',nu.name,'symptoms',o.symptoms,'nursingNote',o.nursing_note,
         'observedAt',o.observed_at,'createdAt',o.created_at,'version',o.version,'temperature',v.temperature,
         'systolic',v.systolic,'diastolic',v.diastolic,'bloodPressure',v.systolic::text||'/'||v.diastolic::text,
         'pulse',v.pulse,'respiratoryRate',v.respiratory_rate,'spo2',v.spo2) AS item
@@ -206,7 +206,16 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
     );
     return rows.map((row: { item: Record<string, unknown> }) => row.item);
   }
+  async completedTaskObservation(taskId: string, completionHash: string) {
+    const [row] = await this.manager.query(
+      "SELECT id FROM observations WHERE task_id=$1 AND task_completion_hash=$2",
+      [taskId, completionHash],
+    );
+    return row?.id as string | undefined;
+  }
   async createObservation(d: {
+    taskId?: string;
+    completionHash?: string;
     id: string;
     patientId: string;
     cycleId: string;
@@ -216,8 +225,8 @@ export class TypeOrmMedicalRecordStore implements MedicalRecordStore {
     observedAt: string;
   }) {
     await this.manager.query(
-      `INSERT INTO observations(id,patient_id,cycle_id,nurse_id,symptoms,nursing_note,observed_at) VALUES($1,$2,$3,$4,$5,$6,$7)`,
-      [d.id, d.patientId, d.cycleId, d.nurseId, d.symptoms, d.nursingNote, d.observedAt],
+      `INSERT INTO observations(id,patient_id,cycle_id,nurse_id,symptoms,nursing_note,observed_at,task_id,task_completion_hash) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [d.id, d.patientId, d.cycleId, d.nurseId, d.symptoms, d.nursingNote, d.observedAt, d.taskId ?? null, d.completionHash ?? null],
     );
   }
   async createVitals(d: {

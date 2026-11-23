@@ -1,6 +1,10 @@
-import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsIn, IsOptional, IsString, MaxLength, ValidateIf } from "class-validator";
 import { CreateTaskInput } from "../../../../application/tasks/tugas.types";
+import { taskTypes, TaskType } from "../../../../domain/tasks/tugas-perawatan";
 export class CreateTaskDto implements CreateTaskInput {
+  @ValidateIf((_, value) => value !== undefined)
+  @IsIn([...taskTypes], { message: "Pilih jenis tugas dari daftar." })
+  type?: TaskType;
   @IsString({ message: "Pilih pasien." })
   @MaxLength(36, { message: "Pilih pasien." })
   patientId!: string;

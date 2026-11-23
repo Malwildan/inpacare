@@ -737,6 +737,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/{id}/complete-measurement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Simpan hasil dan selesaikan tugas pengukuran
+         * @description Hanya penanggung jawab aktif pada tugas pengukuran yang sedang dikerjakan. Pasien dan rekap diambil dari tugas. Observasi, tanda vital, status selesai, dan riwayat disimpan bersama. Pengiriman ulang isian dan versi yang sama mengembalikan ID observasi yang sudah tersimpan.
+         */
+        post: operations["POST_tasks_id_complete_measurement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/placements/{id}/history": {
         parameters: {
             query?: never;
@@ -947,6 +967,10 @@ export interface components {
             version: number;
             createdById: string;
             createdByName: string;
+            /** @enum {string} */
+            type: "regular" | "measurement";
+            /** @description Rekap yang ditetapkan untuk tugas pengukuran. */
+            cycleId: string | null;
         };
         TaskHistory: {
             id: string;
@@ -1007,6 +1031,8 @@ export interface components {
             spo2: number | null;
             /** Format: date-time */
             createdAt: string;
+            /** @description Tugas pengukuran yang menghasilkan observasi ini, jika ada. */
+            taskId: string | null;
         };
         MedicalRecord: {
             id: string;
@@ -1208,6 +1234,11 @@ export interface components {
             startsAt: string;
             /** Format: date-time */
             endsAt: string;
+            /**
+             * @description Jika tidak diisi, jenisnya regular. Jenis measurement memerlukan rekap yang aktif pada penempatan.
+             * @enum {string}
+             */
+            type?: "regular" | "measurement";
         };
         UpdateTask: {
             expectedVersion: number;
@@ -1698,6 +1729,23 @@ export interface components {
             status: "todo" | "in_progress" | "done" | "cancelled";
             beforeTaskId: string | null;
             reason?: string;
+        };
+        CompleteMeasurement: {
+            symptoms: string;
+            nursingNote?: string;
+            /** Format: date-time */
+            observedAt: string;
+            temperature?: number;
+            systolic?: number;
+            diastolic?: number;
+            pulse?: number;
+            respiratoryRate?: number;
+            spo2?: number;
+            expectedVersion: number;
+        };
+        CompletedMeasurement: {
+            task: components["schemas"]["Task"];
+            observationId: string;
         };
         /** @description Identitas pasien baru. Server menentukan medicalRecordNo yang unik setelah pendaftaran berhasil. Klien tidak mengirim nilai tersebut. */
         NewPatient: {
@@ -6425,6 +6473,89 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description Sesi tidak tersedia atau sudah berakhir. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Akun tidak memiliki izin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Data tidak ditemukan atau tidak tersedia untuk akun ini. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Perubahan berbenturan dengan data atau aturan yang berlaku. Periksa rincian pesan. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Isian atau pilihan perlu diperbaiki. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Layanan mengalami gangguan. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    POST_tasks_id_complete_measurement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Nilainya harus sama dengan origin aplikasi. */
+                Origin: components["parameters"]["Origin"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteMeasurement"];
+            };
+        };
+        responses: {
+            /** @description Permintaan berhasil. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompletedMeasurement"];
                 };
             };
             /** @description Sesi tidak tersedia atau sudah berakhir. */

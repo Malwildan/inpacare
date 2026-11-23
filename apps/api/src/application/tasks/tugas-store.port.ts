@@ -1,5 +1,8 @@
 import { Actor } from "../../domain/auth/actor";
+import { TaskType } from "../../domain/tasks/tugas-perawatan";
 export interface TaskRecord {
+  type: TaskType;
+  cycleId: string | null;
   id: string;
   title: string;
   description: string;
@@ -20,6 +23,8 @@ export interface TaskRecord {
   version: number;
 }
 export interface LockedTask {
+  type: TaskType;
+  cycle_id: string | null;
   id: string;
   patient_id: string;
   room_id: string;
@@ -92,7 +97,10 @@ export interface TaskStore {
   >;
   lockRoom(roomId: string): Promise<void>;
   lockReleasedCycles(placementId: string): Promise<boolean>;
+  measurementCycle(patientId: string, placementId: string): Promise<string | undefined>;
   createTask(input: {
+    type: TaskType;
+    cycleId: string | null;
     id: string;
     patientId: string;
     roomId: string;

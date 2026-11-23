@@ -21,6 +21,7 @@ const expectedMigrations = [
   "CycleCreationRequests1793577600005",
   "PlacementHistory1793577600006",
   "EpisodeObservations1793577600062",
+  "TaskMeasurements1793577600063",
   "NotificationRequestTargets1793577600066",
 ];
 const BASELINE = path.join(

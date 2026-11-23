@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Actor } from "../../domain/auth/actor";
 import { isCoordinator } from "../../domain/auth/permissions";
 import { DomainError } from "../../domain/shared/domain-error";
@@ -10,10 +11,12 @@ import { placementIncludesTask } from "../../domain/placements/placement-period"
 import { id } from "../shared/runtime";
 import { UnitOfWork } from "../shared/unit-of-work.port";
 import { canReadPatient } from "../patients/patient-access";
+import { saveObservation, validateObservation } from "../medical-records/observation-writes";
 import { TaskStore } from "./tugas-store.port";
 import {
   TaskFilters,
   CreateTaskInput,
+  CompleteMeasurementInput,
   UpdateTaskInput,
   ReasonInput,
   ReassignTaskInput,
@@ -78,8 +81,16 @@ export class TugasUseCases {
           "Pasien sudah dilepas dari penempatan ini. Pilih penempatan aktif untuk membuat tugas baru.",
         );
       await tx.tasks.requireActivePic(d.picId);
+      const type = d.type ?? "regular";
+      const cycleId = type === "measurement"
+        ? await tx.tasks.measurementCycle(d.patientId, d.placementId)
+        : null;
+      if (type === "measurement" && !cycleId)
+        throw DomainError.validation("Pilih penempatan yang terhubung ke rekap rawat inap aktif untuk tugas pengukuran.");
       await tx.tasks.createTask({
         id: taskId,
+        type,
+        cycleId: cycleId ?? null,
         patientId: d.patientId,
         roomId: placement.roomId,
         placementId: d.placementId,
@@ -109,6 +120,8 @@ export class TugasUseCases {
         throw DomainError.notFound();
       if (t.version !== d.expectedVersion)
         throw DomainError.conflict();
+      if (t.type === "measurement" && d.status === "done")
+        throw DomainError.validation("Simpan hasil observasi untuk menyelesaikan tugas pengukuran.");
       if (placement.status !== "active")
         throw DomainError.validation("Penempatan pasien sudah tidak aktif. Periksa penempatan sebelum melanjutkan tugas.");
       await tx.tasks.requireActivePic(t.pic_id);
@@ -175,6 +188,8 @@ export class TugasUseCases {
       if (t.deleted_at || (!isCoordinator(actor) && t.pic_id !== actor.id)) throw DomainError.notFound();
       if (t.version !== d.expectedVersion) throw DomainError.conflict();
       if (d.status !== t.status) {
+        if (t.type === "measurement" && d.status === "done")
+          throw DomainError.validation("Simpan hasil observasi untuk menyelesaikan tugas pengukuran.");
         if (placement.status !== "active") throw DomainError.validation("Penempatan pasien sudah tidak aktif. Periksa penempatan sebelum melanjutkan tugas.");
         TugasPerawatan.validateStatus(t.status as TaskStatus, d.status, isCoordinator(actor));
         if (d.status === "cancelled" && !d.reason?.trim()) throw DomainError.validation("Hanya koordinator yang dapat membatalkan tugas. Isi Alasan pembatalan untuk melanjutkan.");
@@ -185,6 +200,53 @@ export class TugasUseCases {
       await tx.tasks.updateTask(taskId, { title: t.title, description: t.description, notes: t.notes, priority: t.priority, startsAt: new Date(t.starts_at), endsAt: new Date(t.ends_at), status: d.status });
       await tx.tasks.historyChange({ id: id(), taskId, actorId: actor.id, action: d.status === t.status ? "reordered" : "updated", reason: d.reason?.trim() || null, before: { status: t.status, version: t.version }, after: { status: d.status, version: t.version + 1, beforeTaskId: d.beforeTaskId } });
       return tx.tasks.detail(taskId, actor);
+    });
+  }
+  async completeMeasurement(actor: Actor, taskId: string, d: CompleteMeasurementInput) {
+    if (actor.role !== "PERAWAT") throw DomainError.forbidden();
+    return this.uow.run(async (tx) => {
+      await tx.tasks.lockBoard();
+      const { task, placement } = await tx.tasks.lockTask(taskId);
+      if (task.deleted_at || (!isCoordinator(actor) && task.pic_id !== actor.id))
+        throw DomainError.notFound();
+      if (task.pic_id !== actor.id) throw DomainError.forbidden();
+      if (task.type !== "measurement" || !task.cycle_id)
+        throw DomainError.validation("Tugas ini tidak memerlukan hasil observasi.");
+      await tx.tasks.requireActivePic(task.pic_id);
+      validateObservation(d);
+
+      // The task is the idempotency scope. Keep the original submission fingerprint
+      // so a retry still works if the observation is later corrected.
+      const completionHash = createHash("sha256").update(JSON.stringify([
+        d.expectedVersion, d.symptoms.trim(), d.nursingNote?.trim() ?? "",
+        d.observedAt, d.temperature, d.systolic, d.diastolic, d.pulse, d.respiratoryRate, d.spo2,
+      ])).digest("hex");
+      if (task.status === "done") {
+        const observationId = await tx.medicalRecords.completedTaskObservation(taskId, completionHash);
+        if (!observationId) throw DomainError.conflict();
+        return { task: await tx.tasks.detail(taskId, actor), observationId };
+      }
+      if (task.version !== d.expectedVersion) throw DomainError.conflict();
+      TugasPerawatan.validateStatus(task.status as TaskStatus, "done", false);
+      if (placement.status !== "active" ||
+          await tx.tasks.measurementCycle(task.patient_id, task.placement_id) !== task.cycle_id)
+        throw DomainError.conflict("Penempatan atau rekap rawat inap pada tugas pengukuran sudah tidak aktif.");
+
+      const observationId = await saveObservation(
+        tx.medicalRecords, actor, { patientId: task.patient_id, cycleId: task.cycle_id }, d,
+        { taskId, completionHash },
+      );
+      await tx.tasks.movePosition(taskId, actor, "done", null);
+      await tx.tasks.updateTask(taskId, {
+        title: task.title, description: task.description, notes: task.notes, priority: task.priority,
+        startsAt: new Date(task.starts_at), endsAt: new Date(task.ends_at), status: "done",
+      });
+      await tx.tasks.historyChange({
+        id: id(), taskId, actorId: actor.id, action: "updated", reason: null,
+        before: { status: task.status, version: task.version },
+        after: { status: "done", version: task.version + 1, observationId },
+      });
+      return { task: await tx.tasks.detail(taskId, actor), observationId };
     });
   }
   async remove(actor: Actor, taskId: string, d: ReasonInput) {

@@ -2,6 +2,8 @@ import { DomainError } from "../shared/domain-error";
 import { Actor } from "../auth/actor";
 import { isCoordinator } from "../auth/permissions";
 import { assertEditableFields } from "./tugas.policy";
+export const taskTypes = ["regular", "measurement"] as const;
+export type TaskType = typeof taskTypes[number];
 export type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
 export interface TaskState {
   title: string;

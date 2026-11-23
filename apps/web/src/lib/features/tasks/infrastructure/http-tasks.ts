@@ -13,6 +13,9 @@ export function createHttpTasks(http: HttpClient): TasksRepository {
         create: input => http.request<Schemas['Task']>('/tasks', { method: 'POST', body: JSON.stringify(input satisfies Schemas['NewTask']) }),
         update: (id, input) => http.request<Schemas['Task']>(path(id), { method: 'PATCH', body: JSON.stringify(input satisfies Schemas['UpdateTask']) }),
         move: (id, input) => http.request<Schemas['Task']>(`${path(id)}/move`, { method: 'POST', body: JSON.stringify(input satisfies Schemas['MoveTask']) }, value => typeof value.id === 'string' && Number.isInteger(value.version)),
+        completeMeasurement: (id, input) => http.request<Schemas['CompletedMeasurement']>(`${path(id)}/complete-measurement`, {
+            method: 'POST', body: JSON.stringify(input satisfies Schemas['CompleteMeasurement'])
+        }, value => typeof value.observationId === 'string' && value.task?.status === 'done'),
         reassign: (id, input) => http.request<Schemas['Task']>(`${path(id)}/reassign`, { method: 'POST', body: JSON.stringify(input satisfies Schemas['ReassignTask']) }),
         remove: (id, input) => http.request(path(id), { method: 'DELETE', body: JSON.stringify(input satisfies Schemas['ReasonBody']) })
     };

@@ -1,4 +1,4 @@
-import type { Task, TaskHistory, NewTask, UpdateTask, ReassignTask, DeleteTask, MoveTask } from '../domain/models';
+import type { Task, TaskHistory, NewTask, UpdateTask, ReassignTask, DeleteTask, MoveTask, CompleteMeasurement } from '../domain/models';
 import type { User } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
 import { ApiError } from '$lib/shared/errors';
@@ -23,6 +23,7 @@ export type TasksRepository = {
     create(input: NewTask): Promise<Task>;
     update(id: string, input: UpdateTask): Promise<Task>;
     move(id: string, input: MoveTask): Promise<Task>;
+    completeMeasurement(id: string, input: CompleteMeasurement): Promise<{ task: Task; observationId: string }>;
     reassign(id: string, input: ReassignTask): Promise<Task>;
     remove(id: string, input: DeleteTask): Promise<unknown>;
 };

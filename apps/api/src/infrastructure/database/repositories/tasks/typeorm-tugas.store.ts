@@ -1,5 +1,6 @@
 import { EntityManager } from "typeorm";
 import { Actor } from "../../../../domain/auth/actor";
+import { TaskType } from "../../../../domain/tasks/tugas-perawatan";
 import { DomainError } from "../../../../domain/shared/domain-error";
 import {
   TaskLock,
@@ -7,7 +8,7 @@ import {
   TaskStore,
 } from "../../../../application/tasks/tugas-store.port";
 const coordinator = (a: Actor) => a.role === "PERAWAT" && a.coordinator;
-const TASK_ROW = `SELECT t.id,t.title,t.description,t.notes,t.created_by AS "createdById",creator.name AS "createdByName",t.patient_id AS "patientId",p.name AS "patientName",p.medical_record_no AS "medicalRecordNo",t.room_id AS "roomId",r.name AS "roomName",t.pic_id AS "picId",u.name AS "picName",t.priority,t.status,t.starts_at AS "startsAt",t.ends_at AS "endsAt",t.version FROM tasks t JOIN patients p ON p.id=t.patient_id JOIN rooms r ON r.id=t.room_id JOIN users u ON u.id=t.pic_id JOIN users creator ON creator.id=t.created_by`;
+const TASK_ROW = `SELECT t.id,t.type,t.cycle_id AS "cycleId",t.title,t.description,t.notes,t.created_by AS "createdById",creator.name AS "createdByName",t.patient_id AS "patientId",p.name AS "patientName",p.medical_record_no AS "medicalRecordNo",t.room_id AS "roomId",r.name AS "roomName",t.pic_id AS "picId",u.name AS "picName",t.priority,t.status,t.starts_at AS "startsAt",t.ends_at AS "endsAt",t.version FROM tasks t JOIN patients p ON p.id=t.patient_id JOIN rooms r ON r.id=t.room_id JOIN users u ON u.id=t.pic_id JOIN users creator ON creator.id=t.created_by`;
 export class TypeOrmTaskStore implements TaskStore {
   constructor(private readonly manager: EntityManager) {}
   async lockBoard() {
@@ -167,7 +168,16 @@ export class TypeOrmTaskStore implements TaskStore {
     );
     return cycles.length > 0;
   }
+  async measurementCycle(patientId: string, placementId: string) {
+    const [row] = await this.manager.query(
+      "SELECT id FROM cycles WHERE patient_id=$1 AND placement_id=$2 AND status<>'released' AND deleted_at IS NULL FOR UPDATE",
+      [patientId, placementId],
+    );
+    return row?.id as string | undefined;
+  }
   async createTask(d: {
+    type: TaskType;
+    cycleId: string | null;
     id: string;
     patientId: string;
     roomId: string;
@@ -182,7 +192,7 @@ export class TypeOrmTaskStore implements TaskStore {
     priority: string;
   }) {
     await this.manager.query(
-      `INSERT INTO tasks(id,patient_id,room_id,placement_id,pic_id,created_by,title,description,notes,starts_at,ends_at,priority,board_position) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,(SELECT COALESCE(max(board_position)+1,1) FROM tasks WHERE status='todo' AND deleted_at IS NULL))`,
+      `INSERT INTO tasks(id,patient_id,room_id,placement_id,pic_id,created_by,title,description,notes,starts_at,ends_at,priority,type,cycle_id,board_position) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,(SELECT COALESCE(max(board_position)+1,1) FROM tasks WHERE status='todo' AND deleted_at IS NULL))`,
       [
         d.id,
         d.patientId,
@@ -196,6 +206,8 @@ export class TypeOrmTaskStore implements TaskStore {
         d.startsAt,
         d.endsAt,
         d.priority,
+        d.type,
+        d.cycleId,
       ],
     );
   }

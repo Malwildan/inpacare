@@ -9,14 +9,14 @@ Awalan API adalah `/api/v1`. Semua rute memerlukan sesi aktif. JSON menggunakan 
 Parameter opsional meliputi `search`, `status` (`todo | in_progress | done | cancelled`), `priority` (`low | normal | high`), `roomId`, `patientId`, `picId`, `from`, `to`, `limit`, `offset`, dan `order=board`. Urutan papan tersimpan untuk tiap status. Jika `order` tidak dikirim, API mengurutkan menurut jadwal lalu ID. Status `todo` tampil sebagai **Belum dikerjakan**. Koordinator melihat tugas di bangsal, sedangkan perawat melihat tugas yang ditetapkan untuk akunnya. Pencarian mencakup judul tugas, nama pasien, dan nomor rekam medis.
 
 ```json
-{"items":[{"id":"…","title":"Pemeriksaan tanda vital","description":"…","notes":"…","patientId":"…","patientName":"…","medicalRecordNo":"RM-…","roomId":"…","roomName":"Melati 02","picId":"…","picName":"Dina Putri","priority":"high","status":"todo","startsAt":"2026-10-29T03:00:00Z","endsAt":"2026-10-29T03:30:00Z","version":1}],"total":1}
+{"items":[{"id":"…","type":"measurement","cycleId":"…","title":"Pemeriksaan tanda vital","description":"…","notes":"…","patientId":"…","patientName":"…","medicalRecordNo":"RM-…","roomId":"…","roomName":"Melati 02","picId":"…","picName":"Dina Putri","priority":"high","status":"todo","startsAt":"2026-10-29T03:00:00Z","endsAt":"2026-10-29T03:30:00Z","version":1}],"total":1}
 ```
 
 `total` menghitung semua hasil sesuai akses dan filter. `counts` menghitung hasil per status. Gunakan `limit` (bawaan 50, maksimal 100) dan `offset` untuk memuat halaman berikutnya.
 
 ### `POST /tasks`
 
-Hanya koordinator. Kirim `{ patientId, placementId, picId, title, description?, notes?, priority, startsAt, endsAt }`. Gunakan RFC 3339 dengan zona waktu. `endsAt` harus sama dengan atau setelah `startsAt`. Pilih `low`, `normal`, atau `high`. Penempatan harus aktif, milik pasien tersebut, dan mencakup kedua tanggal setempat. Pilih perawat aktif sebagai penanggung jawab. Server mengambil `roomId` dari penempatan dan menyimpan tugas `todo` versi 1 bersama riwayatnya dalam satu transaksi. Respons berisi tugas baru.
+Hanya koordinator. Kirim `{ patientId, placementId, picId, title, type?, description?, notes?, priority, startsAt, endsAt }`. Gunakan RFC 3339 dengan zona waktu. `endsAt` harus sama dengan atau setelah `startsAt`. Pilih `low`, `normal`, atau `high`. Penempatan harus aktif, milik pasien tersebut, dan mencakup kedua tanggal setempat. Pilih perawat aktif sebagai penanggung jawab. Server mengambil `roomId` dari penempatan dan menyimpan tugas `todo` versi 1 bersama riwayatnya dalam satu transaksi. Respons berisi tugas baru. Jenis bawaan adalah `regular`. Gunakan `measurement` untuk tugas pengukuran. Server menyimpan `cycleId` dari rekap aktif yang terhubung ke penempatan tersebut.
 
 ### `GET /tasks/{id}`
 
@@ -24,11 +24,17 @@ Koordinator atau penanggung jawab saat ini menerima detail tugas. Setelah pengal
 
 ### `PATCH /tasks/{id}`
 
-Koordinator atau penanggung jawab saat ini mengirim `{ expectedVersion, status?, notes?, reason? }`. Sertakan kolom perubahan. API mengunci data, memeriksa versi, serta menyimpan tugas dan riwayat dalam satu transaksi. Penanggung jawab dapat mengubah `todo -> in_progress -> done`. Koordinator juga dapat membatalkan `todo` atau `in_progress` dengan `reason` yang tidak kosong. Tugas selesai atau dibatalkan tidak dapat dibuka kembali. Versi lama menghasilkan 409. Perubahan status yang ditolak atau alasan yang kosong menghasilkan 422. Respons berisi tugas terbaru.
+Koordinator atau penanggung jawab saat ini mengirim `{ expectedVersion, status?, notes?, reason? }`. Sertakan kolom perubahan. API mengunci data, memeriksa versi, serta menyimpan tugas dan riwayat dalam satu transaksi. Penanggung jawab dapat mengubah `todo -> in_progress`. Tugas `regular` dapat dilanjutkan ke `done` melalui rute ini. Koordinator juga dapat membatalkan `todo` atau `in_progress` dengan `reason` yang tidak kosong. Tugas selesai atau dibatalkan tidak dapat dibuka kembali. Versi lama menghasilkan 409. Perubahan status yang ditolak atau alasan yang kosong menghasilkan 422. Respons berisi tugas terbaru.
 
 ### `POST /tasks/{id}/move`
 
-Koordinator atau penanggung jawab saat ini mengirim `{ expectedVersion, status, beforeTaskId, reason? }`. Gunakan `null` pada `beforeTaskId` untuk menaruh tugas di akhir daftar tujuan. Tugas acuan harus terlihat bagi petugas dan berstatus sama dengan tujuan. Aturan perubahan status dan pembatalan tetap berlaku. API mendukung pengurutan dalam status yang sama, termasuk pada daftar selesai dan dibatalkan. Perpindahan menambah versi dan riwayat. Mengirim posisi yang sama tidak menambahnya. Perubahan status lewat PATCH lama menaruh tugas di akhir daftar tujuan. Terapkan migrasi `TaskBoardPosition1793577600003` sebelum versi API ini.
+Koordinator atau penanggung jawab saat ini mengirim `{ expectedVersion, status, beforeTaskId, reason? }`. Gunakan `null` pada `beforeTaskId` untuk menaruh tugas di akhir daftar tujuan. Tugas acuan harus terlihat bagi petugas dan berstatus sama dengan tujuan. Aturan perubahan status dan pembatalan tetap berlaku. Untuk menandai tugas pengukuran selesai, gunakan rute penyimpanan hasil pengukuran. API mendukung pengurutan dalam status yang sama, termasuk pada daftar selesai dan dibatalkan. Perpindahan menambah versi dan riwayat. Mengirim posisi yang sama tidak menambahnya. Perubahan status lewat PATCH lama menaruh tugas di akhir daftar tujuan. Terapkan migrasi `TaskBoardPosition1793577600003` sebelum versi API ini.
+
+### `POST /tasks/{id}/complete-measurement`
+
+Penanggung jawab aktif pada tugas pengukuran berstatus `in_progress` mengirim `expectedVersion` dan isian observasi seperti `symptoms`, `observedAt`, dan tanda vital. Server memakai pasien dan rekap yang tersimpan pada tugas, lalu memeriksa apakah rekap masih terhubung ke penempatan aktif tersebut. Observasi, tanda vital, status `done`, dan riwayat disimpan dalam satu transaksi.
+
+Respons berisi `{ task, observationId }`. Riwayat tugas memuat `observationId` dan observasi pada rekap memuat `taskId`. Mengirim ulang isian dan versi yang sama mengembalikan ID observasi yang sudah disimpan. Pengiriman berbeda untuk tugas yang sudah selesai menghasilkan 409.
 
 ### `POST /tasks/{id}/reassign`
 

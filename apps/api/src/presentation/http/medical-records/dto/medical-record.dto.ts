@@ -15,10 +15,10 @@ import {
 import type {
   CreateMedicalRecordInput,
   DeleteMedicalRecordInput,
-  ObservationInput,
   UpdateMedicalRecordInput,
   UpdateObservationInput,
 } from "../../../../application/medical-records/rekam-medis.use-cases";
+import type { ObservationInput } from "../../../../application/medical-records/observation-writes";
 import type { MedicalRecordListFilters } from "../../../../application/medical-records/medical-record-store.port";
 export class CreateMedicalRecordDto implements CreateMedicalRecordInput {
   @IsString({ message: "Pilih pasien." })

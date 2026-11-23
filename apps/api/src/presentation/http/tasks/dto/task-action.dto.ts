@@ -1,8 +1,15 @@
 import { IsInt, IsString, MaxLength, Min } from "class-validator";
 import {
+  CompleteMeasurementInput,
   ReasonInput,
   ReassignTaskInput,
 } from "../../../../application/tasks/tugas.types";
+import { CreateObservationDto } from "../../medical-records/dto/medical-record.dto";
+export class CompleteMeasurementDto extends CreateObservationDto implements CompleteMeasurementInput {
+  @IsInt()
+  @Min(1)
+  expectedVersion!: number;
+}
 export class ReasonDto implements ReasonInput {
   @IsInt()
   @Min(1)

@@ -1,4 +1,9 @@
+import type { NewObservation } from '$lib/features/medical-records';
+
+export type TaskType = 'regular' | 'measurement';
 export type Task = {
+    type: TaskType;
+    cycleId: string | null;
     id: string;
     title: string;
     description: string;
@@ -29,6 +34,7 @@ export type TaskHistory = {
     createdAt: string;
 };
 export type NewTask = {
+    type?: TaskType;
     patientId: string;
     placementId: string;
     picId: string;
@@ -39,6 +45,7 @@ export type NewTask = {
     startsAt: string;
     endsAt: string;
 };
+export type CompleteMeasurement = NewObservation & { expectedVersion: number };
 export type UpdateTask = {
     expectedVersion: number;
     title?: string;

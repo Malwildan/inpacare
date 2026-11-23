@@ -11,7 +11,7 @@ import {
 } from "@nestjs/common";
 import { Actor, CurrentActor, Roles } from "../security/auth-context";
 import { CreateTaskDto } from "./dto/create-task.dto";
-import { ReasonDto, ReassignTaskDto } from "./dto/task-action.dto";
+import { CompleteMeasurementDto, ReasonDto, ReassignTaskDto } from "./dto/task-action.dto";
 import { TaskFilterDto } from "./dto/task-filter.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
 import { MoveTaskDto } from "./dto/move-task.dto";
@@ -96,6 +96,12 @@ export class TugasController {
     d: ReassignTaskDto,
   ) {
     return this.tasks.reassign(a, id, d);
+  }
+  @Post(":id/complete-measurement")
+  @HttpCode(200)
+  @Roles("PERAWAT")
+  selesaikanPengukuran(@CurrentActor() a: Actor, @Param("id") id: string, @Body() d: CompleteMeasurementDto) {
+    return this.tasks.completeMeasurement(a, id, d);
   }
   @Post(":id/move")
   @HttpCode(200)
