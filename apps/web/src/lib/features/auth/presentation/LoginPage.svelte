@@ -5,7 +5,7 @@
 	import type { Auth, User } from '$lib/features/auth';
 	import { sessionFailure } from '$lib/shared/presentation/session';
 	import { Button } from '$lib/shared/ui/button/index.js';
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
+	import { Card, CardContent, CardHeader, CardTitle } from '$lib/shared/ui/card/index.js';
 	import { Field, FieldGroup, FieldLabel } from '$lib/shared/ui/field/index.js';
 	import { Input } from '$lib/shared/ui/input/index.js';
 	import { trimPastedWhitespace } from './trim-pasted-whitespace';
@@ -81,9 +81,6 @@
 				<CardTitle role="heading" aria-level={2} class="text-[27px] leading-tight tracking-[-0.025em] max-[700px]:text-[25px]">
 					Masuk ke InpaCare
 				</CardTitle>
-				<CardDescription class="text-[15px] leading-relaxed">
-					Masukkan ID petugas dan kata sandi akun InpaCare Anda.
-				</CardDescription>
 			</CardHeader>
 
 			<CardContent class="px-6 pb-6">
@@ -100,7 +97,6 @@
                                 bind:ref={usernameInput}
 								name="username"
 								autocomplete="username"
-								placeholder="Masukkan ID petugas"
 								bind:value={username}
 								oninput={trimPastedWhitespace}
 								required
@@ -118,7 +114,6 @@
 									name="password"
 									type={visible ? 'text' : 'password'}
 									autocomplete="current-password"
-									placeholder="Masukkan kata sandi"
 									bind:value={password}
 									oninput={trimPastedWhitespace}
 									required

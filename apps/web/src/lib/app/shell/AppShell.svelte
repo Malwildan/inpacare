@@ -2,7 +2,7 @@
 import { toast } from '$lib/shared/ui/sonner/index.js';
 import { page } from '$app/state';
 import { goto } from '$app/navigation';
-import { BedDouble, Bell, CalendarDays, Check, ClipboardList, FileHeart, LayoutDashboard, LogOut, Menu, ReceiptText, RefreshCw, Users, X } from 'lucide-svelte';
+import { Bell, Check, LogOut, Menu, RefreshCw, X } from 'lucide-svelte';
 import type { User, Auth } from '$lib/features/auth';
 import type { Reference } from '$lib/features/reference-data';
 import { NotificationDialog, type Notifications, type Notification } from '$lib/features/notifications';
@@ -31,13 +31,13 @@ let menuButton = $state<HTMLButtonElement | null>(null);
 let navigationBrand = $state<HTMLAnchorElement | null>(null);
 let loggingOut = $state(false);
 const navigation = [
-    { path: '/dashboard', label: 'Rekap rawat inap', icon: LayoutDashboard, roles: ['DOKTER', 'PERAWAT'] },
-    { path: '/patients', label: 'Data pasien', icon: Users, roles: ['ADMISI'] },
-    { path: '/rooms', label: 'Ruang rawat inap', icon: BedDouble, roles: ['PERAWAT', 'ADMISI'] },
-    { path: '/calendar', label: 'Kalender penempatan', icon: CalendarDays, roles: ['PERAWAT', 'DOKTER', 'ADMISI'] },
-    { path: '/medical-records', label: 'Rekam medis', icon: FileHeart, roles: ['DOKTER', 'PERAWAT', 'ADMISI'] },
-    { path: '/tasks', label: 'Tugas perawatan', icon: ClipboardList, roles: ['PERAWAT'] },
-    { path: '/invoices', label: 'Tagihan', icon: ReceiptText, roles: ['ADMISI'] }
+    { path: '/dashboard', label: 'Rekap rawat inap', roles: ['DOKTER', 'PERAWAT'] },
+    { path: '/patients', label: 'Data pasien', roles: ['ADMISI'] },
+    { path: '/rooms', label: 'Ruang rawat inap', roles: ['PERAWAT', 'ADMISI'] },
+    { path: '/calendar', label: 'Kalender penempatan', roles: ['PERAWAT', 'DOKTER', 'ADMISI'] },
+    { path: '/medical-records', label: 'Rekam medis', roles: ['DOKTER', 'PERAWAT', 'ADMISI'] },
+    { path: '/tasks', label: 'Tugas perawatan', roles: ['PERAWAT'] },
+    { path: '/invoices', label: 'Tagihan', roles: ['ADMISI'] }
 ];
 let current = $derived(navigation.find((item) => page.url.pathname.startsWith(item.path))?.label ?? 'Ringkasan pasien');
 let role = $derived(data.user.coordinator ? 'Koordinator perawat' : ({ DOKTER: 'Dokter', PERAWAT: 'Perawat', ADMISI: 'Admisi' }[data.user.role]));
@@ -102,7 +102,7 @@ const home = $derived(data.user.role === 'ADMISI' ? '/invoices' : '/dashboard');
                 <li>
                     <Button href={item.path} variant={active ? 'secondary' : 'ghost'} aria-current={active ? 'page' : undefined}
                         class={'h-11 w-full justify-start gap-3 px-3 font-medium no-underline hover:no-underline motion-reduce:transition-none ' + (active ? 'text-primary' : 'text-sidebar-foreground')} onclick={() => mobileOpen = false}>
-                        <item.icon size={18} strokeWidth={1.7} aria-hidden="true" />{item.label}
+                        {item.label}
                     </Button>
                 </li>
             {/each}
