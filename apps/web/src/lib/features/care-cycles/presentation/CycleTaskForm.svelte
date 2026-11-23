@@ -63,6 +63,7 @@ async function createTask(event: SubmitEvent) {
     try {
         await tasks.create({
             cycleContext: { cycleId: cycle.id, placementVersion: placement.version },
+            type: formText(fields, 'type') === 'measurement' ? 'measurement' : 'regular',
             patientId: cycle.patientId,
             placementId: placement.id,
             picId: formText(fields, 'picId'),
@@ -112,6 +113,17 @@ async function createTask(event: SubmitEvent) {
         <label for={id + '-title'}>Judul tugas (wajib)</label>
         <Input id={id + '-title'} name="title" class="h-11 text-base" required maxlength={150} />
     </div>
+    <fieldset class="grid gap-1">
+        <legend class="mb-1">Jenis tugas</legend>
+        <div class="flex flex-wrap gap-x-4">
+            <label class="flex min-h-11 items-center gap-2">
+                <input type="radio" name="type" value="regular" checked /> Perawatan umum
+            </label>
+            <label class="flex min-h-11 items-center gap-2">
+                <input type="radio" name="type" value="measurement" /> Pengukuran
+            </label>
+        </div>
+    </fieldset>
     <div class="grid gap-1.5">
         <label for={id + '-pic'}>Perawat penanggung jawab (wajib)</label>
         <select id={id + '-pic'} name="picId" required bind:value={picId} aria-describedby={id + '-pic-help'}

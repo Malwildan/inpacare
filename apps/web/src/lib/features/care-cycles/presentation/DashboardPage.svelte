@@ -604,7 +604,7 @@ async function deleteCycle(cycle: CycleDetail) {
         </div>
     {/if}
  {:else if selectedCycle}
- <p class="mb-5 font-medium">{selectedCycle.patientName} · {selectedCycle.medicalRecordNo}</p>
+ {#if cycleView !== 'task'}<p class="mb-5 font-medium">{selectedCycle.patientName} · {selectedCycle.medicalRecordNo}</p>{/if}
  {#if cycleView === 'observations'}
     {#key selectedCycle.id}
         <CycleObservations cycleId={selectedCycle.id} {careCycles} canRecord={canManage} bind:busy bind:editing={observationEditing} onCancel={close} />

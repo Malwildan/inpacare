@@ -85,6 +85,7 @@ test('coordinator creates a task from cycle detail and keeps the draft after a p
         const startsAt = dialog.getByLabel('Waktu mulai (WIB, wajib)', { exact: true });
         const endsAt = dialog.getByLabel('Waktu selesai (WIB, wajib)', { exact: true });
         await titleField.fill(title);
+        await dialog.getByRole('radio', { name: 'Pengukuran' }).check();
         await selectDate(startsAt, `${startsOn}T08:00`);
         await selectDate(endsAt, `${startsOn}T09:00`);
         await dialog.getByLabel('Deskripsi', { exact: true }).fill('Periksa kenyamanan pasien.');
@@ -102,6 +103,7 @@ test('coordinator creates a task from cycle detail and keeps the draft after a p
         await expect(dialog.getByRole('alert')).toContainText('Penempatan atau rekap sudah berubah');
         await expect(submit).toBeDisabled();
         await expect(titleField).toHaveValue(title);
+        await expect(dialog.getByRole('radio', { name: 'Pengukuran' })).toBeChecked();
         await expect(pic).toHaveValue('USR-NURSE-2');
         await dialog.getByRole('button', { name: 'Muat konteks terbaru' }).click();
         await expect(dialog.getByText(rooms[1].name, { exact: false })).toBeVisible();
@@ -116,7 +118,7 @@ test('coordinator creates a task from cycle detail and keeps the draft after a p
         expect(created.status(), await created.text()).toBe(200);
         const task = await created.json();
         expect(task).toMatchObject({
-            cycleId: cycle.id, roomId: rooms[1].id, picId: 'USR-NURSE-2', title, status: 'todo',
+            cycleId: cycle.id, roomId: rooms[1].id, picId: 'USR-NURSE-2', title, type: 'measurement', status: 'todo',
             startsAt: `${startsOn}T01:00:00.000Z`, endsAt: `${startsOn}T02:00:00.000Z`,
         });
         await expect(dialog.getByRole('link', { name: title, exact: true })).toBeVisible();

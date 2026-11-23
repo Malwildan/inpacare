@@ -156,7 +156,7 @@ class CycleRequestReview(unittest.TestCase):
         open_review = self.call(self.hendra, "GET", f"{endpoint}/review", 200)
         self.assertEqual(open_review["reviewDate"], self.day())
         self.assertEqual(open_review["blockingTasks"], [])
-        task = self.call(self.rina, "POST", "/tasks", 201, {
+        task = self.call(self.rina, "POST", "/tasks", 200, {
             "patientId": patient["id"], "placementId": open_review["placement"]["id"], "picId": self.dina.user["id"],
             "title": "Tugas ditambahkan setelah tinjauan", "priority": "normal",
             "startsAt": self.instant(1), "endsAt": self.instant(2),

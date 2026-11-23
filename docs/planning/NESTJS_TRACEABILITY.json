@@ -6092,7 +6092,7 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/tasks/+page.server.ts#load",
-              "apps/web/src/lib/features/care-cycles/presentation/CycleTasks.svelte#$effect",
+              "apps/web/src/lib/features/care-cycles/presentation/CycleTasks.svelte#loadTasks",
               "apps/web/src/lib/features/tasks/presentation/TasksPage.svelte#filterTasks,reloadHistory,open,submit,createTask,changeStatus,addNote,reassign,removeTask,updateTask"
             ],
             "handlers": [

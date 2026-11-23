@@ -180,7 +180,9 @@ export class CyclesUseCases {
       if (request.status === "pending") {
         if (request.kind === "release") {
           const readiness = await checkRelease(cycles, status, placementId, reviewDate);
-          blockingTasks = readiness.tasks.map(({ picId: _picId, ...task }) => task);
+          blockingTasks = readiness.tasks.map(({ id, title, status, picName, startsAt, endsAt }) => ({
+            id, title, status, picName, startsAt, endsAt,
+          }));
           if (readiness.prerequisite)
             approvalBlocker = releasePrerequisites[readiness.prerequisite]().message;
           else if (blockingTasks.length)
@@ -474,7 +476,11 @@ export class CyclesUseCases {
         roomId = (await tx.cycles.roomForPlacement(seed.placement_id)) ?? null;
         if (roomId) await tx.cycles.lockRoom(roomId);
       }
-      if (seed.placement_id) await tx.cycles.lockPlacement(seed.placement_id);
+      if (seed.placement_id) {
+        await tx.cycles.lockPlacement(seed.placement_id);
+        if (((await tx.cycles.roomForPlacement(seed.placement_id)) ?? null) !== roomId)
+          throw DomainError.conflict();
+      }
       const cycle = await tx.cycles.lockCycle(cycleId);
       if (!cycle || cycle.doctor_id !== actor.id) throw DomainError.notFound();
       const req = await tx.cycles.lockRequest(cycleId, requestId);

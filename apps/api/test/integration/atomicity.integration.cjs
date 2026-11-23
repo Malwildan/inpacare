@@ -538,7 +538,7 @@ test("task edits recheck active PIC and placement, and creation history retains 
 test("contextual task creation validates the active assignee and current placement before writing", { skip: !enabled }, async () => {
   const f = await scenario("release");
   const assigneeId = newId();
-  await ds.query("INSERT INTO users(id,username,name,role,password_hash) VALUES($1,$1,'Inactive Assignee','PERAWAT','test-only')", [assigneeId]);
+  await ds.query("INSERT INTO users(id,username,name,role,password_hash) VALUES($1,$2,'Inactive Assignee','PERAWAT','test-only')", [assigneeId, `inactive-${assigneeId}`]);
   await ds.query("INSERT INTO nurses(id,user_id,active,name) VALUES($1,$2,false,'Inactive Assignee')", [newId(), assigneeId]);
   await ds.query("UPDATE cycles SET nurse_id=$2 WHERE id=$1", [f.cycleId, assigneeId]);
   const latest = await useCases.cycles.detail(nurse, f.cycleId);

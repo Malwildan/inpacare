@@ -15,10 +15,8 @@ const schedule = new Intl.DateTimeFormat('id-ID', {
     dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta',
 });
 
-$effect(() => {
+function loadTasks(query: { cycleId: string; limit: number; offset: number }) {
     let current = true;
-    const query = { cycleId, limit, offset };
-    revision;
     loading = true;
     failure = '';
     tasks.list(query).then(
@@ -26,6 +24,11 @@ $effect(() => {
         cause => { if (current) failure = sessionFailure(cause, 'load', 'Daftar tugas rekap'); },
     ).finally(() => { if (current) loading = false; });
     return () => { current = false; };
+}
+
+$effect(() => {
+    revision;
+    return loadTasks({ cycleId, limit, offset });
 });
 </script>
 
@@ -33,7 +36,7 @@ $effect(() => {
     <p class="text-sm text-destructive" role="alert">{failure}</p>
     <Button variant="outline" type="button" onclick={() => revision++}>Muat ulang tugas</Button>
 {:else if loading}
-    <p class="text-sm text-muted-foreground" role="status">Memuat tugas rekap…</p>
+    <p class="text-sm text-muted-foreground" aria-live="polite">Memuat tugas rekap…</p>
 {:else if result?.items.length}
     <ul class="divide-y">
         {#each result.items as task (task.id)}
