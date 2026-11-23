@@ -4,6 +4,7 @@ import { Pasien } from "../patients/pasien.orm-entity";
 import { RuangInap } from "../rooms/ruang-inap.orm-entity";
 import { PenempatanPasien } from "../placements/penempatan-pasien.orm-entity";
 import { Pengguna } from "../auth/pengguna.orm-entity";
+import { RekapPasien } from "../cycles/rekap-pasien.orm-entity";
 
 @Entity({ name: "tasks" })
 export class TugasPerawatan {
@@ -15,6 +16,11 @@ export class TugasPerawatan {
   roomId!: string;
   @Column({ name: "placement_id", type: "varchar", length: 36 })
   placementId!: string;
+  @Column({ name: "cycle_id", type: "varchar", length: 36, nullable: true })
+  cycleId!: string | null;
+  @ManyToOne(() => RekapPasien, { nullable: true, onDelete: "RESTRICT" })
+  @JoinColumn({ name: "cycle_id", referencedColumnName: "id" })
+  cycle?: RekapPasien | null;
   @Column({ name: "pic_id", type: "varchar", length: 36 })
   picId!: string;
   @Column({ name: "created_by", type: "varchar", length: 36 })
@@ -33,8 +39,6 @@ export class TugasPerawatan {
   priority!: string;
   @Column({ name: "type", type: "text", default: "regular" })
   type!: string;
-  @Column({ name: "cycle_id", type: "varchar", length: 36, nullable: true })
-  cycleId!: string | null;
   @Column({ name: "status", type: "text" })
   status!: string;
   @Column({ name: "board_position", type: "numeric", default: 0 })

@@ -535,6 +535,56 @@ test("task edits recheck active PIC and placement, and creation history retains 
   assert.equal((await useCases.tasks.history(nurse, task.id)).total, 1);
 });
 
+test("contextual task creation validates the active assignee and current placement before writing", { skip: !enabled }, async () => {
+  const f = await scenario("release");
+  const assigneeId = newId();
+  await ds.query("INSERT INTO users(id,username,name,role,password_hash) VALUES($1,$1,'Inactive Assignee','PERAWAT','test-only')", [assigneeId]);
+  await ds.query("INSERT INTO nurses(id,user_id,active,name) VALUES($1,$2,false,'Inactive Assignee')", [newId(), assigneeId]);
+  await ds.query("UPDATE cycles SET nurse_id=$2 WHERE id=$1", [f.cycleId, assigneeId]);
+  const latest = await useCases.cycles.detail(nurse, f.cycleId);
+  assert.equal(latest.nurseId, assigneeId);
+  assert.equal(latest.taskPlacement.id, f.placementId);
+  const candidates = await useCases.cycles.assignmentCandidates(nurse);
+  assert.ok(!candidates.items.some(candidate => candidate.id === assigneeId));
+  const input = {
+    cycleContext: { cycleId: f.cycleId, placementVersion: latest.taskPlacement.version },
+    patientId: f.patientId, placementId: f.placementId, picId: assigneeId,
+    title: "Contextual task", priority: "normal",
+    startsAt: `${day()}T08:00:00+07:00`, endsAt: `${day()}T09:00:00+07:00`,
+  };
+  await assert.rejects(useCases.tasks.create(nurse, input), validationError(/Penanggung jawab harus perawat aktif/));
+  const replacement = { ...input, picId: nurse.id };
+  await assert.rejects(
+    useCases.tasks.create(nurse, { ...replacement, endsAt: `${day(12)}T09:00:00+07:00` }),
+    validationError(/mencakup seluruh waktu tugas/),
+  );
+  const other = await scenario("release");
+  await assert.rejects(
+    useCases.tasks.create(nurse, { ...replacement, patientId: other.patientId, placementId: other.placementId }),
+    error => error.code === "NOT_FOUND",
+  );
+  await ds.query("UPDATE users SET coordinator=false WHERE id=$1", [nurse.id]);
+  try {
+    await assert.rejects(useCases.tasks.create(nurse, replacement), error => error.code === "FORBIDDEN");
+  } finally {
+    await ds.query("UPDATE users SET coordinator=true WHERE id=$1", [nurse.id]);
+  }
+  await ds.query("UPDATE cycles SET placement_id=NULL,status='pending' WHERE id=$1", [f.cycleId]);
+  await assert.rejects(useCases.tasks.create(nurse, replacement), error => error.code === "CONFLICT");
+  assert.equal((await useCases.cycles.detail(nurse, f.cycleId)).taskPlacement, null);
+  assert.deepEqual((await useCases.tasks.list(nurse, { patientId: f.patientId })).items, []);
+  await ds.query("UPDATE cycles SET placement_id=$2,status='assigned' WHERE id=$1", [f.cycleId, f.placementId]);
+  const created = await useCases.tasks.create(nurse, replacement);
+  assert.equal(created.cycleId, f.cycleId);
+  assert.equal(created.picId, nurse.id);
+  assert.equal((await useCases.tasks.history(nurse, created.id)).items[0].after.cycle_id, f.cycleId);
+  assert.deepEqual((await useCases.tasks.list(nurse, { cycleId: other.cycleId })).items, []);
+  const linked = await useCases.tasks.list(nurse, { cycleId: f.cycleId, status: "todo" });
+  assert.deepEqual(linked.items.map(task => task.id), [created.id]);
+  assert.equal(linked.total, 1);
+  assert.equal(linked.counts.todo, 1);
+});
+
 test("clinical correction requires a meaningful reason and preserves the submitted audit explanation", { skip: !enabled }, async () => {
   const f = await scenario("release");
   const service = useCases.medicalRecords;

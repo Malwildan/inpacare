@@ -12,20 +12,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$
 import { goto, invalidateAll } from '$app/navigation';
 import { tick, untrack } from 'svelte';
 import { ApiError, isVersionConflict } from '$lib/shared/errors';
-import type { CareCycles, DashboardData, Cycle as CycleDetail, ChangeCycle, NewCycle, NewRequest, Decision } from '$lib/features/care-cycles';
+import type { CareCycles, CycleAssignee, DashboardData, Cycle as CycleDetail, ChangeCycle, NewCycle, NewRequest, Decision } from '$lib/features/care-cycles';
+import type { Tasks } from '$lib/features/tasks';
 import { isUnconfirmedSave, sessionFailure } from '$lib/shared/presentation/session';
 import { formText } from '$lib/shared/presentation/form';
 import { NotificationDialog, type Notifications } from '$lib/features/notifications';
 import CycleObservations from './CycleObservations.svelte';
+import CycleTaskForm from './CycleTaskForm.svelte';
+import CycleTasks from './CycleTasks.svelte';
 import Modal from '$lib/shared/ui/dialog-frame.svelte';
 const statusLabels: Record<string, string> = { pending: 'Menunggu', assigned: 'Sudah ditempatkan', in_care: 'Dalam perawatan', extend: 'Diperpanjang', released: 'Pelepasan' };
 const requestLabels: Record<string, string> = { pending: 'Menunggu keputusan', approved: 'Disetujui', rejected: 'Ditolak' };
 const assignmentTime = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' });
 import Badge from '$lib/shared/ui/status-badge.svelte';
-let { data, careCycles, notificationService }: {
+let { data, careCycles, notificationService, tasks }: {
     data: DashboardData;
     careCycles: CareCycles;
     notificationService: Notifications;
+    tasks: Tasks;
 } = $props();
 let search = $state('');
 let roomFilter = $state('');
@@ -98,7 +102,8 @@ const taskHref = (id: string, cycle: string) => `/tasks?${new URLSearchParams({ 
 const placementHref = (cycle: string, from: string | null) =>
     `/calendar?${new URLSearchParams({ cycle, ...(from ? { from } : {}) })}`;
 let detailLoading = $state(false);
-let cycleView = $state<'detail' | 'placement' | 'request' | 'decision' | 'delete' | 'assignee' | 'observations'>('detail');
+let cycleView = $state<'detail' | 'placement' | 'request' | 'decision' | 'delete' | 'assignee' | 'observations' | 'task'>('detail');
+let taskCandidates = $state<CycleAssignee[]>([]);
 let observationEditing = $state(false);
 let decisionRequestId = $state('');
 let requestKind = $state('release');
@@ -130,6 +135,29 @@ async function openDetail(id: string) {
     finally {
         if (selectedCycleId === id)
             detailLoading = false;
+    }
+}
+async function refreshTaskContext(cycleId: string) {
+    const [cycle, candidates] = await Promise.all([
+        careCycles.detail(cycleId),
+        careCycles.assignmentCandidates(),
+    ]);
+    selectedCycle = cycle;
+    detailPlacementId = cycle.placementId ?? '';
+    taskCandidates = candidates;
+}
+async function openTaskForm() {
+    if (busy || detailNeedsRefresh) return;
+    busy = true;
+    detailError = '';
+    detailSuccess = '';
+    try {
+        taskCandidates = await careCycles.assignmentCandidates();
+        cycleView = 'task';
+    } catch (cause) {
+        detailError = sessionFailure(cause, 'load', 'Daftar perawat aktif');
+    } finally {
+        busy = false;
     }
 }
 function openFilters() {
@@ -406,7 +434,7 @@ async function deleteCycle(cycle: CycleDetail) {
 </Card>
 
 {#if selectedCycleId}
-<Modal {busy} title={cycleView === 'detail' ? 'Detail rekap rawat inap' : cycleView === 'observations' ? 'Observasi keperawatan' : cycleView === 'placement' ? 'Ubah penempatan' : cycleView === 'request' ? 'Ajukan perpanjangan atau pelepasan' : cycleView === 'decision' ? 'Keputusan dokter' : cycleView === 'assignee' ? 'Alihkan penanggung jawab' : 'Hapus rekap berstatus Menunggu?'}
+<Modal {busy} title={cycleView === 'detail' ? 'Detail rekap rawat inap' : cycleView === 'observations' ? 'Observasi keperawatan' : cycleView === 'placement' ? 'Ubah penempatan' : cycleView === 'request' ? 'Ajukan perpanjangan atau pelepasan' : cycleView === 'decision' ? 'Keputusan dokter' : cycleView === 'assignee' ? 'Alihkan penanggung jawab' : cycleView === 'task' ? 'Buat tugas perawatan' : 'Hapus rekap berstatus Menunggu?'}
  description="Informasi perawatan, penanggung jawab, dan permintaan perubahan pasien."
  protectChanges={cycleView === 'observations' ? observationEditing : cycleView !== 'detail' && cycleView !== 'delete'}
  formKey={observationEditing ? 'observation-form' : cycleView}
@@ -444,6 +472,19 @@ async function deleteCycle(cycle: CycleDetail) {
 					<Button variant="outline" href={`/medical-records?cycleId=${encodeURIComponent(selectedCycle.id)}`}><Plus aria-hidden="true" /> Tambah rekam medis</Button>
 				{/if}
 			</div>
+            {#if canAssign}
+                <section class="detail-section" aria-labelledby="cycle-task-heading">
+                    <h3 id="cycle-task-heading">Tugas perawatan</h3>
+                    {#if selectedCycle.status !== 'released'}
+                        {#if selectedCycle.taskPlacement}
+                            <Button variant="outline" class="mb-3 h-11" disabled={busy || detailNeedsRefresh} onclick={openTaskForm}><Plus aria-hidden="true" /> Buat tugas</Button>
+                        {:else}
+                            <p class="mb-3 text-sm text-muted-foreground">Kaitkan penempatan aktif ke rekap sebelum membuat tugas.</p>
+                        {/if}
+                    {/if}
+                    <CycleTasks cycleId={selectedCycle.id} {tasks} />
+                </section>
+            {/if}
             {#if canAssign}
                 {@const history = selectedCycle.assignmentHistory ?? []}
                 <section class="detail-section">
@@ -522,6 +563,10 @@ async function deleteCycle(cycle: CycleDetail) {
     {#key selectedCycle.id}
         <CycleObservations cycleId={selectedCycle.id} {careCycles} canRecord={canManage} bind:busy bind:editing={observationEditing} onCancel={close} />
     {/key}
+ {:else if cycleView === 'task' && canAssign}
+        <CycleTaskForm cycle={selectedCycle} candidates={taskCandidates} {tasks} bind:busy onCancel={close}
+            onRefresh={() => refreshTaskContext(selectedCycle!.id)}
+            onCreated={() => { cycleView = 'detail'; detailSuccess = 'Tugas berhasil dibuat.'; }} />
  {:else if cycleView === 'placement'}<form onsubmit={(event)=>assignPlacement(event,selectedCycle!)}><label class="field">Penempatan<FormSelect name="placementId" bind:value={detailPlacementId} disabled={busy || detailNeedsRefresh} options={[{ value: "", label: "Belum ditempatkan" }, ...(data.reference.placements.filter((p)=>p.status==='active'&&p.patientId===selectedCycle!.patientId)).map((placement) => ({ value: placement.id, label: (placement.roomName) + " · " + date(placement.startsOn) + "–" + date(placement.endsOn) }))]} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" disabled={busy || detailNeedsRefresh}><Save aria-hidden="true" /> Simpan penempatan</Button></div></form>
  {:else if cycleView === 'request'}{#if requestKind === 'release' && releaseBlocked}<p class="approval-note">Pelepasan belum dapat diajukan. Kembali ke detail untuk memeriksa kesiapan.</p>{/if}{#if pendingRequest}<p class="approval-note" id="cycle-request-blocked">Pengajuan sebelumnya masih menunggu keputusan dokter. Pengajuan baru belum dapat dikirim.</p>{/if}<form onsubmit={(event) => request(event, selectedCycle!)}><fieldset class="request-fields" disabled={busy || detailNeedsRefresh || !!pendingRequest} aria-describedby={pendingRequest ? 'cycle-request-blocked' : undefined}><legend class="request-legend">Pengajuan perubahan perawatan</legend><div class="form-grid"><label class="field">Jenis permintaan<FormSelect name="kind" bind:value={requestKind} options={[{ value: "release", label: "Pelepasan" }, { value: "extend", label: "Perpanjangan" }]} /></label>{#if requestKind === 'extend'}<label class="field">Perpanjang sampai tanggal<FormDatePicker class="h-11 text-base md:text-sm" name="requestedEnd" type="date" required /></label>{/if}<label class="field full">Alasan<Textarea name="reason" maxlength={500} required></Textarea></label></div><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="default" type="submit" disabled={requestKind === 'release' && releaseBlocked} class="h-11 px-4 no-underline hover:no-underline"><Send aria-hidden="true" /> Ajukan ke dokter</Button></div></fieldset></form>
  {:else if cycleView === 'decision'}<form onsubmit={(event) => decide(event, selectedCycle!, decisionRequestId, String((event.submitter as HTMLButtonElement)?.value))}><label class="field">Catatan keputusan<Input class="h-11 text-base md:text-sm" name="note" maxlength={500} required disabled={busy || detailNeedsRefresh} /></label><div class="form-actions"><Button variant="outline" type="button" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button variant="outline" type="submit" class="h-11 px-4 no-underline hover:no-underline" name="decision" value="reject" disabled={busy || detailNeedsRefresh}><X aria-hidden="true" /> Tolak</Button><Button variant="default" type="submit" class="h-11 px-4 no-underline hover:no-underline" name="decision" value="approve" disabled={busy || detailNeedsRefresh}><Check aria-hidden="true" /> Setujui</Button></div></form>

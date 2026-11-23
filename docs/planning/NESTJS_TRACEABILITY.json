@@ -6022,6 +6022,7 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/tasks/+page.server.ts#load",
+              "apps/web/src/lib/features/care-cycles/presentation/CycleTaskForm.svelte#createTask",
               "apps/web/src/lib/features/tasks/presentation/TasksPage.svelte#filterTasks,reloadHistory,open,submit,createTask,changeStatus,addNote,reassign,removeTask,updateTask"
             ],
             "handlers": [
@@ -6037,6 +6038,11 @@
           },
           "mappingComplete": true,
           "testReferences": [
+            {
+              "file": "tests/e2e/contextual-task.spec.ts",
+              "test": "coordinator creates a task from cycle detail and keeps the draft after a placement change",
+              "coverage": "contextual task creation, placement conflicts, assigned PIC board and API permission"
+            },
             {
               "file": "apps/api/test/contract/contract.test.cjs",
               "test": "OpenAPI paths, methods, success codes, DTO properties, and guards match compiled Nest metadata",
@@ -6086,6 +6092,7 @@
           "uiMapping": {
             "routeFamily": [
               "apps/web/src/routes/(app)/tasks/+page.server.ts#load",
+              "apps/web/src/lib/features/care-cycles/presentation/CycleTasks.svelte#$effect",
               "apps/web/src/lib/features/tasks/presentation/TasksPage.svelte#filterTasks,reloadHistory,open,submit,createTask,changeStatus,addNote,reassign,removeTask,updateTask"
             ],
             "handlers": [
@@ -6101,6 +6108,11 @@
           },
           "mappingComplete": true,
           "testReferences": [
+            {
+              "file": "tests/e2e/contextual-task.spec.ts",
+              "test": "coordinator creates a task from cycle detail and keeps the draft after a placement change",
+              "coverage": "contextual task creation, placement conflicts, assigned PIC board and API permission"
+            },
             {
               "file": "apps/api/test/contract/contract.test.cjs",
               "test": "OpenAPI paths, methods, success codes, DTO properties, and guards match compiled Nest metadata",

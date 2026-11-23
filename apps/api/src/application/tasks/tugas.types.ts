@@ -16,6 +16,7 @@ export interface TaskFilters {
   priority?: string;
   roomId?: string;
   patientId?: string;
+  cycleId?: string;
   picId?: string;
   from?: string;
   to?: string;
@@ -26,6 +27,7 @@ export interface CreateTaskInput {
   type?: TaskType;
   patientId: string;
   placementId: string;
+  cycleContext?: { cycleId: string; placementVersion: number };
   picId: string;
   title: string;
   description?: string;

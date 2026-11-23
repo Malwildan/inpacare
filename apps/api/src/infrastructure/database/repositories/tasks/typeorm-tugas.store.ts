@@ -34,6 +34,7 @@ export class TypeOrmTaskStore implements TaskStore {
       priority: string | null;
       roomId: string | null;
       patientId: string | null;
+      cycleId: string | null;
       picId: string | null;
       from: string | null;
       to: string | null;
@@ -52,18 +53,20 @@ export class TypeOrmTaskStore implements TaskStore {
       q.picId,
       q.from,
       q.to,
+      q.cycleId,
       q.limit,
       q.offset,
     ];
     const baseWhere = `t.deleted_at IS NULL AND ($1 OR t.pic_id=$2) AND ($3='' OR p.name ILIKE '%'||$3||'%' OR t.title ILIKE '%'||$3||'%' OR p.medical_record_no ILIKE '%'||$3||'%') AND ($5::text IS NULL OR t.priority=$5) AND ($6::text IS NULL OR t.room_id=$6) AND ($7::text IS NULL OR t.patient_id=$7) AND ($8::text IS NULL OR t.pic_id=$8) AND ($9::date IS NULL OR (t.starts_at AT TIME ZONE 'Asia/Jakarta')::date >= $9) AND ($10::date IS NULL OR (t.starts_at AT TIME ZONE 'Asia/Jakarta')::date <= $10)`;
-    const where = `${baseWhere} AND ($4::text IS NULL OR t.status=$4)`;
+    const cycleWhere = `${baseWhere} AND ($11::text IS NULL OR t.cycle_id=$11)`;
+    const where = `${cycleWhere} AND ($4::text IS NULL OR t.status=$4)`;
     const items = (await this.manager.query(
-      `${TASK_ROW} WHERE ${where} ORDER BY ${q.order === "board" ? "t.board_position,t.id" : "t.starts_at,t.id"} LIMIT $11 OFFSET $12`,
+      `${TASK_ROW} WHERE ${where} ORDER BY ${q.order === "board" ? "t.board_position,t.id" : "t.starts_at,t.id"} LIMIT $12 OFFSET $13`,
       params,
     )) as TaskRecord[];
     const totals = await this.manager.query(
-      `SELECT count(*) FILTER(WHERE $4::text IS NULL OR t.status=$4)::int total,count(*) FILTER(WHERE t.status='todo')::int todo,count(*) FILTER(WHERE t.status='in_progress')::int in_progress,count(*) FILTER(WHERE t.status='done')::int done,count(*) FILTER(WHERE t.status='cancelled')::int cancelled FROM tasks t JOIN patients p ON p.id=t.patient_id WHERE ${baseWhere}`,
-      params.slice(0, 10),
+      `SELECT count(*) FILTER(WHERE $4::text IS NULL OR t.status=$4)::int total,count(*) FILTER(WHERE t.status='todo')::int todo,count(*) FILTER(WHERE t.status='in_progress')::int in_progress,count(*) FILTER(WHERE t.status='done')::int done,count(*) FILTER(WHERE t.status='cancelled')::int cancelled FROM tasks t JOIN patients p ON p.id=t.patient_id WHERE ${cycleWhere}`,
+      params.slice(0, 11),
     );
     return {
       items,
@@ -129,6 +132,13 @@ export class TypeOrmTaskStore implements TaskStore {
     if (!nurses.length)
       throw DomainError.validation("Penanggung jawab harus perawat aktif.");
   }
+  async requireActiveCoordinator(actorId: string) {
+    const [coordinator] = await this.manager.query(
+      `SELECT id FROM users WHERE id=$1 AND active AND role='PERAWAT' AND coordinator FOR SHARE`,
+      [actorId],
+    );
+    if (!coordinator) throw DomainError.forbidden();
+  }
   async patientExistsForUpdate(patientId: string) {
     const r = await this.manager.query(
       "SELECT id FROM patients WHERE id=$1 FOR UPDATE",
@@ -152,14 +162,21 @@ export class TypeOrmTaskStore implements TaskStore {
   async activePlacement(
     placementId: string,
     patientId: string,
-    starts: Date,
-    ends: Date,
   ) {
-    const r = await this.manager.query(
-      `SELECT * FROM placements WHERE id=$1 AND patient_id=$2 AND status='active' AND starts_on<=(($3::timestamptz AT TIME ZONE 'Asia/Jakarta')::date) AND ends_on>=(($4::timestamptz AT TIME ZONE 'Asia/Jakarta')::date) FOR UPDATE`,
-      [placementId, patientId, starts, ends],
+    const [placement] = await this.manager.query<{ roomId: string; startsOn: string; endsOn: string; version: number }[]>(
+      `SELECT room_id AS "roomId",to_char(starts_on,'YYYY-MM-DD') AS "startsOn",to_char(ends_on,'YYYY-MM-DD') AS "endsOn",version
+       FROM placements WHERE id=$1 AND patient_id=$2 AND status='active' FOR UPDATE`,
+      [placementId, patientId],
     );
-    return r[0] ? { roomId: r[0].room_id as string } : undefined;
+    return placement;
+  }
+  async lockCycleForTask(cycleId: string, patientId: string) {
+    const [cycle] = await this.manager.query<{ placementId: string | null; status: string }[]>(
+      `SELECT placement_id AS "placementId",status
+       FROM cycles WHERE id=$1 AND patient_id=$2 AND deleted_at IS NULL FOR UPDATE`,
+      [cycleId, patientId],
+    );
+    return cycle;
   }
   async lockReleasedCycles(placementId: string) {
     const cycles = await this.manager.query(
@@ -177,11 +194,11 @@ export class TypeOrmTaskStore implements TaskStore {
   }
   async createTask(d: {
     type: TaskType;
-    cycleId: string | null;
     id: string;
     patientId: string;
     roomId: string;
     placementId: string;
+    cycleId: string | null;
     picId: string;
     actorId: string;
     title: string;

@@ -8,7 +8,7 @@ export class TaskMeasurements1793577600063 implements MigrationInterface {
       ALTER TABLE tasks ADD COLUMN type text NOT NULL DEFAULT 'regular',
         ADD COLUMN cycle_id varchar(36),
         ADD CONSTRAINT tasks_measurement_context CHECK (
-          (type = 'regular' AND cycle_id IS NULL) OR (type = 'measurement' AND cycle_id IS NOT NULL)
+          type = 'regular' OR (type = 'measurement' AND cycle_id IS NOT NULL)
         ),
         ADD CONSTRAINT tasks_cycle_patient FOREIGN KEY (cycle_id, patient_id) REFERENCES cycles(id, patient_id),
         ADD CONSTRAINT tasks_id_cycle_patient UNIQUE (id, cycle_id, patient_id);

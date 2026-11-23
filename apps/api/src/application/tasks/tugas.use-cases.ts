@@ -38,6 +38,7 @@ export class TugasUseCases {
       priority: q.priority ?? null,
       roomId: q.roomId ?? null,
       patientId: q.patientId ?? null,
+      cycleId: q.cycleId ?? null,
       picId: q.picId ?? null,
       from: q.from ?? null,
       to: q.to ?? null,
@@ -59,18 +60,16 @@ export class TugasUseCases {
         throw DomainError.notFound();
       await canReadPatient(tx.patients, actor, d.patientId);
       const roomId = await tx.tasks.placementRoom(d.placementId);
-      if (!roomId)
-        throw DomainError.validation(
-          "Pilih penempatan aktif yang mencakup seluruh waktu tugas.",
-        );
-      await tx.tasks.lockRoom(roomId);
-      const placement = await tx.tasks.activePlacement(
-        d.placementId,
-        d.patientId,
-        startsAt,
-        endsAt,
-      );
-      if (!placement)
+      if (roomId) await tx.tasks.lockRoom(roomId);
+      const placement = roomId ? await tx.tasks.activePlacement(d.placementId, d.patientId) : undefined;
+      if (d.cycleContext) {
+        const cycle = await tx.tasks.lockCycleForTask(d.cycleContext.cycleId, d.patientId);
+        if (!cycle) throw DomainError.notFound();
+        if (cycle.status === "released" || cycle.placementId !== d.placementId ||
+            placement?.version !== d.cycleContext.placementVersion)
+          throw DomainError.conflict();
+      }
+      if (!placement || !placementIncludesTask(placement.startsOn, placement.endsOn, startsAt, endsAt))
         throw DomainError.validation(
           "Pilih penempatan aktif yang mencakup seluruh waktu tugas.",
         );
@@ -80,11 +79,12 @@ export class TugasUseCases {
         throw DomainError.validation(
           "Pasien sudah dilepas dari penempatan ini. Pilih penempatan aktif untuk membuat tugas baru.",
         );
+      if (d.cycleContext) await tx.tasks.requireActiveCoordinator(actor.id);
       await tx.tasks.requireActivePic(d.picId);
       const type = d.type ?? "regular";
-      const cycleId = type === "measurement"
+      const cycleId = d.cycleContext?.cycleId ?? (type === "measurement"
         ? await tx.tasks.measurementCycle(d.patientId, d.placementId)
-        : null;
+        : null);
       if (type === "measurement" && !cycleId)
         throw DomainError.validation("Pilih penempatan yang terhubung ke rekap rawat inap aktif untuk tugas pengukuran.");
       await tx.tasks.createTask({

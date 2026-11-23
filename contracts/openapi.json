@@ -1785,6 +1785,16 @@
             }
           },
           {
+            "name": "cycleId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 36
+            },
+            "description": "Batasi hasil pada tugas yang dibuat dari rekap ini, sesuai akses akun."
+          },
+          {
             "name": "from",
             "in": "query",
             "required": false,
@@ -7690,7 +7700,7 @@
               "null"
             ],
             "maxLength": 36,
-            "description": "Rekap yang ditetapkan untuk tugas pengukuran."
+            "description": "Rekap asal tugas yang dibuat dari detail rekap atau rekap untuk tugas pengukuran."
           }
         },
         "required": [
@@ -8216,6 +8226,42 @@
           "releaseReadiness": {
             "$ref": "#/components/schemas/ReleaseReadiness",
             "description": "Hanya tersedia pada detail rekap yang belum dilepas untuk perawat yang ditugaskan."
+          },
+          "taskPlacement": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Penempatan aktif yang dapat digunakan untuk membuat tugas dari rekap. Hanya tersedia bagi koordinator perawat.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 36
+              },
+              "roomName": {
+                "type": "string"
+              },
+              "startsOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "endsOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "id",
+              "roomName",
+              "startsOn",
+              "endsOn",
+              "version"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -8798,6 +8844,26 @@
               "measurement"
             ],
             "description": "Jika tidak diisi, jenisnya regular. Jenis measurement memerlukan rekap yang aktif pada penempatan."
+          },
+          "cycleContext": {
+            "type": "object",
+            "description": "Sertakan saat membuat tugas dari detail rekap. Gunakan versi penempatan yang ditampilkan di detail tersebut.",
+            "properties": {
+              "cycleId": {
+                "type": "string",
+                "maxLength": 36,
+                "minLength": 1
+              },
+              "placementVersion": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "cycleId",
+              "placementVersion"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [

@@ -13,10 +13,11 @@ export type BoardStatus = typeof boardStatuses[number];
 export type BoardColumn = { items: Task[]; total: number; error: boolean; filtered: boolean };
 export type TaskBoard = Record<BoardStatus, BoardColumn>;
 export type TasksRepository = {
-    list(query: TaskFilters & {
+    list(query: Partial<TaskFilters> & {
         limit: number;
         offset: number;
         order?: 'board';
+        cycleId?: string;
     }): Promise<TaskPage>;
     get(id: string): Promise<Task>;
     history(id: string): Promise<TaskHistory[]>;

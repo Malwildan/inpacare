@@ -969,7 +969,7 @@ export interface components {
             createdByName: string;
             /** @enum {string} */
             type: "regular" | "measurement";
-            /** @description Rekap yang ditetapkan untuk tugas pengukuran. */
+            /** @description Rekap asal tugas yang dibuat dari detail rekap atau rekap untuk tugas pengukuran. */
             cycleId: string | null;
         };
         TaskHistory: {
@@ -1095,6 +1095,16 @@ export interface components {
             assignmentHistory?: components["schemas"]["CycleAssignmentEvent"][];
             /** @description Hanya tersedia pada detail rekap yang belum dilepas untuk perawat yang ditugaskan. */
             releaseReadiness?: components["schemas"]["ReleaseReadiness"];
+            /** @description Penempatan aktif yang dapat digunakan untuk membuat tugas dari rekap. Hanya tersedia bagi koordinator perawat. */
+            taskPlacement?: {
+                id: string;
+                roomName: string;
+                /** Format: date */
+                startsOn: string;
+                /** Format: date */
+                endsOn: string;
+                version: number;
+            } | null;
         };
         InvoiceLine: {
             id: string;
@@ -1239,6 +1249,11 @@ export interface components {
              * @enum {string}
              */
             type?: "regular" | "measurement";
+            /** @description Sertakan saat membuat tugas dari detail rekap. Gunakan versi penempatan yang ditampilkan di detail tersebut. */
+            cycleContext?: {
+                cycleId: string;
+                placementVersion: number;
+            };
         };
         UpdateTask: {
             expectedVersion: number;
@@ -3136,6 +3151,8 @@ export interface operations {
                 roomId?: string;
                 patientId?: string;
                 picId?: string;
+                /** @description Batasi hasil pada tugas yang dibuat dari rekap ini, sesuai akses akun. */
+                cycleId?: string;
                 from?: string;
                 to?: string;
                 /** @description Nilai dibatasi hingga 100. */

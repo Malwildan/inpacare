@@ -6,7 +6,7 @@ Awalan API adalah `/api/v1`. Semua rute memerlukan sesi aktif. JSON menggunakan 
 
 ### `GET /tasks`
 
-Parameter opsional meliputi `search`, `status` (`todo | in_progress | done | cancelled`), `priority` (`low | normal | high`), `roomId`, `patientId`, `picId`, `from`, `to`, `limit`, `offset`, dan `order=board`. Urutan papan tersimpan untuk tiap status. Jika `order` tidak dikirim, API mengurutkan menurut jadwal lalu ID. Status `todo` tampil sebagai **Belum dikerjakan**. Koordinator melihat tugas di bangsal, sedangkan perawat melihat tugas yang ditetapkan untuk akunnya. Pencarian mencakup judul tugas, nama pasien, dan nomor rekam medis.
+Parameter opsional meliputi `search`, `status` (`todo | in_progress | done | cancelled`), `priority` (`low | normal | high`), `roomId`, `patientId`, `cycleId`, `picId`, `from`, `to`, `limit`, `offset`, dan `order=board`. Urutan papan tersimpan untuk tiap status. Jika `order` tidak dikirim, API mengurutkan menurut jadwal lalu ID. Status `todo` tampil sebagai **Belum dikerjakan**. Koordinator melihat tugas di bangsal, sedangkan perawat melihat tugas yang ditetapkan untuk akunnya. Pencarian mencakup judul tugas, nama pasien, dan nomor rekam medis. Filter `cycleId` membatasi hasil pada tugas yang dibuat dari rekap tersebut.
 
 ```json
 {"items":[{"id":"…","type":"measurement","cycleId":"…","title":"Pemeriksaan tanda vital","description":"…","notes":"…","patientId":"…","patientName":"…","medicalRecordNo":"RM-…","roomId":"…","roomName":"Melati 02","picId":"…","picName":"Dina Putri","priority":"high","status":"todo","startsAt":"2026-10-29T03:00:00Z","endsAt":"2026-10-29T03:30:00Z","version":1}],"total":1}
@@ -17,6 +17,8 @@ Parameter opsional meliputi `search`, `status` (`todo | in_progress | done | can
 ### `POST /tasks`
 
 Hanya koordinator. Kirim `{ patientId, placementId, picId, title, type?, description?, notes?, priority, startsAt, endsAt }`. Gunakan RFC 3339 dengan zona waktu. `endsAt` harus sama dengan atau setelah `startsAt`. Pilih `low`, `normal`, atau `high`. Penempatan harus aktif, milik pasien tersebut, dan mencakup kedua tanggal setempat. Pilih perawat aktif sebagai penanggung jawab. Server mengambil `roomId` dari penempatan dan menyimpan tugas `todo` versi 1 bersama riwayatnya dalam satu transaksi. Respons berisi tugas baru. Jenis bawaan adalah `regular`. Gunakan `measurement` untuk tugas pengukuran. Server menyimpan `cycleId` dari rekap aktif yang terhubung ke penempatan tersebut.
+
+Untuk membuat tugas dari detail rekap, sertakan `cycleContext: { cycleId, placementVersion }`. Ambil penempatan dan versinya dari `taskPlacement` pada `GET /cycles/{id}`. API memeriksa izin koordinator dan hubungan pasien, penempatan, serta rekap saat menyimpan. Jika penempatan atau status pelepasan berubah, API mengembalikan 409. Respons tugas memuat `cycleId` untuk melacak rekap asal. Nilainya `null` untuk tugas yang dibuat tanpa konteks rekap.
 
 ### `GET /tasks/{id}`
 

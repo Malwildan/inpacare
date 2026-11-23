@@ -37,6 +37,7 @@ export type NewTask = {
     type?: TaskType;
     patientId: string;
     placementId: string;
+    cycleContext?: { cycleId: string; placementVersion: number };
     picId: string;
     title: string;
     description?: string;

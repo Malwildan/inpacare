@@ -23,6 +23,7 @@ const expectedMigrations = [
   "EpisodeObservations1793577600062",
   "TaskMeasurements1793577600063",
   "NotificationRequestTargets1793577600066",
+  "ContextualTasks1793577601064",
 ];
 const BASELINE = path.join(
   API_DIR,

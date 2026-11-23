@@ -39,6 +39,7 @@ export type Cycle = {
     roomId?: string | null;
     pendingApproval?: boolean;
     assignmentHistory?: CycleAssignmentEvent[];
+    taskPlacement?: { id: string; roomName: string; startsOn: string; endsOn: string; version: number } | null;
     releaseReadiness?: {
         prerequisite: 'care_not_started' | 'placement_missing' | 'placement_inactive' | 'placement_not_started' | 'room_unavailable' | null;
         placementStartsOn: string | null;

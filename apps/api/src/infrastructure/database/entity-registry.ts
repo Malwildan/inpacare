@@ -1,6 +1,7 @@
 import { EpisodeObservations1793577600062 } from "./migrations/1793577600062-EpisodeObservations";
 import { TaskMeasurements1793577600063 } from "./migrations/1793577600063-TaskMeasurements";
 import { PlacementHistory1793577600006 } from "./migrations/1793577600006-PlacementHistory";
+import { ContextualTasks1793577601064 } from "./migrations/1793577601064-ContextualTasks";
 import { NotificationRequestTargets1793577600066 } from "./migrations/1793577600066-NotificationRequestTargets";
 import { RiwayatPenempatan } from "./entities/placements/riwayat-penempatan.orm-entity";
 import { AuditMedis } from "./entities/medical-records/audit-medis.orm-entity";
@@ -67,6 +68,7 @@ export const ALL_MIGRATIONS = [
   EpisodeObservations1793577600062,
   TaskMeasurements1793577600063,
   NotificationRequestTargets1793577600066,
+  ContextualTasks1793577601064,
 ];
 
 export function createDataSource(): DataSource {
