@@ -147,7 +147,7 @@ test('placement permissions, history, capacity and cycle consistency', { skip: !
 
     await t.test('initial placement respects responsibility for an active cycle', async () => {
       const patientId = await patient();
-      const cycle = await useCases.cycles.create(coordinator, { patientId, doctorId: doctor.id });
+      const cycle = await useCases.cycles.create(coordinator, { patientId, doctorId: doctor.id, nurseId: coordinator.id });
       const input = { patientId, roomId: await room(), ...dates };
       assert.equal((await request('nurse', 'POST', '/placements', input)).status, 403);
       assert.equal((await request('coordinator', 'POST', '/placements', input)).status, 201);

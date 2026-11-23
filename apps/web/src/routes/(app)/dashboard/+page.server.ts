@@ -34,8 +34,9 @@ export const load: PageServerLoad = async ({ fetch, parent, url }) => {
     });
     if ((cycleId !== null || requestId !== null) && !cycleDestination) unavailable();
     if (user.role === 'ADMISI') redirect(303, '/invoices');
+    const canCreate = user.role === 'PERAWAT';
     return {
-        ...await loadPage('Daftar rekap rawat inap', () => loadDashboard(fetch, filters, user.role === 'PERAWAT')),
+        ...await loadPage('Daftar rekap rawat inap', () => loadDashboard(fetch, filters, canCreate, canCreate && user.coordinator)),
         cycleDestination,
         user
     };

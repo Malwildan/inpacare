@@ -1,3 +1,15 @@
+export type CycleAssignee = { id: string; name: string };
+export type CycleAssignmentEvent = {
+    id: string;
+    actorId: string;
+    actorName: string;
+    previousNurseId: string;
+    previousNurseName: string;
+    newNurseId: string;
+    newNurseName: string;
+    reason: string;
+    createdAt: string;
+};
 export type Cycle = {
     id: string;
     patientId: string;
@@ -26,13 +38,20 @@ export type Cycle = {
     })[];
     roomId?: string | null;
     pendingApproval?: boolean;
+    assignmentHistory?: CycleAssignmentEvent[];
 };
 export type NewCycle = {
     patientId: string;
     doctorId: string;
+    nurseId?: string;
     placementId?: string | null;
     newPlacement?: { roomId: string; startsOn: string; endsOn: string } | null;
     requestId?: string;
+};
+export type ReassignCycle = {
+    nurseId: string;
+    expectedVersion: number;
+    reason: string;
 };
 export type CreatedCycle = {
     id: string;

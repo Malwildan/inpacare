@@ -20,6 +20,7 @@ import type {
   CycleRequestInput,
   DecideCycleRequestInput,
   DeleteCycleInput,
+  ReassignCycleInput,
 } from "../../../../application/cycles/cycles.use-cases";
 import type { CycleListFilters } from "../../../../application/cycles/cycle-store.port";
 export class CycleListQueryDto implements CycleListFilters {
@@ -67,6 +68,11 @@ export class CreateCycleDto implements CreateCycleInput {
   @MinLength(1, { message: "Pilih dokter penanggung jawab." })
   @MaxLength(36, { message: "Pilih dokter penanggung jawab." })
   doctorId!: string;
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsString({ message: "Pilih perawat penanggung jawab." })
+  @MinLength(1, { message: "Pilih perawat penanggung jawab." })
+  @MaxLength(36, { message: "Pilih perawat penanggung jawab." })
+  nurseId?: string;
   @IsOptional()
   @IsString()
   @MaxLength(36)
@@ -121,5 +127,18 @@ export class DeleteCycleDto implements DeleteCycleInput {
   @IsString({ message: "Isi Alasan dengan maksimal 500 karakter." })
   @MinLength(1, { message: "Isi Alasan dengan maksimal 500 karakter." })
   @MaxLength(500, { message: "Isi Alasan dengan maksimal 500 karakter." })
+  reason!: string;
+}
+export class ReassignCycleDto implements ReassignCycleInput {
+  @IsString({ message: "Pilih perawat penanggung jawab." })
+  @MinLength(1, { message: "Pilih perawat penanggung jawab." })
+  @MaxLength(36, { message: "Pilih perawat penanggung jawab." })
+  nurseId!: string;
+  @IsInt()
+  @Min(1)
+  expectedVersion!: number;
+  @IsString({ message: "Isi alasan pengalihan dengan maksimal 500 karakter." })
+  @MinLength(1, { message: "Isi alasan pengalihan dengan maksimal 500 karakter." })
+  @MaxLength(500, { message: "Isi alasan pengalihan dengan maksimal 500 karakter." })
   reason!: string;
 }

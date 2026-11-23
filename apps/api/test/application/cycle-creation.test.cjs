@@ -91,6 +91,25 @@ test('matching request replays the original result; changed input conflicts with
   assert.equal(calls.filter(value => typeof value === 'object').length, 1);
 });
 
+test('coordination requires an explicit eligible nurse and includes that nurse in idempotency', async () => {
+  const coordinator = { ...nurse, coordinator: true };
+  let previous;
+  const { useCases, calls } = service({
+    lockActiveNurse: async nurseId => nurseId === 'member',
+    creationForRequest: async () => previous,
+    saveCreationRequest: async (_actorId, _requestId, payload, result) => { previous = { payload, result }; },
+  });
+  await assert.rejects(useCases.create(coordinator, input), { code: 'VALIDATION_FAILED' });
+  await assert.rejects(useCases.create(coordinator, { ...input, nurseId: 'inactive' }), { code: 'VALIDATION_FAILED' });
+  await assert.rejects(useCases.create(nurse, { ...input, nurseId: 'member' }), { code: 'FORBIDDEN' });
+  const retry = { ...input, nurseId: 'member', requestId: 'a02e78e8-99ec-4922-a314-b9d633e3bb43' };
+  const created = await useCases.create(coordinator, retry);
+  assert.equal(created.nurseId, 'member');
+  assert.deepEqual(await useCases.create(coordinator, retry), created);
+  await assert.rejects(useCases.create(coordinator, { ...retry, nurseId: 'other-member' }), { code: 'CONFLICT' });
+  assert.equal(calls.filter(value => typeof value === 'object').length, 1);
+});
+
 test('nested placement DTO rejects malformed or incomplete input and invalid retry IDs', async () => {
   require('reflect-metadata');
   const { plainToInstance } = require('class-transformer');

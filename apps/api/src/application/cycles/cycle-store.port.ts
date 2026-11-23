@@ -18,7 +18,6 @@ export interface LockedCycle {
 }
 export interface CycleDecisionSeed extends CycleSeed {
   doctor_id: string;
-  nurse_id: string;
   kind: string;
   requested_end: string | null;
   request_status: string;
@@ -39,6 +38,10 @@ export interface CycleCandidate {
   name: string;
   medicalRecordNo: string;
 }
+export interface CycleAssignee {
+  id: string;
+  name: string;
+}
 export interface CreatedCycle {
   id: string;
   patientId: string;
@@ -55,6 +58,8 @@ export interface CycleStore {
   } | undefined>;
   saveCreationRequest(nurseId: string, requestId: string, payload: string, result: CreatedCycle): Promise<void>;
   creationCandidates(): Promise<CycleCandidate[]>;
+  assignmentCandidates(): Promise<CycleAssignee[]>;
+  lockActiveNurse(nurseId: string): Promise<boolean>;
   hasActiveCycle(patientId: string): Promise<boolean>;
   list(
     actor: Actor,
@@ -121,6 +126,7 @@ export interface CycleStore {
     id: string;
     cycleId: string;
     actorId: string;
+    action: "deleted" | "nurse_reassigned";
     reason: string;
     before: unknown;
     after: unknown;
@@ -155,9 +161,11 @@ export interface CycleStore {
     | {
         version: number | string;
         status: string;
+        nurse_id: string;
       }
     | undefined
   >;
+  setCycleNurse(cycleId: string, nurseId: string): Promise<void>;
   lockRequest(
     cycleId: string,
     requestId: string,

@@ -17,6 +17,7 @@ import {
   CycleRequestDto,
   DecideCycleRequestDto,
   DeleteCycleDto,
+  ReassignCycleDto,
 } from "./dto/cycle.dto";
 import { CyclesUseCases } from "../../../application/cycles/cycles.use-cases";
 @Controller("cycles")
@@ -47,6 +48,11 @@ export class RekapPasienController {
   getCalonRekap(@CurrentActor() actor: Actor) {
     return this.service.creationCandidates(actor);
   }
+  @Get("assignment-candidates")
+  @Roles("PERAWAT")
+  getAssignmentCandidates(@CurrentActor() actor: Actor) {
+    return this.service.assignmentCandidates(actor);
+  }
   @Get(":id")
   @Roles("DOKTER", "PERAWAT")
   getDetailRekap(
@@ -68,6 +74,18 @@ export class RekapPasienController {
     body: ChangeCycleDto,
   ) {
     return this.service.change(actor, id, body);
+  }
+  @Patch(":id/assignee")
+  @Roles("PERAWAT")
+  reassign(
+    @CurrentActor()
+    actor: Actor,
+    @Param("id")
+    id: string,
+    @Body()
+    body: ReassignCycleDto,
+  ) {
+    return this.service.reassign(actor, id, body);
   }
   @Delete(":id")
   @Roles("PERAWAT")

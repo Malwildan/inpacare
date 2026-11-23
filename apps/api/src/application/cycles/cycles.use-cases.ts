@@ -1,4 +1,5 @@
 import { Actor } from "../../domain/auth/actor";
+import { isCoordinator, requireCoordinator } from "../../domain/auth/permissions";
 import { DomainError } from "../../domain/shared/domain-error";
 import { cycleTransitionAllowed } from "../../domain/cycles/cycle-transition";
 import { id, today } from "../shared/runtime";
@@ -8,6 +9,7 @@ import { createPlacement, CreatePlacementInput } from "../placements/assign-ruan
 export interface CreateCycleInput {
   patientId: string;
   doctorId: string;
+  nurseId?: string;
   placementId?: string | null;
   newPlacement?: Omit<CreatePlacementInput, "patientId"> | null;
   requestId?: string;
@@ -18,6 +20,11 @@ export interface ChangeCycleInput {
   expectedVersion: number;
 }
 export interface DeleteCycleInput {
+  expectedVersion: number;
+  reason: string;
+}
+export interface ReassignCycleInput {
+  nurseId: string;
   expectedVersion: number;
   reason: string;
 }
@@ -75,13 +82,24 @@ export class CyclesUseCases {
     if (actor.role !== "PERAWAT") throw DomainError.forbidden();
     return { items: await this.store.creationCandidates() };
   }
+  async assignmentCandidates(actor: Actor) {
+    requireCoordinator(actor);
+    return { items: await this.store.assignmentCandidates() };
+  }
   async create(actor: Actor, input: CreateCycleInput) {
     if (actor.role !== "PERAWAT") throw DomainError.forbidden();
+    const coordinator = isCoordinator(actor);
+    if (coordinator && !input.nurseId?.trim())
+      throw DomainError.validation("Pilih perawat penanggung jawab.");
+    if (!coordinator && input.nurseId !== undefined && input.nurseId !== actor.id)
+      throw DomainError.forbidden();
+    const nurseId = input.nurseId ?? actor.id;
     if (input.placementId && input.newPlacement)
       throw DomainError.validation("Pilih penempatan yang ada atau buat penempatan baru.");
     const payload = JSON.stringify({
       patientId: input.patientId,
       doctorId: input.doctorId,
+      ...(nurseId === actor.id ? {} : { nurseId }),
       placementId: input.placementId || null,
       newPlacement: input.newPlacement ? {
         roomId: input.newPlacement.roomId,
@@ -106,6 +124,8 @@ export class CyclesUseCases {
         throw DomainError.notFound();
       if (await tx.cycles.hasActiveCycle(input.patientId))
         throw DomainError.conflict("Pasien sudah memiliki rekap aktif. Buka rekap yang ada atau pilih pasien lain.");
+      if (coordinator && !(await tx.cycles.lockActiveNurse(nurseId)))
+        throw DomainError.validation("Pilih perawat penanggung jawab yang masih aktif.");
       let placementId = input.placementId || null;
       if (input.newPlacement)
         placementId = await createPlacement(tx, actor, { ...input.newPlacement, patientId: input.patientId });
@@ -125,7 +145,7 @@ export class CyclesUseCases {
         patientId: input.patientId,
         placementId,
         doctorId: input.doctorId,
-        nurseId: actor.id,
+        nurseId,
         status: placementId ? "assigned" : "pending",
         version: 1,
       };
@@ -133,6 +153,34 @@ export class CyclesUseCases {
       if (input.requestId)
         await tx.cycles.saveCreationRequest(actor.id, input.requestId, payload, result);
       return result;
+    });
+  }
+  async reassign(actor: Actor, cycleId: string, input: ReassignCycleInput) {
+    requireCoordinator(actor);
+    const reason = input.reason.trim();
+    if (!reason || reason.length > 500)
+      throw DomainError.validation("Isi alasan pengalihan dengan maksimal 500 karakter.");
+    return this.uow.run(async (tx) => {
+      const cycle = await tx.cycles.lockCycle(cycleId);
+      if (!cycle) throw DomainError.notFound();
+      if (Number(cycle.version) !== input.expectedVersion)
+        throw DomainError.conflict();
+      if (cycle.nurse_id === input.nurseId)
+        throw DomainError.validation("Pilih perawat yang berbeda dari penanggung jawab saat ini.");
+      if (!(await tx.cycles.lockActiveNurse(input.nurseId)))
+        throw DomainError.validation("Pilih perawat penanggung jawab yang masih aktif.");
+      const version = input.expectedVersion + 1;
+      await tx.cycles.setCycleNurse(cycleId, input.nurseId);
+      await tx.cycles.addCycleHistory({
+        id: id(),
+        cycleId,
+        actorId: actor.id,
+        action: "nurse_reassigned",
+        reason,
+        before: { nurseId: cycle.nurse_id, version: input.expectedVersion },
+        after: { nurseId: input.nurseId, version },
+      });
+      return { id: cycleId, nurseId: input.nurseId, version };
     });
   }
   async change(actor: Actor, cycleId: string, input: ChangeCycleInput) {
@@ -213,6 +261,7 @@ export class CyclesUseCases {
         id: id(),
         cycleId,
         actorId: actor.id,
+        action: "deleted",
         reason: input.reason.trim(),
         before: cycle,
         after,
@@ -376,7 +425,7 @@ export class CyclesUseCases {
       );
       await tx.cycles.notifyNurse({
         id: id(),
-        nurseId: seed.nurse_id,
+        nurseId: cycle.nurse_id,
         cycleId,
         requestId,
         message: `Permintaan ${seed.kind === "extend" ? "perpanjangan" : "pelepasan"} ${input.decision === "approve" ? "disetujui" : "ditolak"}.`,

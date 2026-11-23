@@ -188,14 +188,14 @@ async function newRecapPatient(name) {
 async function admissionInput(capacity = 1) {
   const room = await useCases.rooms.create(nurse, { name: `Admission ${newId()}`, roomClass: 'Test', capacity });
   return {
-    patientId: await newRecapPatient('Admission patient'), doctorId: doctor.id, requestId: newId(),
+    patientId: await newRecapPatient('Admission patient'), doctorId: doctor.id, nurseId: nurse.id, requestId: newId(),
     newPlacement: { roomId: room.id, startsOn: day(), endsOn: day(2) },
   };
 }
 
 test("new recaps continue CY numbering without rewriting archived or legacy recaps", { skip: !enabled }, async () => {
   const patientId = await newRecapPatient("Numbered recap patient");
-  const input = { patientId, doctorId: doctor.id, placementId: null };
+  const input = { patientId, doctorId: doctor.id, nurseId: nurse.id, placementId: null };
   const first = await useCases.cycles.create(nurse, input);
   assert.equal(first.id, "CY-001");
   await useCases.cycles.remove(nurse, first.id, { expectedVersion: 1, reason: "Synthetic archived recap" });
@@ -216,11 +216,11 @@ test("parallel recap creation uses unique CY IDs and still prevents duplicate ac
   const fixturePatientId = await newRecapPatient("Upper-bound recap fixture");
   await ds.query("INSERT INTO cycles(id,patient_id,doctor_id,nurse_id,deleted_at) VALUES('CY-999',$1,$2,$3,now())", [fixturePatientId, doctor.id, nurse.id]);
   const patients = await Promise.all(Array.from({ length: 8 }, (_, index) => newRecapPatient(`Parallel recap patient ${index}`)));
-  const created = await Promise.all(patients.map(patientId => useCases.cycles.create(nurse, { patientId, doctorId: doctor.id })));
+  const created = await Promise.all(patients.map(patientId => useCases.cycles.create(nurse, { patientId, doctorId: doctor.id, nurseId: nurse.id })));
   assert.deepEqual(created.map(cycle => cycle.id).sort(), [
     "CY-1000", "CY-1001", "CY-1002", "CY-1003", "CY-1004", "CY-1005", "CY-1006", "CY-1007",
   ]);
-  const competingInput = { patientId: await newRecapPatient("Competing recap patient"), doctorId: doctor.id };
+  const competingInput = { patientId: await newRecapPatient("Competing recap patient"), doctorId: doctor.id, nurseId: nurse.id };
   const results = await Promise.allSettled([
     useCases.cycles.create(nurse, competingInput), useCases.cycles.create(nurse, competingInput),
   ]);
@@ -573,6 +573,87 @@ test("cycle deletion retains reason, actor and snapshots atomically with archiva
   assert.equal(audit.after_data.version, 2);
 });
 
+test("cycle reassignment validates live eligibility, preserves tasks and doctors, and commits with its audit", { skip: !enabled }, async () => {
+  const f = await scenario("release");
+  const cycles = useCases.cycles;
+  const member = { id: "assignment-member", role: "PERAWAT", coordinator: false };
+  await ds.query(
+    "INSERT INTO users(id,username,name,role,password_hash) VALUES($1::text,$1::text,'Assignment member','PERAWAT','test-only')",
+    [member.id],
+  );
+  const input = { nurseId: member.id, expectedVersion: 1, reason: "  Shift change  " };
+  const invalid = { code: "VALIDATION_FAILED" };
+  await assert.rejects(cycles.reassign(nurse, f.cycleId, { ...input, nurseId: doctor.id }), invalid);
+  await assert.rejects(cycles.reassign(nurse, f.cycleId, input), invalid);
+  await ds.query("INSERT INTO nurses(id,user_id,active,name) VALUES($1,$1,false,'Assignment member')", [member.id]);
+  await assert.rejects(cycles.reassign(nurse, f.cycleId, input), invalid);
+  await ds.query("UPDATE nurses SET active=true WHERE user_id=$1", [member.id]);
+  await ds.query("UPDATE users SET active=false WHERE id=$1", [member.id]);
+  await assert.rejects(cycles.reassign(nurse, f.cycleId, input), invalid);
+  assert.ok(!(await cycles.assignmentCandidates(nurse)).items.some(({ id }) => id === member.id));
+  await ds.query("UPDATE users SET active=true WHERE id=$1", [member.id]);
+
+  const formerAssignee = { ...nurse, coordinator: false };
+  await assert.rejects(cycles.reassign(formerAssignee, f.cycleId, input), { code: "FORBIDDEN" });
+  await assert.rejects(cycles.reassign(nurse, f.cycleId, { ...input, reason: "  " }), invalid);
+  await assert.rejects(cycles.reassign(nurse, f.cycleId, { ...input, nurseId: nurse.id }), invalid);
+  assert.ok((await cycles.assignmentCandidates(nurse)).items.some(({ id }) => id === member.id));
+
+  const task = await useCases.tasks.create(nurse, {
+    patientId: f.patientId, placementId: f.placementId, picId: nurse.id,
+    title: "Existing task", priority: "normal",
+    startsAt: new Date().toISOString(), endsAt: new Date(Date.now() + 60000).toISOString(),
+  });
+  await ds.query(`CREATE FUNCTION fail_assignment_audit() RETURNS trigger LANGUAGE plpgsql AS
+    $$ BEGIN RAISE EXCEPTION 'assignment audit failure'; END $$;
+    CREATE TRIGGER fail_assignment_audit BEFORE INSERT ON cycle_history FOR EACH ROW EXECUTE FUNCTION fail_assignment_audit()`);
+  try {
+    await assert.rejects(cycles.reassign(nurse, f.cycleId, input), /assignment audit failure/);
+    const [unchanged] = await ds.query("SELECT nurse_id,version FROM cycles WHERE id=$1", [f.cycleId]);
+    assert.deepEqual(unchanged, { nurse_id: nurse.id, version: 1 });
+  } finally {
+    await ds.query("DROP TRIGGER fail_assignment_audit ON cycle_history; DROP FUNCTION fail_assignment_audit()");
+  }
+  const results = await Promise.allSettled([
+    cycles.reassign(nurse, f.cycleId, input),
+    cycles.reassign(nurse, f.cycleId, input),
+  ]);
+  assert.deepEqual(results.find(result => result.status === "fulfilled")?.value, { id: f.cycleId, nurseId: member.id, version: 2 });
+  assert.equal(results.find(result => result.status === "rejected")?.reason.code, "CONFLICT");
+  const [entry] = await ds.query("SELECT actor_id,reason,before_data,after_data,created_at FROM cycle_history WHERE cycle_id=$1", [f.cycleId]);
+  assert.deepEqual(entry.before_data, { nurseId: nurse.id, version: 1 });
+  assert.deepEqual(entry.after_data, { nurseId: member.id, version: 2 });
+  assert.equal(entry.actor_id, nurse.id);
+  assert.equal(entry.reason, "Shift change");
+  assert.ok(entry.created_at instanceof Date);
+  const detail = await cycles.detail(nurse, f.cycleId);
+  assert.equal(detail.assignmentHistory.length, 1);
+  assert.equal(detail.assignmentHistory[0].newNurseId, member.id);
+  await assert.rejects(cycles.detail(formerAssignee, f.cycleId), { code: "NOT_FOUND" });
+  assert.equal((await cycles.detail(member, f.cycleId)).nurseId, member.id);
+  assert.deepEqual(await ds.query("SELECT pic_id,version FROM tasks WHERE id=$1", [task.id]), [{ pic_id: nurse.id, version: 1 }]);
+
+  const decision = { decision: "reject", expectedVersion: 2, note: "Continue monitoring" };
+  await assert.rejects(cycles.decide({ ...doctor, id: "other-doctor" }, f.cycleId, f.requestId, decision), { code: "NOT_FOUND" });
+  assert.equal((await cycles.decide(doctor, f.cycleId, f.requestId, decision)).status, "rejected");
+});
+
+test("coordinators can monitor cycles beyond the usual list cap, with patient and status filters", { skip: !enabled }, async () => {
+  const memberId = "assignment-monitor";
+  await ds.query("INSERT INTO users(id,username,name,role,password_hash) VALUES($1::text,$1::text,'Assignment monitor','PERAWAT','test-only')", [memberId]);
+  await ds.query("INSERT INTO nurses(id,user_id,name) VALUES($1,$1,'Assignment monitor')", [memberId]);
+  const patientId = await newRecapPatient("Assignment monitoring");
+  await ds.query(`
+    INSERT INTO cycles(id,patient_id,doctor_id,nurse_id,status,created_at)
+    SELECT 'monitor-'||i,$1,$2,$3,'released',now()+i*interval '1 second' FROM generate_series(1,101) i
+  `, [patientId, doctor.id, memberId]);
+  const result = await useCases.cycles.list(nurse, { patientId, status: "released" });
+  assert.equal(result.total, 101);
+  assert.ok(result.items.every(item => item.patientId === patientId && item.nurseId === memberId));
+  assert.equal((await useCases.cycles.list(nurse, { patientId, status: "assigned" })).total, 0);
+  assert.equal((await useCases.cycles.list({ ...nurse, coordinator: false }, { patientId })).total, 0);
+});
+
 test("claim results distinguish unreviewed, rejected and approved and retain negative decision attribution", { skip: !enabled }, async () => {
   const f = await scenario("release");
   const admisi = { ...nurse, id: newId(), role: "ADMISI", coordinator: false };
@@ -650,19 +731,19 @@ test('admission reuses only a valid placement of the selected patient and leaves
   const placement = await useCases.placements.create(nurse, { ...input.newPlacement, patientId: input.patientId });
   const before = await ds.query('SELECT * FROM placements WHERE id=$1', [placement.id]);
   const unrelatedPatient = await newRecapPatient('Unrelated admission');
-  await assert.rejects(useCases.cycles.create(nurse, { patientId: unrelatedPatient, doctorId: doctor.id, placementId: placement.id }), { code: 'VALIDATION_FAILED' });
+  await assert.rejects(useCases.cycles.create(nurse, { patientId: unrelatedPatient, doctorId: doctor.id, nurseId: nurse.id, placementId: placement.id }), { code: 'VALIDATION_FAILED' });
   assert.deepEqual(await ds.query('SELECT * FROM placements WHERE id=$1', [placement.id]), before);
-  const cycle = await useCases.cycles.create(nurse, { patientId: input.patientId, doctorId: doctor.id, placementId: placement.id });
+  const cycle = await useCases.cycles.create(nurse, { patientId: input.patientId, doctorId: doctor.id, nurseId: nurse.id, placementId: placement.id });
   assert.equal(cycle.placementId, placement.id);
   assert.equal(cycle.status, 'assigned');
   assert.deepEqual(await ds.query('SELECT * FROM placements WHERE id=$1', [placement.id]), before);
   await ds.query("UPDATE cycles SET status='released' WHERE id=$1", [cycle.id]);
-  await assert.rejects(useCases.cycles.create(nurse, { patientId: input.patientId, doctorId: doctor.id, placementId: placement.id }), { code: 'CONFLICT' });
+  await assert.rejects(useCases.cycles.create(nurse, { patientId: input.patientId, doctorId: doctor.id, nurseId: nurse.id, placementId: placement.id }), { code: 'CONFLICT' });
   assert.deepEqual(await ds.query('SELECT * FROM placements WHERE id=$1', [placement.id]), before);
 });
 
 test('waiting admission needs no room, denies non-nurses, and retrying never creates another cycle', { skip: !enabled }, async () => {
-  const input = { patientId: await newRecapPatient('Waiting admission'), doctorId: doctor.id, requestId: newId() };
+  const input = { patientId: await newRecapPatient('Waiting admission'), doctorId: doctor.id, nurseId: nurse.id, requestId: newId() };
   for (const role of ['DOKTER', 'ADMISI'])
     await assert.rejects(useCases.cycles.create({ ...nurse, role }, input), { code: 'FORBIDDEN' });
   const [first, retry] = await Promise.all([useCases.cycles.create(nurse, input), useCases.cycles.create(nurse, input)]);
@@ -718,7 +799,7 @@ test('a final save failure rolls back the cycle while preserving an existing pla
   await ds.query(`CREATE FUNCTION fail_admission_result() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic admission result failure'; END $$;
     CREATE TRIGGER fail_admission_result BEFORE INSERT ON cycle_creation_requests FOR EACH ROW EXECUTE FUNCTION fail_admission_result()`);
   try {
-    await assert.rejects(useCases.cycles.create(nurse, { patientId: input.patientId, doctorId: doctor.id, placementId: placement.id, requestId: input.requestId }), /Synthetic admission result failure/);
+    await assert.rejects(useCases.cycles.create(nurse, { patientId: input.patientId, doctorId: doctor.id, nurseId: nurse.id, placementId: placement.id, requestId: input.requestId }), /Synthetic admission result failure/);
     assert.deepEqual(await ds.query('SELECT * FROM placements WHERE id=$1', [placement.id]), before);
     assert.deepEqual(await ds.query('SELECT id FROM cycles WHERE patient_id=$1', [input.patientId]), []);
   } finally {
