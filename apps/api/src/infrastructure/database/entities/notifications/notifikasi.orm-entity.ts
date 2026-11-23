@@ -10,6 +10,8 @@ export class Notifikasi {
   userId!: string;
   @Column({ name: "cycle_id", type: "varchar", length: 36, nullable: true })
   cycleId?: string | null;
+  @Column({ name: "request_id", type: "varchar", length: 36, nullable: true })
+  requestId?: string | null;
   @Column({ name: "message", type: "text" })
   message!: string;
   @Column({ name: "read_at", type: "timestamptz", nullable: true })

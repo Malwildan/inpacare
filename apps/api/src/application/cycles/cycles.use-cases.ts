@@ -378,6 +378,7 @@ export class CyclesUseCases {
         id: id(),
         nurseId: seed.nurse_id,
         cycleId,
+        requestId,
         message: `Permintaan ${seed.kind === "extend" ? "perpanjangan" : "pelepasan"} ${input.decision === "approve" ? "disetujui" : "ditolak"}.`,
       });
       return {

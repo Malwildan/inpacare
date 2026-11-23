@@ -133,7 +133,7 @@ test(
       );
       assert.deepEqual(
         history.rows.map((row) => row.name),
-        ["Baseline1793577600000", "RebuildDelta1793577600001", "AuditAlignment1793577600002", "TaskBoardPosition1793577600003", "PatientRecordNumber1793577600004", "CycleCreationRequests1793577600005", "PlacementHistory1793577600006"],
+        ["Baseline1793577600000", "RebuildDelta1793577600001", "AuditAlignment1793577600002", "TaskBoardPosition1793577600003", "PatientRecordNumber1793577600004", "CycleCreationRequests1793577600005", "PlacementHistory1793577600006", "NotificationRequestTargets1793577600066"],
       );
       const deltaFields = await client.query(
         `SELECT table_name,column_name FROM information_schema.columns WHERE table_schema=current_schema() AND ((table_name='cycles' AND column_name='deleted_at') OR (table_name='invoices' AND column_name='claim_verified') OR (table_name='invoice_lines' AND column_name='room_item_id')) ORDER BY table_name,column_name`,
@@ -425,7 +425,7 @@ test(
       );
       assert.deepEqual(
         migrationRows.rows.map((row) => row.name),
-        ["Baseline1793577600000", "RebuildDelta1793577600001", "AuditAlignment1793577600002", "TaskBoardPosition1793577600003", "PatientRecordNumber1793577600004", "CycleCreationRequests1793577600005", "PlacementHistory1793577600006"],
+        ["Baseline1793577600000", "RebuildDelta1793577600001", "AuditAlignment1793577600002", "TaskBoardPosition1793577600003", "PatientRecordNumber1793577600004", "CycleCreationRequests1793577600005", "PlacementHistory1793577600006", "NotificationRequestTargets1793577600066"],
       );
       const repeatedAdopt = runCli("adopt", adoptDb, tempCwd);
       assertCliSucceeded(repeatedAdopt, "repeat baseline adoption");

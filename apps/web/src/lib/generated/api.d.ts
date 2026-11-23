@@ -1046,6 +1046,8 @@ export interface components {
         Notification: {
             id: string;
             cycleId: string | null;
+            /** @description Pengajuan yang dirujuk dalam rekap ini, jika tersedia. */
+            requestId?: string | null;
             message: string;
             readAt: string | null;
             /** Format: date-time */

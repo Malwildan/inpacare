@@ -9,4 +9,6 @@ let { data }: { data: PageData } = $props();
 const notificationService = createNotifications(fetch, { csrfToken });
 const careCycles = createCareCycles(fetch, { csrfToken });
 </script>
-<View {data} {careCycles} {notificationService} />
+{#key JSON.stringify([data.cycleDestination?.cycle.id, data.cycleDestination?.requestId])}
+    <View {data} {careCycles} {notificationService} />
+{/key}

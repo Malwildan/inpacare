@@ -213,6 +213,7 @@ export interface CycleStore {
     id: string;
     nurseId: string;
     cycleId: string;
+    requestId?: string;
     message: string;
   }): Promise<void>;
 }

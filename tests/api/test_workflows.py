@@ -382,10 +382,23 @@ class Workflows(unittest.TestCase):
         self.assertEqual(decision["status"], "approved")
         status, notifications = self.dina.request("GET", "/notifications")
         self.assertEqual(status, 200)
-        self.assertTrue(any(
-            item["cycleId"] == "CY-003" and item["message"] == "Permintaan perpanjangan disetujui."
-            for item in notifications["items"]
-        ))
+        matching = [item for item in notifications["items"] if item.get("requestId") == request["id"]]
+        self.assertEqual(len(matching), 1, matching)
+        notice = matching[0]
+        self.assertEqual(notice["cycleId"], "CY-003")
+        self.assertEqual(notice["message"], "Permintaan perpanjangan disetujui.")
+        self.assertIsNone(notice["readAt"])
+        read_path = f"/notifications/{notice['id']}/read"
+        self.assert_error(self.bima.request("POST", read_path), 404, "NOT_FOUND")
+        self.assertEqual(self.dina.request("POST", read_path), (200, {"ok": True}))
+        status, notifications = self.dina.request("GET", "/notifications")
+        self.assertEqual(status, 200)
+        read_at = next(item["readAt"] for item in notifications["items"] if item["id"] == notice["id"])
+        self.assertIsNotNone(read_at)
+        self.assertEqual(self.dina.request("POST", read_path), (200, {"ok": True}))
+        status, notifications = self.dina.request("GET", "/notifications")
+        self.assertEqual(status, 200)
+        self.assertEqual(next(item["readAt"] for item in notifications["items"] if item["id"] == notice["id"]), read_at)
         self.assert_error(self.hendra.request("POST", f"/cycles/CY-003/requests/{request['id']}/decision", {
             "decision": "approve", "note": "Pemutaran ulang", "expectedVersion": 1,
         }), 404, "NOT_FOUND")

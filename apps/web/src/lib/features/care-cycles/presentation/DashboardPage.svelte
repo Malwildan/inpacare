@@ -10,7 +10,7 @@ import FormSelect from '$lib/shared/ui/form-select.svelte';
 import { Textarea } from '$lib/shared/ui/textarea/index.js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/shared/ui/table/index.js';
 import { goto, invalidateAll } from '$app/navigation';
-import { tick } from 'svelte';
+import { tick, untrack } from 'svelte';
 import { isVersionConflict } from '$lib/shared/errors';
 import type { CareCycles, DashboardData, Cycle as CycleDetail, ChangeCycle, NewCycle, NewRequest, Decision } from '$lib/features/care-cycles';
 import { isUnconfirmedSave, sessionFailure } from '$lib/shared/presentation/session';
@@ -58,12 +58,13 @@ function openCreate() {
     createStartsOn = ''; createEndsOn = ''; createPlacementMode = 'new'; createError = '';
     creationRequest = null; createOpen = true;
 }
-let selectedCycleId = $state<string | null>(null);
-let selectedCycle = $state<CycleDetail | null>(null);
+const destination = untrack(() => data.cycleDestination);
+let selectedCycleId = $state<string | null>(destination?.cycle.id ?? null);
+let selectedCycle = $state<CycleDetail | null>(destination?.cycle ?? null);
 let detailNeedsRefresh = $state(false);
 let detailError = $state('');
 let detailSuccess = $state('');
-let detailPlacementId = $state('');
+let detailPlacementId = $state(destination?.cycle.placementId ?? '');
 let cycleTable: HTMLDivElement;
 let returnFocus: HTMLElement | null = null;
 let listPosition = { x: 0, y: 0, left: 0 };
@@ -119,8 +120,17 @@ async function filterCycles(event: SubmitEvent, draft = { roomId: roomFilter, pa
     } catch (cause) { toast.error(sessionFailure(cause, 'load', 'Daftar rekap rawat inap')); }
     finally { filterBusy = false; }
 }
+function gotoDashboard() {
+    const filters = new URLSearchParams(Object.entries(data.filters).filter(([, value]) => value));
+    return goto(`/dashboard${filters.size ? '?' + filters : ''}`, { replaceState: true });
+}
 async function closeDetail() {
     if (busy) return;
+    if (destination) {
+        try { await gotoDashboard(); }
+        catch (cause) { toast.error(sessionFailure(cause, 'load', 'Daftar rekap rawat inap')); }
+        return;
+    }
     selectedCycleId = null;
     selectedCycle = null;
     await tick();
@@ -180,7 +190,8 @@ async function send(operation: () => Promise<unknown>): Promise<boolean> {
     const toastId = toast.loading('Menyimpan perubahan…');
     try {
         await operation();
-        await invalidateAll().then(
+        const reload = destination ? gotoDashboard() : invalidateAll();
+        await reload.then(
             () => toast.success('Perubahan berhasil disimpan.', { id: toastId }),
             () => toast.warning('Perubahan rekap tersimpan. Muat ulang halaman untuk melihat daftar terbaru.', { id: toastId })
         );
@@ -249,7 +260,7 @@ async function deleteCycle(cycle: CycleDetail) {
     if (!reason) { toast.error('Isi Alasan penghapusan rekap rawat inap.'); return; }
     if (await send(() => careCycles.remove(cycle.id, { expectedVersion: cycle.version, reason }))) {
         deletingCycle = null;
-        closeDetail();
+        if (!destination) closeDetail();
     }
 }
 </script>
@@ -323,6 +334,7 @@ async function deleteCycle(cycle: CycleDetail) {
 <Modal {busy} title={cycleView === 'detail' ? 'Detail rekap rawat inap' : cycleView === 'placement' ? 'Ubah penempatan' : cycleView === 'request' ? 'Ajukan perpanjangan atau pelepasan' : cycleView === 'decision' ? 'Keputusan dokter' : 'Hapus rekap berstatus Menunggu?'}
  description="Informasi perawatan, penanggung jawab, dan permintaan perubahan pasien."
  protectChanges={cycleView !== 'detail' && cycleView !== 'delete'} formKey={cycleView}
+ initialFocus={destination?.requestId ? '[data-notification-request]' : undefined}
  backLabel={cycleView !== 'detail' ? 'Kembali ke detail' : undefined}
  onclose={() => { if (cycleView === 'detail') closeDetail(); else { cycleView = 'detail'; deletingCycle = null; } }}>
  {#snippet children(close)}
@@ -350,7 +362,11 @@ async function deleteCycle(cycle: CycleDetail) {
 			{#if canManage && selectedCycle.placementId && ['in_care', 'extend'].includes(selectedCycle.status)}<div class="card-actions"><Button variant="outline" disabled={busy || detailNeedsRefresh || !!pendingRequest} onclick={() => cycleView = 'request'}><Send aria-hidden="true" /> Ajukan perpanjangan / pelepasan</Button>{#if pendingRequest}<p class="approval-note">Pengajuan sebelumnya masih menunggu keputusan dokter.</p>{/if}</div>{/if}
 			<section class="detail-section"><h3>Riwayat permintaan</h3>
 				{#if selectedCycle.requests.length === 0}<p class="muted">Belum ada permintaan.</p>
-				{:else}{#each selectedCycle.requests as item (item.id)}<div class="request-item"><div class="request-heading"><strong>{item.kind === 'extend' ? `Perpanjangan sampai ${item.requestedEnd ? date(item.requestedEnd) : "—"}` : 'Pelepasan'}</strong><Badge value={item.status} label={requestLabels[item.status] ?? item.status}/></div><p>Alasan: {item.reason}</p><small>Diajukan oleh {item.requestedBy}{item.decidedBy ? ` · Diputuskan oleh ${item.decidedBy}` : ''}</small>{#if item.note}<p>Catatan dokter: {item.note}</p>{/if}
+				{:else}{#each selectedCycle.requests as item (item.id)}
+                    {@const targeted = item.id === destination?.requestId}
+                    <div class="request-item" class:request-target={targeted} data-notification-request={targeted ? '' : undefined}
+                        role={targeted ? 'group' : undefined} aria-label={targeted ? 'Permintaan dari notifikasi' : undefined} tabindex="-1">
+                    <div class="request-heading"><strong>{item.kind === 'extend' ? `Perpanjangan sampai ${item.requestedEnd ? date(item.requestedEnd) : "—"}` : 'Pelepasan'}</strong><Badge value={item.status} label={requestLabels[item.status] ?? item.status}/></div><p>Alasan: {item.reason}</p><small>Diajukan oleh {item.requestedBy}{item.decidedBy ? ` · Diputuskan oleh ${item.decidedBy}` : ''}</small>{#if item.note}<p>Catatan dokter: {item.note}</p>{/if}
 					{#if data.user.role === 'DOKTER' && selectedCycle.doctorId === data.user.id && item.status === 'pending'}<Button variant="outline" disabled={busy || detailNeedsRefresh} onclick={() => { decisionRequestId = item.id; cycleView = 'decision'; }}><Eye aria-hidden="true" /> Tinjau keputusan</Button>{/if}
 				</div>{/each}{/if}
 			</section>
@@ -391,6 +407,7 @@ async function deleteCycle(cycle: CycleDetail) {
 	.cell-meta{display:block;color:var(--muted-foreground);font-size:12px;margin-top:4px}
 	.request-item{border-top:1px solid var(--border);padding-top:12px;margin-top:12px;font-size:13px}
 	.request-item small{display:block;color:var(--muted-foreground);margin-top:4px}
+	.request-target{border:1px solid var(--ring);border-radius:var(--radius);padding:12px}
 	.cycle-summary{padding-bottom:24px}
 	.detail-section{border-top:1px solid var(--border);padding:24px 0}
 	.detail-section:last-child{padding-bottom:0}

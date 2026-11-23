@@ -19,6 +19,7 @@ export type DashboardData = {
     filters: CycleFilters;
     user: User;
     reference: Reference;
+    cycleDestination?: { cycle: Cycle; requestId: string | null } | null;
 };
 export function parseCycleSearch(params: URLSearchParams): CycleFilters {
     return { search: params.get('search') ?? '', status: params.get('status') ?? '', roomId: params.get('roomId') ?? '', patientId: params.get('patientId') ?? '' };

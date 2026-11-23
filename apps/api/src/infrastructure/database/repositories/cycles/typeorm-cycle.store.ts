@@ -368,11 +368,12 @@ export class TypeOrmCycleStore implements CycleStore {
     id: string;
     nurseId: string;
     cycleId: string;
+    requestId?: string;
     message: string;
   }) {
     await this.manager.query(
-      `INSERT INTO notifications(id,user_id,cycle_id,message) VALUES($1,$2,$3,$4)`,
-      [d.id, d.nurseId, d.cycleId, d.message],
+      `INSERT INTO notifications(id,user_id,cycle_id,request_id,message) VALUES($1,$2,$3,$4,$5)`,
+      [d.id, d.nurseId, d.cycleId, d.requestId ?? null, d.message],
     );
   }
 }

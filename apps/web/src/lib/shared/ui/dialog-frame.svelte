@@ -4,7 +4,7 @@ import { ArrowLeft, Pencil, X } from 'lucide-svelte';
 import * as Dialog from './dialog/index.js';
 import { Button } from './button/index.js';
 
-let { title, description, onclose, children, busy = false, protectChanges = false, formKey = '', backLabel, wide = false }: {
+let { title, description, onclose, children, busy = false, protectChanges = false, formKey = '', backLabel, wide = false, initialFocus }: {
     title: string;
     description?: string;
     onclose: () => void;
@@ -14,6 +14,7 @@ let { title, description, onclose, children, busy = false, protectChanges = fals
     formKey?: string;
     backLabel?: string;
     wide?: boolean;
+    initialFocus?: string;
 } = $props();
 let opener: HTMLElement | null = null;
 let body = $state<HTMLDivElement | null>(null);
@@ -80,6 +81,13 @@ async function continueEditing() {
         showCloseButton={!busy}
         onEscapeKeydown={(event) => { if (busy) event.preventDefault(); }}
         onInteractOutside={(event) => { if (busy || discarding) event.preventDefault(); }}
+        onOpenAutoFocus={(event) => {
+            const target = initialFocus && body?.querySelector<HTMLElement>(initialFocus);
+            if (target) {
+                event.preventDefault();
+                target.focus();
+            }
+        }}
         onCloseAutoFocus={(event) => { event.preventDefault(); if (opener?.isConnected) opener.focus(); }}>
         <Dialog.Header class="shrink-0 border-b p-5 pr-14 text-left">
             <Dialog.Title>{discarding ? 'Abaikan perubahan?' : title}</Dialog.Title>

@@ -7862,6 +7862,14 @@
               "null"
             ]
           },
+          "requestId": {
+            "description": "Pengajuan yang dirujuk dalam rekap ini, jika tersedia.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36
+          },
           "message": {
             "type": "string"
           },
