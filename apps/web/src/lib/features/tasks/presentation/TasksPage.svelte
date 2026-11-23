@@ -361,7 +361,7 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
 <svelte:head><title>Tugas perawatan | InpaCare</title></svelte:head>
 <svelte:window onpointerup={releaseCard} onpointercancel={releaseCard} onblur={releaseCard} />
 <div class="tasks-page flex min-w-0 flex-col gap-6">
-<section class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="page-title">Tugas perawatan</h1><p class="page-subtitle">Tugas pasien dengan penanggung jawab, rentang waktu, prioritas, dan riwayat perubahan.</p></div>{#if coordinator}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={()=>{creating=!creating;}}><Plus size={16} aria-hidden="true"/> Buat tugas</Button>{/if}</section>
+<section class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="page-title">Tugas perawatan</h1></div>{#if coordinator}<Button variant="default" class="h-11 px-4 no-underline hover:no-underline" aria-haspopup="dialog" onclick={()=>{creating=!creating;}}><Plus size={16} aria-hidden="true"/> Buat tugas</Button>{/if}</section>
 
 <Card class="gap-4 p-5 sm:p-6 filter-panel"><form class="filters task-filters" onsubmit={(event)=>{event.preventDefault();void filterTasks();}}><label class="field search-field">Cari tugas atau pasien<Input class="h-11 text-base md:text-sm" type="search" bind:value={search} placeholder="Nama pasien, nomor RM, judul tugas" /></label><Button variant="outline" class="h-11" aria-haspopup="dialog" onclick={() => { statusFilter = data.filters.status; priorityFilter = data.filters.priority; roomFilter = data.filters.roomId; patientFilter = data.filters.patientId; picFilter = data.filters.picId; fromFilter = data.filters.from; toFilter = data.filters.to; filterOpen = true; }}><Filter aria-hidden="true" /> Filter lanjutan</Button><Button variant="default" class="h-11 px-4 no-underline hover:no-underline" type="submit"><Search aria-hidden="true" /> Cari tugas</Button></form>{#if filtered}<div class="applied"><span>Filter aktif:</span>{#each Object.entries(data.filters).filter(([,value])=>value) as [key,value]}<Button variant="default" class="h-auto min-h-11 max-w-full min-w-0 whitespace-normal break-words px-3 py-2 text-left no-underline hover:no-underline" onclick={()=>{ const q = new URLSearchParams(window.location.search); q.delete(key); q.delete('page'); void goto(`/tasks?${q}`, { reset: false }); }}><Trash2 aria-hidden="true" /> {auditFieldLabel(key)}: {auditValue(value,key)} - Hapus</Button>{/each}<Button variant="link" class="h-11 px-4 no-underline hover:no-underline text-link" onclick={()=>goto('/tasks')}><X aria-hidden="true" /> Hapus semua</Button></div>{/if}</Card>
 <div class="task-board" role="region" aria-label="Papan tugas perawatan" ondragleave={(event)=>{if (!event.currentTarget.contains(event.relatedTarget as Node)) dragTarget=null;}}>
@@ -387,7 +387,7 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
     <div class="column-drop-overlay" class:locked={!valid} class:active={valid && dragTarget === status} data-drop-state={cancel ? 'cancel' : valid ? 'allowed' : 'locked'}>
      <div class="drop-message">
       {#if cancel}<Undo2 size={24} aria-hidden="true" /><strong>Batal pindah</strong><span>Lepaskan untuk mengembalikan kartu tanpa mengubah urutan.</span>
-      {:else if valid}<ArrowDownToLine size={24} aria-hidden="true" /><strong>Move here</strong><span>{status === 'cancelled' ? 'Konfirmasi alasan untuk membatalkan tugas.' : 'Tugas masuk ke urutan paling bawah.'}</span>
+      {:else if valid}<ArrowDownToLine size={24} aria-hidden="true" /><strong>Pindahkan ke sini</strong><span>{status === 'cancelled' ? 'Konfirmasi alasan untuk membatalkan tugas.' : 'Tugas masuk ke urutan paling bawah.'}</span>
       {:else}<LockKeyhole size={24} aria-hidden="true" /><strong>Tidak dapat dipindahkan</strong><span>{dropLockReason(dragTask, status)}</span>{/if}
      </div>
     </div>
@@ -395,13 +395,13 @@ function local(value: string) { return new Date(value).toLocaleString('id-ID', {
   </section>
  {/each}
 </div>
-<p class="muted">Klik atau ketuk kartu untuk melihat detail dan tindakan. Seret ke kolom tujuan untuk menaruh tugas di urutan paling bawah, atau lepaskan di kolom asal untuk membatalkan perpindahan. Tugas hanya dapat maju ke tahap berikutnya; tugas selesai atau dibatalkan tidak dapat dibuka kembali.{#if filtered} Urutan dinonaktifkan saat filter aktif. Perpindahan status ditambahkan di akhir daftar.{/if}</p>
+<p class="muted">Seret ke kolom tujuan untuk menaruh tugas di urutan paling bawah, atau lepaskan di kolom asal untuk membatalkan perpindahan. Tugas hanya dapat maju ke tahap berikutnya; tugas selesai atau dibatalkan tidak dapat dibuka kembali.{#if filtered} Urutan dinonaktifkan saat filter aktif. Perpindahan status ditambahkan di akhir daftar.{/if}</p>
 
 </div>
 
 {#if creating || selected || moving || (deletionOpen && deletingTask)}
 <Modal title={creating ? 'Buat tugas perawatan' : moving ? `Pindahkan ${moving.title}` : deletionOpen ? 'Hapus tugas?' : taskView === 'edit' ? 'Ubah detail tugas' : taskView === 'note' ? 'Tambah catatan' : taskView === 'reassign' ? 'Alihkan penanggung jawab' : taskView === 'audit' ? 'Rincian perubahan tugas' : selected?.title ?? 'Detail tugas'}
- description={moving ? 'Pilih status tujuan dan posisi tugas. Pembatalan memerlukan alasan.' : 'Informasi tugas, penanggung jawab, dan catatan perawatan pasien.'}
+ description={moving ? 'Pilih status tujuan dan posisi tugas. Pembatalan memerlukan alasan.' : undefined}
  busy={!moving && (busy || !!selected && pending.includes(selected.id))}
  protectChanges={creating || !moving && !deletionOpen && ['edit', 'note', 'reassign'].includes(taskView)}
  formKey={creating ? 'create' : moving ? 'move' : deletionOpen ? 'delete' : taskView === 'audit' ? `audit-${selectedAudit?.id}` : taskView}

@@ -102,7 +102,7 @@ import Modal from '$lib/shared/ui/dialog-frame.svelte';
 	</section>
 
 	{#if creating && doctors}
-		<Modal title="Tambah rekam medis" description="Catat keluhan, diagnosis, tindakan, dan catatan medis pasien." {busy} protectChanges wide onclose={() => creating = false}>
+		<Modal title="Tambah rekam medis" {busy} protectChanges wide onclose={() => creating = false}>
 		{#snippet children(close)}<form class="flex flex-col gap-5" onsubmit={create}>
 					<FieldGroup class="grid gap-4 sm:grid-cols-2">
 						<Field>

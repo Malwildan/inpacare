@@ -374,7 +374,7 @@ test('native drag lifts cards, appends destination drops and cancels in the sour
 	const validOverlay = targetColumn.locator('.column-drop-overlay');
 	await expect(validOverlay).toHaveAttribute('data-drop-state', 'allowed');
 	await expect(validOverlay).toHaveClass(/active/);
-	await expect(validOverlay).toContainText('Move here');
+	await expect(validOverlay).toContainText('Pindahkan ke sini');
 	await expect(validOverlay).not.toHaveCSS('box-shadow', 'none');
 	await expect(validOverlay).toHaveCSS('pointer-events', 'none');
 	const primary = await pic.getByRole('button', { name: 'Cari tugas', exact: true }).evaluate(element => getComputedStyle(element).backgroundColor);
@@ -466,7 +466,7 @@ test('native drag lifts cards, appends destination drops and cancels in the sour
 	const cancelOverlay = column(pic, 'Sedang dikerjakan').locator('.column-drop-overlay');
 	await expect(cancelOverlay).toHaveAttribute('data-drop-state', 'cancel');
 	await expect(cancelOverlay).toContainText('Batal pindah');
-	await expect(cancelOverlay).not.toContainText('Move here');
+	await expect(cancelOverlay).not.toContainText('Pindahkan ke sini');
 	await expect(cancelOverlay).toHaveClass(/active/);
 	await pic.mouse.move(ownBox!.x + ownBox!.width / 2, ownBox!.y + ownBox!.height / 2, { steps: 4 });
 	await pic.mouse.up();

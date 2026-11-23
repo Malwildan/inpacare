@@ -121,7 +121,6 @@ async function removeConfirmed() {
     <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div class="min-w-0">
             <h1 class="text-[26px] font-bold leading-tight tracking-[-0.03em] sm:text-[28px]">Ruang rawat inap</h1>
-            <p class="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed text-muted-foreground">Kelola data, inventaris, dan ketersediaan ruangan rawat inap.</p>
         </div>
         {#if canManage}
             <Button size="lg" class="h-11 shrink-0 px-4 text-sm" onclick={openCreate}>
@@ -229,7 +228,7 @@ async function removeConfirmed() {
 
 {#if dialogView && (dialogView === 'detail' || canManage)}
 <Modal title={dialogView === 'remove' && removeKind === 'item' ? 'Hapus perlengkapan?' : dialogTitles[dialogView]}
- description={room ? `${room.name} · ${room.id}` : 'Lengkapi informasi ruangan baru.'}
+ description={room ? `${room.name} · ${room.id}` : undefined}
  {busy} protectChanges={['create', 'edit', 'addItem', 'itemEdit'].includes(dialogView)}
  formKey={`${dialogView}-${roomId ?? ''}-${itemId ?? ''}`}
  backLabel={returnToDetail ? 'Kembali ke detail ruangan' : undefined} onclose={closeDialog}>
