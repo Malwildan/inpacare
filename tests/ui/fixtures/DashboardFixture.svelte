@@ -23,7 +23,12 @@ const careCycles = {
     detail: async id => data.cycles.find(item => item.id === id),
     create: async input => { window.cycleCreate = input; throw new Error('Rekap gagal tersimpan.'); },
     change: async (id,input) => { window.cycleActions.push({action:'change',id,...input}); Object.assign(data.cycles.find(item => item.id === id), input); },
-    request: async (id,input) => { window.cycleActions.push({action:'request',id,...input}); data.cycles[0].requests.push({id:'request',...input,status:'pending',requestedBy:'Perawat Uji',decidedBy:null,note:null}); },
+    request: async (id,input) => { window.cycleActions.push({action:'request',id,...input}); data.cycles[0].requests.push({id:'request',...input,status:'pending',requestedBy:'Perawat Uji',decidedBy:null,note:null,createdAt:'2026-11-02T02:00:00Z'}); },
+    review: async (cycleId, requestId) => {
+        const cycle = data.cycles.find(item => item.id === cycleId);
+        const request = cycle.requests.find(item => item.id === requestId);
+        return { cycle, request: { ...request, cycleId }, placement: null, records: [], observations: [], approvalBlocker: null, blockingTasks: [], reviewDate: '2026-11-02' };
+    },
     decide: async (id,requestId,input) => { window.cycleActions.push({action:'decide',id,requestId,...input}); Object.assign(data.cycles[0].requests[0], {status:input.decision === 'approve' ? 'approved' : 'rejected',note:input.note,decidedBy:'Dokter Uji'}); },
     remove: async (id, input) => {
         removals.push({ id, ...input });

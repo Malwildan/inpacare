@@ -291,7 +291,7 @@ async function removeConfirmed() {
                                 {#if canManage}
                                     <div class="action-buttons">
                                         <Button variant="link" class="h-11 px-2 text-[13px]" onclick={() => openItemEdit(room.id, item.id)}><Pencil aria-hidden="true" /> Ubah</Button>
-                                        <Button variant="link" class="h-11 px-2 text-[13px] text-destructive" onclick={() => openRemoveItem(room, item)}><Trash2 aria-hidden="true" /> Hapus</Button>
+                                        <Button variant="destructive" class="h-11 px-2 text-[13px]" onclick={() => openRemoveItem(room, item)}><Trash2 aria-hidden="true" /> Hapus</Button>
                                     </div>
                                 {/if}
                             </li>
@@ -305,7 +305,7 @@ async function removeConfirmed() {
                 {#if canManage}
                     <Button variant="outline" class="h-11 px-4" onclick={() => openAddItem(room.id)}><Plus aria-hidden="true" /> Tambah perlengkapan</Button>
                 {/if}
-                <Button class="h-11 px-4" disabled={busy} onclick={close}><X aria-hidden="true" /> Tutup detail ruangan</Button>
+                <Button variant="outline" class="h-11 px-4" disabled={busy} onclick={close}><X aria-hidden="true" /> Tutup detail ruangan</Button>
             </div>
 
         {:else if dialogView === 'edit'}<form class="flex flex-col gap-5" onsubmit={(event) => { event.preventDefault(); const f = new FormData(event.currentTarget); const dailyRate = formText(f, 'dailyRate'); void submit(() => roomService.update(room.id, { name: formText(f, 'name'), roomClass: formText(f, 'roomClass'), capacity: Number(formText(f, 'capacity')), status: formText(f, 'status') as EditRoom['status'], picId: formText(f, 'picId') || null, dailyRate, expectedVersion: room.version })); }}>
@@ -390,7 +390,7 @@ async function removeConfirmed() {
         {:else if dialogView === 'remove'}
             <form class="flex flex-col gap-4" onsubmit={(event) => { event.preventDefault(); void removeConfirmed(); }}>
                 <p>{#if removeKind === 'item'}Perlengkapan <strong>{item?.name}</strong> akan dihapus dari ruangan <strong>{room.name}</strong>.{:else}Ruang <strong>{room.name}</strong> akan diarsipkan dan tidak muncul dalam daftar ruang.{/if} Tindakan ini tidak dapat dibatalkan.</p>
-                <div class="form-actions"><Button variant="outline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button type="submit" variant="destructive" disabled={busy}><Trash2 aria-hidden="true" /> {busy ? 'Menghapus…' : 'Hapus'}</Button></div>
+                <div class="form-actions"><Button variant="outline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button><Button type="submit" variant="destructive-confirm" disabled={busy}><Trash2 aria-hidden="true" /> {busy ? 'Menghapus…' : 'Hapus'}</Button></div>
             </form>
         {/if}
     {/if}

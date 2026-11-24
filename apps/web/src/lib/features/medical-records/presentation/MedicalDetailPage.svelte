@@ -220,7 +220,7 @@ import { Archive, ArrowLeft, Pencil, Plus, Save, X } from 'lucide-svelte';
 			</Field>
 			<div class="form-actions">
 				<Button type="button" variant="outline" disabled={busy} onclick={close}><X aria-hidden="true" /> Batal</Button>
-				<Button type="submit" variant="destructive" disabled={busy}><Archive aria-hidden="true" /> {busy ? 'Mengarsipkan…' : 'Konfirmasi arsip'}</Button>
+				<Button type="submit" variant="destructive-confirm" disabled={busy}><Archive aria-hidden="true" /> {busy ? 'Mengarsipkan…' : 'Konfirmasi arsip'}</Button>
 			</div>
 		</form>
     {/if}

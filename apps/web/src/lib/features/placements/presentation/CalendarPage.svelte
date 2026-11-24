@@ -219,7 +219,7 @@ const historyDate = (value: string) => new Intl.DateTimeFormat('id-ID', { dateSt
         <label class="field">Alasan pembatalan<Textarea bind:value={cancelReason} required maxlength={2000} disabled={busy} /></label>
         <AlertDialog.Footer>
             <AlertDialog.Cancel disabled={busy}><ArrowLeft aria-hidden="true" /> Kembali</AlertDialog.Cancel>
-            <AlertDialog.Action disabled={busy || !cancelReason.trim()} variant="destructive" onclick={(event) => { event.preventDefault(); if (cancelling) void cancelPlacement(cancelling); }}>
+            <AlertDialog.Action disabled={busy || !cancelReason.trim()} variant="destructive-confirm" onclick={(event) => { event.preventDefault(); if (cancelling) void cancelPlacement(cancelling); }}>
                 <Ban aria-hidden="true" /> {busy ? 'Membatalkan…' : 'Batalkan penempatan'}
             </AlertDialog.Action>
         </AlertDialog.Footer>
